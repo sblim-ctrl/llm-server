@@ -21,7 +21,10 @@ async def get_budget_status(team_id: str, category: str) -> dict[str, Any]:
     """GET {BE}/internal/agent/teams/{id}/budget — 잔액·한도·사용률."""
     s = get_settings()
     if s.mock_backend:
-        # 개발용 고정값: 한도 30만, 기사용 11.8만
+        # 목 규약: team_id에 "lowbudget" 포함 → 잔액 부족 예산 (반려 케이스 생성용)
+        if "lowbudget" in team_id:
+            return {"category": category, "limit": 20_000, "spent": 19_000}
+        # 기본 고정값: 한도 30만, 기사용 11.8만
         return {"category": category, "limit": 300_000, "spent": 118_000}
     async with httpx.AsyncClient(base_url=s.backend_base_url, headers=_headers()) as client:
         r = await client.get(f"/internal/agent/teams/{team_id}/budget",
