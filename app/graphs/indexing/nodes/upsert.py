@@ -5,10 +5,7 @@ search_rules(3주차) 같은 검색 쿼리(WHERE active)는 신구 버전이 섞
 """
 from app.db.pool import get_pool
 from app.graphs.indexing.state import IndexingState
-
-
-def _to_vector_literal(vec: list[float]) -> str:
-    return "[" + ",".join(f"{x:.8f}" for x in vec) + "]"
+from app.tools.vector_utils import to_vector_literal
 
 
 async def upsert(state: IndexingState) -> dict:
@@ -22,7 +19,7 @@ async def upsert(state: IndexingState) -> dict:
                     """INSERT INTO context_chunks
                        (team_id, doc_type, version, chunk_text, embedding, active)
                        VALUES (%s, %s, %s, %s, %s::vector, true)""",
-                    (team_id, doc_type, version, text, _to_vector_literal(vec)),
+                    (team_id, doc_type, version, text, to_vector_literal(vec)),
                 )
             # 신규 버전 활성화와 같은 트랜잭션에서 구버전 비활성화 → 원자적 전환
             await conn.execute(
