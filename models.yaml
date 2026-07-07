@@ -1,0 +1,13 @@
+# 모델 라우팅 설정 (§3.1) — 코드 수정 없이 모델 교체 가능
+# 원칙: 판단이 필요한 곳은 gpt-4o, 요약·분류·해석은 gpt-4o-mini
+agents:
+  intake: gpt-4o                # Vision OCR
+  rule_auditor: gpt-4o
+  budget_auditor: gpt-4o-mini   # 수치 계산은 코드, LLM은 해석만
+  precedent_auditor: gpt-4o
+  adjudicator: gpt-4o
+  policy_drafter: gpt-4o
+  report_writer: gpt-4o-mini
+  briefing_writer: gpt-4o
+
+embeddings: text-embedding-3-small   # 1536차원

@@ -1,0 +1,17 @@
+# multi-stage build — uv 기반 의존성 캐시 (§10.1)
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
+WORKDIR /app
+ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
+COPY pyproject.toml uv.lock* ./
+RUN uv sync --no-dev --no-install-project || uv sync --no-dev --no-install-project --no-cache
+
+FROM python:3.12-slim-bookworm
+WORKDIR /app
+COPY --from=builder /app/.venv /app/.venv
+ENV PATH="/app/.venv/bin:$PATH"
+COPY app ./app
+COPY prompts ./prompts
+COPY models.yaml ./models.yaml
+EXPOSE 8000
+# entrypoint는 compose에서 지정 (llm-api: uvicorn / llm-worker: python -m app.worker)
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

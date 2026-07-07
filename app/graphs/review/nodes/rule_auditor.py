@@ -1,0 +1,38 @@
+"""rule_auditor — 회칙 심사관 (병렬). 회칙 RAG 검색 → 위반 여부·근거 조항 판정.
+
+TODO(2~3주차): search_rules 툴(pgvector, rule_version 고정) + 실제 LLM 판정.
+목 모드: 통과 소견. 실패 시에도 예외를 삼키고 error 소견을 남긴다 — 부분 실패 격리 (§3.2).
+"""
+import logging
+
+from app.graphs.review.state import ReviewState
+from app.llm.client import chat_structured
+from app.schemas.common import Opinion
+
+logger = logging.getLogger(__name__)
+
+PROMPT_VERSION = "rule_auditor/v1"
+
+
+async def rule_auditor(state: ReviewState) -> dict:
+    claim = state["claim"]
+    try:
+        # TODO: chunks = await search_rules(state["team_id"], claim.description, state["rule_version"])
+        opinion = await chat_structured(
+            agent="rule_auditor",
+            system="(prompts/rule_auditor/v1.yaml에서 로드)",
+            user=claim.model_dump_json(),
+            schema=Opinion,
+            mock_response=Opinion(
+                auditor="rule", verdict="pass",
+                summary=f"'{claim.category}' 카테고리 지출로 회칙상 금지 항목에 해당하지 않음 (mock)",
+                evidence=["회칙 제4조 (mock)"],
+            ),
+        )
+        opinion.auditor = "rule"
+        return {"opinions": {"rule": opinion}}
+    except Exception:
+        logger.exception("rule_auditor failed")
+        return {"opinions": {"rule": Opinion(
+            auditor="rule", verdict="error", summary="회칙 심사 실패",
+        )}}

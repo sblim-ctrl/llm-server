@@ -1,0 +1,51 @@
+services:
+  llm-postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: budgetops
+      POSTGRES_PASSWORD: budgetops
+      POSTGRES_DB: budgetops_llm
+    ports:
+      - "5433:5432"          # 로컬 개발 시 호스트에서 접속 (풀스택 메인 DB와 포트 충돌 방지)
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U budgetops"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  llm-api:
+    build: .
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://budgetops:budgetops@llm-postgres:5432/budgetops_llm
+    ports:
+      - "8000:8000"
+    depends_on:
+      llm-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  llm-worker:
+    build: .                  # 동일 이미지, entrypoint만 다름 (§2.2)
+    command: python -m app.worker
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://budgetops:budgetops@llm-postgres:5432/budgetops_llm
+    depends_on:
+      llm-postgres:
+        condition: service_healthy
+    deploy:
+      replicas: 1             # 수평 확장 지점 (§12)
+    restart: unless-stopped
+
+volumes:
+  pgdata:

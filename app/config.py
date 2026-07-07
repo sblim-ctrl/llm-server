@@ -1,0 +1,35 @@
+"""환경 설정 — .env 로드 (pydantic-settings)."""
+from functools import lru_cache
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    # DB
+    database_url: str = "postgresql://budgetops:budgetops@localhost:5433/budgetops_llm"
+
+    # 인증
+    service_token: str = "dev-service-token-change-me"
+
+    # LLM
+    openai_api_key: str = ""
+    mock_llm: bool = True
+
+    # 백엔드 (풀스택 팀)
+    backend_base_url: str = "http://localhost:8080"
+    mock_backend: bool = True
+
+    # 워커
+    worker_poll_interval_sec: float = 2.0
+    job_max_attempts: int = 3
+
+    # 관측
+    langsmith_tracing: bool = False
+    langsmith_project: str = "budgetops-llm"
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
