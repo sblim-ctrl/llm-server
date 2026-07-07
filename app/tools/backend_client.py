@@ -77,6 +77,33 @@ async def reject_expense(expense_id: str, idempotency_key: str, reason: str) -> 
         return r.json()
 
 
+async def get_policy_document(team_id: str, doc_type: str, version: int) -> str:
+    """회칙·카테고리 원문 조회 — 인덱싱 파이프라인 1단계 (REQ-041, §4.4-a).
+
+    /v1/context/refresh 이벤트에는 원문이 없고 team_id·변경유형·버전만 오므로,
+    실제 텍스트는 이 함수로 백엔드에 되물어야 한다. 정확한 엔드포인트 경로는
+    풀스택 팀과 아직 미확정(§7.2 목록에 없음) — 확정되면 아래 URL만 교체하면 됨.
+    """
+    s = get_settings()
+    if s.mock_backend:
+        if doc_type == "rule":
+            return (
+                "제1조 (목적) 이 회칙은 동아리 활동비 집행 기준을 정한다.\n\n"
+                "제2조 (회식비 한도) 1인당 회식비는 3만원을 초과할 수 없다.\n\n"
+                "제3조 (금지 항목) 개인 용도 물품 구입은 지출로 인정하지 않는다.\n\n"
+                "제4조 (도서 구입) 스터디 관련 도서는 인당 연 5만원 한도로 인정한다.\n\n"
+                f"(mock rule text, team={team_id}, version={version})"
+            )
+        return f"(mock {doc_type} text, team={team_id}, version={version})"
+    async with httpx.AsyncClient(base_url=s.backend_base_url, headers=_headers()) as client:
+        r = await client.get(
+            f"/internal/agent/teams/{team_id}/policy-document",
+            params={"doc_type": doc_type, "version": version},
+        )
+        r.raise_for_status()
+        return r.json()["text"]
+
+
 async def send_callback(payload: dict[str, Any]) -> bool:
     """POST {BE}/agent-callback — 실패해도 예외 없이 False (백엔드가 폴링 fallback)."""
     s = get_settings()

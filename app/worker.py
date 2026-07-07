@@ -13,8 +13,9 @@ from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 from app.config import get_settings
 from app.db.pool import apply_schema, close_pool, finish_job, get_pool, open_pool
+from app.graphs.indexing.graph import indexing_graph
 from app.graphs.review.graph import build_review_graph
-from app.schemas.analyze import AnalyzeRequest
+from app.schemas.analyze import AnalyzeRequest, ContextRefreshRequest
 from app.tools.backend_client import send_callback
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -22,6 +23,22 @@ logger = logging.getLogger("worker")
 
 _shutdown = asyncio.Event()
 _review_graph = None  # main()에서 checkpointer와 함께 컴파일됨
+
+# params 변경은 RAG 인덱스 대상이 아님 — 팀 정책 파라미터는 load_context가 백엔드에서 직접 조회 (§4.2)
+INDEXABLE_CHANGE_TYPES = {"rule", "category"}
+
+
+async def run_context_refresh_job(job: dict[str, Any]) -> dict[str, Any]:
+    req = ContextRefreshRequest.model_validate(job["payload"])
+    if req.change_type not in INDEXABLE_CHANGE_TYPES:
+        return {"status": "skipped", "reason": f"non-indexable change_type: {req.change_type}"}
+
+    final_state = await indexing_graph.ainvoke({
+        "team_id": req.team_id,
+        "doc_type": req.change_type,
+        "version": req.version,
+    })
+    return {"status": "indexed", "chunks_indexed": final_state.get("chunks_indexed", 0)}
 
 
 async def run_review_job(job: dict[str, Any]) -> dict[str, Any]:
@@ -60,7 +77,7 @@ async def handle_job(job: dict[str, Any]) -> None:
         if job["type"] == "review":
             result = await run_review_job(job)
         elif job["type"] == "context_refresh":
-            result = {"status": "stub"}  # TODO(2주차): 인덱싱 파이프라인
+            result = await run_context_refresh_job(job)
         else:
             result = {"status": "unknown_job_type"}
         await finish_job(job_id, "succeeded", result)
