@@ -34,10 +34,20 @@ async def get_budget_status(team_id: str, category: str) -> dict[str, Any]:
 
 
 async def get_expense_history(team_id: str, **filters: Any) -> list[dict[str, Any]]:
-    """GET {BE}/internal/agent/teams/{id}/expenses — 중복 청구 탐지용."""
+    """GET {BE}/internal/agent/teams/{id}/expenses — 중복 탐지·리포트 집계용."""
     s = get_settings()
     if s.mock_backend:
-        return []
+        # 결정적 샘플 이력 (리포트 개발용) — 계약 확정 시 실 API로 교체
+        return [
+            {"title": "정기 회식", "amount": 84000, "category": "식비", "date": "2026-06-05", "status": "APPROVED"},
+            {"title": "스터디룸 대관", "amount": 40000, "category": "대관", "date": "2026-06-08", "status": "APPROVED"},
+            {"title": "교재 3권", "amount": 54000, "category": "도서", "date": "2026-06-12", "status": "APPROVED"},
+            {"title": "간식", "amount": 18000, "category": "다과", "date": "2026-06-14", "status": "APPROVED"},
+            {"title": "번개 모임 식사", "amount": 62000, "category": "식비", "date": "2026-06-19", "status": "APPROVED"},
+            {"title": "온라인 강의", "amount": 33000, "category": "교육", "date": "2026-06-21", "status": "APPROVED"},
+            {"title": "프린트·제본", "amount": 12000, "category": "비품", "date": "2026-06-25", "status": "APPROVED"},
+            {"title": "월말 회식", "amount": 96000, "category": "식비", "date": "2026-06-28", "status": "APPROVED"},
+        ]
     async with httpx.AsyncClient(base_url=s.backend_base_url, headers=_headers()) as client:
         r = await client.get(f"/internal/agent/teams/{team_id}/expenses", params=filters)
         r.raise_for_status()

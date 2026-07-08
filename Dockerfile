@@ -11,6 +11,7 @@ COPY --from=builder /app/.venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
 COPY app ./app
 COPY prompts ./prompts
+COPY templates ./templates
 COPY models.yaml ./models.yaml
 EXPOSE 8000
 # entrypoint는 compose에서 지정 (llm-api: uvicorn / llm-worker: python -m app.worker)

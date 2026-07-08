@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api import analyze, context, health, jobs, precedents
+from app.api import analyze, context, drafts, health, jobs, precedents, reports
 from app.db.pool import apply_schema, close_pool, open_pool
 from app.middleware.auth import AuthMiddleware
 from app.middleware.request_log import RequestLogMiddleware
@@ -35,6 +35,8 @@ app.include_router(analyze.router)
 app.include_router(jobs.router)
 app.include_router(context.router)
 app.include_router(precedents.router)
+app.include_router(drafts.router)
+app.include_router(reports.router)
 
 # TODO(5주차): /v1/policy-draft, /v1/reports/summary, /v1/briefings 라우터 (§7.2)
 # TODO(5주차): FastMCP 서버 마운트 — 읽기 툴 4종 노출 (§5.2)
