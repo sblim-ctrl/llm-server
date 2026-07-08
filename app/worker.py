@@ -15,9 +15,10 @@ from app.config import get_settings
 from app.db.pool import apply_schema, close_pool, finish_job, get_pool, open_pool
 from app.graphs.indexing.graph import indexing_graph
 from app.graphs.review.graph import build_review_graph
+from app.graphs.writers.briefing import briefing_graph
 from app.graphs.writers.report import report_graph
 from app.schemas.analyze import AnalyzeRequest, ContextRefreshRequest
-from app.schemas.writers import ReportRequest
+from app.schemas.writers import BriefingRequest, ReportRequest
 from app.tools.backend_client import send_callback
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -84,6 +85,10 @@ async def handle_job(job: dict[str, Any]) -> None:
             req = ReportRequest.model_validate(job["payload"])
             final = await report_graph.ainvoke({"request": req})
             result = final["report"].model_dump(mode="json")
+        elif job["type"] == "briefing":
+            req = BriefingRequest.model_validate(job["payload"])
+            final = await briefing_graph.ainvoke({"request": req})
+            result = final["briefing"].model_dump(mode="json")
         else:
             result = {"status": "unknown_job_type"}
         await finish_job(job_id, "succeeded", result)

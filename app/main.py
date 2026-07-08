@@ -6,7 +6,9 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 
-from app.api import analyze, context, drafts, eval as eval_api, health, jobs, precedents, reports
+from app.api import (
+    analyze, briefings, context, drafts, eval as eval_api, health, jobs, precedents, reports,
+)
 from app.db.pool import apply_schema, close_pool, open_pool
 from app.middleware.auth import AuthMiddleware
 from app.middleware.request_log import RequestLogMiddleware
@@ -41,6 +43,7 @@ app.include_router(context.router)
 app.include_router(precedents.router)
 app.include_router(drafts.router)
 app.include_router(reports.router)
+app.include_router(briefings.router)
 app.include_router(eval_api.router)
 
 
@@ -54,5 +57,4 @@ async def dashboard():
     return FileResponse(STATIC_DIR / "dashboard.html")
 
 
-# TODO(5주차): /v1/briefings 라우터 (§7.2)
 # TODO(5주차): FastMCP 서버 마운트 — 읽기 툴 4종 노출 (§5.2)

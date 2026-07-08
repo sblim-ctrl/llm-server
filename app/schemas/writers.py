@@ -65,3 +65,26 @@ class BudgetReport(BaseModel):
     summary: str                         # AI 요약 (수치는 figures에서만 인용)
     recommendations: list[str]           # 다음 예산 활용 추천
     verified: bool                       # 수치 대조 통과 여부
+
+
+# ── BriefingWriter — 인수인계 브리핑 (REQ-043) ───────────
+
+class BriefingRequest(BaseModel):
+    team_id: str
+
+
+class BriefingFigures(BaseModel):
+    """판례 로그 결정적 집계 — 브리핑 텍스트의 수치는 이 값과 대조·일치해야 함."""
+    total_precedents: int
+    agent_decisions: int
+    admin_decisions: int
+    override_count: int                  # AI 추천을 뒤집은 관리자 결정
+    escalated_count: int
+    gap_categories: list[str]            # 에스컬레이션이 잦은 카테고리 (회칙 보완 후보)
+
+
+class BriefingDoc(BaseModel):
+    figures: BriefingFigures
+    summary: str
+    handover_notes: list[str]            # 차기 관리자 인수인계 노트
+    verified: bool
