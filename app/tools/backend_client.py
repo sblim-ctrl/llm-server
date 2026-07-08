@@ -80,6 +80,24 @@ async def reject_expense(expense_id: str, idempotency_key: str, reason: str) -> 
         return r.json()
 
 
+async def get_team_members(team_id: str) -> list[dict[str, Any]]:
+    """팀 멤버 명단(실명·역할) — PIIMasker 치환용 (§4.3).
+
+    엔드포인트 경로는 풀스택 팀과 미확정. 목: 고정 명단.
+    """
+    s = get_settings()
+    if s.mock_backend:
+        return [
+            {"name": "김철수", "role": "총무"},
+            {"name": "이영희", "role": "회원"},
+            {"name": "박민준", "role": "회원"},
+        ]
+    async with httpx.AsyncClient(base_url=s.backend_base_url, headers=_headers()) as client:
+        r = await client.get(f"/internal/agent/teams/{team_id}/members")
+        r.raise_for_status()
+        return r.json()
+
+
 async def get_policy_document(team_id: str, doc_type: str, version: int) -> str:
     """회칙·카테고리 원문 조회 — 인덱싱 파이프라인 1단계 (REQ-041, §4.4-a).
 
