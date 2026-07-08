@@ -16,6 +16,7 @@ from langgraph.graph import END, START, StateGraph
 from app.graphs.review.nodes.adjudicate import adjudicate, route_after_adjudicate
 from app.graphs.review.nodes.budget_auditor import budget_auditor
 from app.graphs.review.nodes.callback import callback
+from app.graphs.review.nodes.classify_category import classify_category
 from app.graphs.review.nodes.escalate import escalate
 from app.graphs.review.nodes.execute_decision import execute_decision
 from app.graphs.review.nodes.guardrail_gate import guardrail_gate, route_after_guardrail
@@ -32,6 +33,7 @@ def build_review_graph(checkpointer: BaseCheckpointSaver | None = None):
     g = StateGraph(ReviewState)
 
     g.add_node("load_context", load_context)
+    g.add_node("classify_category", classify_category)
     g.add_node("intake_receipt", intake_receipt)
     g.add_node("mismatch_gate", mismatch_gate)
     g.add_node("rule_auditor", rule_auditor)
@@ -45,7 +47,9 @@ def build_review_graph(checkpointer: BaseCheckpointSaver | None = None):
     g.add_node("persist_precedent", persist_precedent)
 
     g.add_edge(START, "load_context")
-    g.add_edge("load_context", "intake_receipt")
+    # 카테고리 미입력 시 AI 분류로 채운 뒤 심사 진행 (예산 심사가 카테고리를 사용)
+    g.add_edge("load_context", "classify_category")
+    g.add_edge("classify_category", "intake_receipt")
     g.add_edge("intake_receipt", "mismatch_gate")
 
     # 불일치 → escalate / 일치 → 3-심사관 fan-out (§3.2)

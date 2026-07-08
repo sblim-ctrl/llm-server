@@ -8,10 +8,13 @@ AuditorVerdict = Literal["pass", "warn", "fail", "error"]
 
 
 class ExpenseClaim(BaseModel):
-    """지출 청구 내용 (백엔드가 /v1/analyze 페이로드로 전달)."""
+    """지출 청구 내용 (백엔드가 /v1/analyze 페이로드로 전달).
+
+    category는 선택 — 비어 있으면 classify_category 노드가 AI 분류로 채운다 (팀 합의 사항).
+    """
     title: str
     amount: int = Field(ge=0, description="원 단위")
-    category: str
+    category: str = ""
     date: str  # YYYY-MM-DD
     description: str = ""
 

@@ -2,6 +2,7 @@
 # 원칙: 판단이 필요한 곳은 gpt-4o, 요약·분류·해석은 gpt-4o-mini
 agents:
   intake: gpt-4o                # Vision OCR
+  classifier: gpt-4o-mini       # 카테고리 자동 분류 (팀 합의)
   rule_auditor: gpt-4o
   budget_auditor: gpt-4o-mini   # 수치 계산은 코드, LLM은 해석만
   precedent_auditor: gpt-4o
