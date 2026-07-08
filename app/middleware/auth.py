@@ -19,6 +19,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         if request.url.path in PUBLIC_PATHS:
             return await call_next(request)
+        # MCP는 읽기 전용 툴만 노출(§5.2) — 개발·시연용이라 토큰 면제.
+        # TODO(운영 전): MCP 클라이언트 헤더 인증 추가
+        if request.url.path.startswith("/mcp"):
+            return await call_next(request)
 
         auth = request.headers.get("Authorization", "")
         expected = f"Bearer {get_settings().service_token}"

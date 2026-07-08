@@ -1,0 +1,39 @@
+"""MCP 서버 스모크 — Streamable HTTP 클라이언트로 접속해 툴 목록·호출 확인.
+
+실행: uv run python scripts/smoke_mcp.py  (llm-api가 떠 있어야 함)
+"""
+import asyncio
+import sys
+
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+from mcp import ClientSession  # noqa: E402
+from mcp.client.streamable_http import streamablehttp_client  # noqa: E402
+
+URL = "http://localhost:8000/mcp"
+
+
+async def main() -> None:
+    async with streamablehttp_client(URL) as (read, write, _):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+
+            tools = await session.list_tools()
+            print("툴 목록:", [t.name for t in tools.tools])
+
+            result = await session.call_tool(
+                "search_rules",
+                {"team_id": "team-idx-1", "query": "회식비 한도", "version": 2})
+            print("\nsearch_rules(team-idx-1, '회식비 한도', v2) 결과:")
+            for block in result.content[:2]:
+                print(" ", getattr(block, "text", block)[:120])
+
+            result2 = await session.call_tool(
+                "get_budget_status", {"team_id": "demo-team-1", "category": "식비"})
+            print("\nget_budget_status:", getattr(result2.content[0], "text", "")[:100])
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

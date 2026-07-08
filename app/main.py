@@ -10,6 +10,7 @@ from app.api import (
     analyze, briefings, context, drafts, eval as eval_api, health, jobs, precedents, reports,
 )
 from app.db.pool import apply_schema, close_pool, open_pool
+from app.mcp_server import mcp_app, mcp_session_manager
 from app.middleware.auth import AuthMiddleware
 from app.middleware.request_log import RequestLogMiddleware
 
@@ -22,7 +23,8 @@ logging.basicConfig(level=logging.INFO)
 async def lifespan(app: FastAPI):
     await open_pool()
     await apply_schema()
-    yield
+    async with mcp_session_manager():  # MCP Streamable HTTP 세션 (§5.2)
+        yield
     await close_pool()  # graceful shutdown (§10.2)
 
 
@@ -57,4 +59,5 @@ async def dashboard():
     return FileResponse(STATIC_DIR / "dashboard.html")
 
 
-# TODO(5주차): FastMCP 서버 마운트 — 읽기 툴 4종 노출 (§5.2)
+# MCP 서버 — 읽기 툴 4종 (§5.2). MCP Inspector: http://localhost:8000/mcp
+app.mount("/mcp", mcp_app)

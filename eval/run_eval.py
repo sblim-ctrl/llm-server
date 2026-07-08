@@ -46,6 +46,10 @@ async def main() -> int:
     print(f"\n정확도: {summary['correct']}/{summary['total']} = {summary['accuracy']:.1%} "
           f"(기준 ≥ {summary['accuracy_threshold']:.0%})")
     print(f"오승인(false-approve): {summary['false_approve_count']}건 (기준 = 0건, 하드 게이트)")
+    if summary["trajectory_total"]:
+        print(f"Trajectory(가드레일 발동 일치): {summary['trajectory_correct']}"
+              f"/{summary['trajectory_total']} = {summary['trajectory_accuracy']:.1%}")
+    print(f"결과 CSV: {summary['csv_path']}")
 
     if summary["false_approve_count"]:
         print("\n!! 오승인 발생 — 절대 머지 불가 케이스:")
