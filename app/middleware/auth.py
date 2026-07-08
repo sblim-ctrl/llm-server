@@ -1,6 +1,8 @@
 """AuthMiddleware — 백엔드 ↔ LLM 서버 상호 인증 (서비스 토큰, §4.3).
 
-/healthz·/readyz·/docs는 제외. TODO: RateLimitMiddleware(팀별 속도 제한).
+/healthz·/readyz·/docs·/ui는 제외. /ui는 페이지 껍데기만 공개고, 그 안의 API
+호출(fetch)은 서비스 토큰을 실어 보내 다른 엔드포인트와 동일하게 인증된다.
+TODO: RateLimitMiddleware(팀별 속도 제한).
 """
 import hmac
 
@@ -10,7 +12,7 @@ from starlette.responses import JSONResponse
 
 from app.config import get_settings
 
-PUBLIC_PATHS = {"/healthz", "/readyz", "/docs", "/openapi.json", "/redoc"}
+PUBLIC_PATHS = {"/healthz", "/readyz", "/docs", "/openapi.json", "/redoc", "/ui"}
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
