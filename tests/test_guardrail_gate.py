@@ -59,6 +59,15 @@ def test_rule_violation_escalates_regardless_of_amount():
     assert "rule_violation" in result.triggered_rules
 
 
+def test_rule_warn_ambiguous_escalates():
+    """회칙 해석 애매(CRAG 근거 불충분) → 경계 케이스 정답은 escalate (§9.2)."""
+    opinions = _ok_opinions()
+    opinions["rule"] = Opinion(auditor="rule", verdict="warn", summary="근거 조항 못 찾음")
+    result = evaluate_guardrails(opinions, [], POLICY, amount=30_000)
+    assert result.decision == "escalate"
+    assert "rule_ambiguous" in result.triggered_rules
+
+
 def test_precedent_warn_escalates():
     opinions = _ok_opinions()
     opinions["precedent"] = Opinion(auditor="precedent", verdict="warn", summary="중복 의심")

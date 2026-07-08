@@ -32,10 +32,13 @@ def evaluate_guardrails(
     if mismatch:
         triggered.append("receipt_mismatch")
 
-    # 3. 회칙 위반 또는 중복 의심 → 금액 무관 ESCALATED
+    # 3. 회칙 위반·해석 애매 또는 중복 의심 → 금액 무관 ESCALATED
     rule_op = opinions.get("rule")
     if rule_op is not None and rule_op.verdict == "fail":
         triggered.append("rule_violation")
+    elif rule_op is not None and rule_op.verdict == "warn":
+        # 근거 불충분·해석 애매 — 경계 케이스의 정답은 escalate (§9.2)
+        triggered.append("rule_ambiguous")
     prec_op = opinions.get("precedent")
     if prec_op is not None and prec_op.verdict in ("warn", "fail"):
         triggered.append("precedent_suspicion")
