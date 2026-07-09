@@ -1,16 +1,12 @@
 # 모임 유형별 정책 템플릿 (§12: 유형 추가 = 이 파일에 항목 추가, PolicyDrafter 코드 무수정)
 # 실제 모임 생성 화면의 5개 유형 기준. 조항은 '규정 예시'(동아리 지원금 매뉴얼·보조금 관리기준) 참고.
-# ratio 합은 1.0 — 금액 배분·검증은 코드가 수행 (LLM에 수치 계산을 맡기지 않음)
+#
+# [팀 결정 2026-07-09] AI가 카테고리별 예산을 배분하는 기능은 제거 —
+# 예산 현황은 '지난 지출 내역' 기반으로 모임관리 페이지에서 표시(ReportWriter 담당).
+# 이 템플릿은 회칙 조항 + 에이전트 정책 파라미터 제안만 담당한다.
 
 동아리/학생회:
-  categories:
-    - {name: 행사, ratio: 0.35}
-    - {name: 비품, ratio: 0.20}
-    - {name: 식비, ratio: 0.20}
-    - {name: 홍보, ratio: 0.10}
-    - {name: 교통, ratio: 0.10}
-    - {name: 예비비, ratio: 0.05}
-  auto_approve_ratio: 0.05        # 초기예산 대비 자동승인 한도 비율
+  auto_approve_ratio: 0.05        # 초기예산 대비 자동승인 한도 제안 비율
   base_rules:
     - "모든 지출은 영수증(현금영수증·카드전표)을 첨부해야 하며, 미첨부 시 지출로 인정하지 않는다."
     - "1인당 식비는 회당 {per_meal_limit}원을 초과할 수 없다."
@@ -19,12 +15,6 @@
     - "{auto_approve_limit}원 이하의 지출은 AI 자동 심사로 처리하고, 초과 건은 관리자 승인을 받는다."
 
 스터디:
-  categories:
-    - {name: 도서, ratio: 0.35}
-    - {name: 교육, ratio: 0.25}
-    - {name: 대관, ratio: 0.20}
-    - {name: 다과, ratio: 0.15}
-    - {name: 예비비, ratio: 0.05}
   auto_approve_ratio: 0.05
   base_rules:
     - "모든 지출은 영수증을 첨부해야 한다."
@@ -34,12 +24,6 @@
     - "{auto_approve_limit}원 이하 지출은 AI 자동 심사, 초과 시 관리자 승인."
 
 친목:
-  categories:
-    - {name: 식비, ratio: 0.40}
-    - {name: 행사, ratio: 0.25}
-    - {name: 여가, ratio: 0.20}
-    - {name: 다과, ratio: 0.10}
-    - {name: 예비비, ratio: 0.05}
   auto_approve_ratio: 0.06
   base_rules:
     - "모든 지출은 영수증을 첨부해야 한다."
@@ -48,12 +32,6 @@
     - "{auto_approve_limit}원 이하 지출은 AI 자동 심사, 초과 시 관리자 승인."
 
 동호회:
-  categories:
-    - {name: 용품, ratio: 0.30}
-    - {name: 대관, ratio: 0.30}
-    - {name: 행사, ratio: 0.15}
-    - {name: 식비, ratio: 0.15}
-    - {name: 예비비, ratio: 0.10}
   auto_approve_ratio: 0.05
   base_rules:
     - "모든 지출은 영수증을 첨부해야 한다."
@@ -63,12 +41,6 @@
     - "{auto_approve_limit}원 이하 지출은 AI 자동 심사, 초과 시 관리자 승인."
 
 회사:
-  categories:
-    - {name: 식비, ratio: 0.30}
-    - {name: 비품, ratio: 0.25}
-    - {name: 교육, ratio: 0.20}
-    - {name: 행사, ratio: 0.15}
-    - {name: 교통, ratio: 0.10}
   auto_approve_ratio: 0.03
   base_rules:
     - "모든 지출은 증빙(영수증·세금계산서)을 첨부해야 한다."

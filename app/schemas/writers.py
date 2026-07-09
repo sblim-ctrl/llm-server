@@ -17,12 +17,6 @@ class PolicyDraftRequest(BaseModel):
     description: str = ""
 
 
-class BudgetLine(BaseModel):
-    category: str
-    amount: int
-    ratio: float
-
-
 class PolicyParamsSuggestion(BaseModel):
     auto_approve_limit: int
     force_escalation_amount: int
@@ -30,8 +24,9 @@ class PolicyParamsSuggestion(BaseModel):
 
 
 class PolicyDraft(BaseModel):
+    """[팀 결정 2026-07-09] 예산 카테고리 배분(budget_plan) 제거 —
+    예산 현황은 지난 지출 내역 기반(ReportWriter)으로 표시."""
     rules: list[str]                     # 회칙 초안 (조항 단위 — 그대로 인덱싱 가능)
-    budget_plan: list[BudgetLine]        # 합계 == initial_budget (검증 노드가 보장)
     policy_params: PolicyParamsSuggestion
     notes: str = ""
 

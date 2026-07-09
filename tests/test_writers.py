@@ -1,54 +1,44 @@
-"""문서 생성 에이전트 순수 함수 테스트 — 배분·검증(Generator-Evaluator)·집계."""
-import pytest
-
-from app.graphs.writers.policy_draft import allocate_budget, load_templates, verify_draft_pure
+"""문서 생성 에이전트 순수 함수 테스트 — 검증(Generator-Evaluator)·집계."""
+from app.graphs.writers.policy_draft import load_templates, verify_draft_pure
 from app.graphs.writers.report import aggregate_pure, verify_report_pure
-from app.schemas.writers import (
-    BudgetLine, BudgetReport, PolicyDraft, PolicyParamsSuggestion,
-)
+from app.schemas.writers import BudgetReport, PolicyDraft, PolicyParamsSuggestion
 
 TEAM_TYPES = ["동아리/학생회", "스터디", "친목", "동호회", "회사"]
 
 
-# ── PolicyDrafter ────────────────────────────────────────
+# ── PolicyDrafter (예산 배분 없음 — 팀 결정 2026-07-09) ──
 
 def test_templates_cover_all_five_team_types():
     templates = load_templates()
     assert set(templates.keys()) == set(TEAM_TYPES)
     for t in templates.values():
-        assert abs(sum(c["ratio"] for c in t["categories"]) - 1.0) < 1e-9
+        assert t["base_rules"]
+        assert 0 < t["auto_approve_ratio"] < 1
 
 
-@pytest.mark.parametrize("total", [500_000, 1_000_000, 333_333, 100_001])
-@pytest.mark.parametrize("team_type", TEAM_TYPES)
-def test_allocation_sums_exactly_to_budget(total, team_type):
-    categories = load_templates()[team_type]["categories"]
-    lines = allocate_budget(total, categories)
-    assert sum(line.amount for line in lines) == total
-    assert all(line.amount >= 0 for line in lines)
-
-
-def _draft(budget_plan, auto=50_000, force=300_000):
+def _draft(rules=None, auto=50_000, force=300_000):
     return PolicyDraft(
-        rules=["제1조 테스트"], budget_plan=budget_plan,
+        rules=rules if rules is not None else ["제1조 테스트"],
         policy_params=PolicyParamsSuggestion(auto_approve_limit=auto,
                                              force_escalation_amount=force))
 
 
-def test_verify_catches_sum_mismatch():
-    plan = [BudgetLine(category="식비", amount=90_000, ratio=1.0)]
-    assert verify_draft_pure(_draft(plan), initial_budget=100_000) is not None
-
-
 def test_verify_catches_limit_order_error():
-    plan = [BudgetLine(category="식비", amount=100_000, ratio=1.0)]
-    err = verify_draft_pure(_draft(plan, auto=300_000, force=100_000), 100_000)
+    err = verify_draft_pure(_draft(auto=300_000, force=100_000))
     assert err is not None and "한도" in err
 
 
+def test_verify_catches_empty_rules():
+    assert verify_draft_pure(_draft(rules=[])) is not None
+
+
+def test_verify_catches_unresolved_placeholder():
+    err = verify_draft_pure(_draft(rules=["한도는 {auto_approve_limit}원"]))
+    assert err is not None and "placeholder" in err
+
+
 def test_verify_passes_valid_draft():
-    plan = [BudgetLine(category="식비", amount=100_000, ratio=1.0)]
-    assert verify_draft_pure(_draft(plan), initial_budget=100_000) is None
+    assert verify_draft_pure(_draft()) is None
 
 
 # ── ReportWriter ─────────────────────────────────────────

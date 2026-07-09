@@ -217,8 +217,8 @@
   <!-- ② 회칙·예산 초안 -->
   <section class="panel" id="panel-draft">
     <div class="card">
-      <h2>회칙·예산 초안 생성 (PolicyDrafter)</h2>
-      <div class="desc">POST /v1/policy-draft (동기) — 모임 생성 화면 입력 그대로. 카테고리 배분 합계가 초기예산과 정확히 일치하는지도 이 화면에서 확인됩니다.</div>
+      <h2>회칙·정책 초안 생성 (PolicyDrafter)</h2>
+      <div class="desc">POST /v1/policy-draft (동기) — 모임 생성 화면 입력 그대로. 회칙 초안과 에이전트 정책 파라미터(자동승인 한도 등)를 제안합니다. (예산 카테고리 배분은 팀 결정으로 제외)</div>
       <div class="row">
         <div class="field">
           <label>모임 유형</label>
@@ -235,10 +235,6 @@
 
       <div class="result empty" id="pd-result">
         <div id="pd-verified"></div>
-        <table class="wrap-x" style="margin-top:12px">
-          <thead><tr><th>카테고리</th><th class="num">배분액</th><th class="num">비율</th></tr></thead>
-          <tbody id="pd-table"></tbody>
-        </table>
         <div class="kv" id="pd-params"></div>
         <ol class="rules-list" id="pd-rules"></ol>
         <span class="raw-toggle" data-target="pd-raw">원본 JSON 보기 ▾</span>
@@ -428,10 +424,7 @@ $("pd-submit").addEventListener("click", async () => {
     const draft = await res.json();
 
     $("pd-status").textContent = "완료";
-    $("pd-verified").innerHTML = `<span class="badge approve">검증 통과 · 배분 합계 == 초기예산</span>`;
-    $("pd-table").innerHTML = draft.budget_plan.map(b => `
-      <tr><td>${b.category}</td><td class="num">${b.amount.toLocaleString()}원</td><td class="num">${(b.ratio * 100).toFixed(0)}%</td></tr>
-    `).join("");
+    $("pd-verified").innerHTML = `<span class="badge approve">검증 통과</span>`;
     $("pd-params").innerHTML = `
       <div class="row2"><span class="k">자동승인 한도</span><span class="v2">${draft.policy_params.auto_approve_limit.toLocaleString()}원</span></div>
       <div class="row2"><span class="k">강제 에스컬레이션</span><span class="v2">${draft.policy_params.force_escalation_amount.toLocaleString()}원</span></div>
