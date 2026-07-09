@@ -71,6 +71,9 @@ async def run_review_job(job: dict[str, Any]) -> dict[str, Any]:
         "confidence": final_state.get("confidence"),
         "reasons": reasons.model_dump() if reasons else None,
         "callback_status": final_state.get("callback_status"),
+        # classify_category가 채운 최종 카테고리 — UI에서 분류 결과 확인용
+        "category": final_state["claim"].category,
+        "category_source": final_state.get("category_source"),
     }
 
 
