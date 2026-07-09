@@ -36,10 +36,19 @@ def _mock_opinion(cases: list[dict]) -> Opinion:
             summary=f"유사 사안에 대한 반려/override 판례 {len(risky)}건 발견 — 관리자 확인 권고",
             similar_cases=citations,
         )
+
+    # 판례 보완 신호 (§4.4-b의 승인 방향): 동일 사안을 관리자가 승인한 판례가 있으면
+    # 회칙이 애매해도(rule warn) 가드레일이 자동 승인 경로를 유지할 수 있다
+    support = [c for c in cases
+               if c["distance"] < SIMILARITY_WARN_DISTANCE
+               and c["decided_by"] == "ADMIN"
+               and c["decision"] == "approve" and not c["is_override"]]
     return Opinion(
         auditor="precedent", verdict="pass",
-        summary=("유사 판례 있음, 위험 신호 없음" if cases else "유사 판례 없음") + " (mock)",
+        summary=((f"동일 사안 관리자 승인 판례 {len(support)}건 — 승인 근거로 인용" if support
+                  else "유사 판례 있음, 위험 신호 없음" if cases else "유사 판례 없음") + " (mock)"),
         similar_cases=citations,
+        figures={"admin_approve_support": len(support)},
     )
 
 

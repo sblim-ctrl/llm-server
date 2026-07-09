@@ -68,6 +68,17 @@ def test_rule_warn_ambiguous_escalates():
     assert "rule_ambiguous" in result.triggered_rules
 
 
+def test_rule_warn_with_admin_approve_precedent_proceeds():
+    """회칙 애매 + 동일 사안 관리자 승인 판례 → 판례가 회칙 공백을 메워 자동 경로 유지 (§4.4-b)."""
+    opinions = _ok_opinions()
+    opinions["rule"] = Opinion(auditor="rule", verdict="warn", summary="근거 조항 못 찾음")
+    opinions["precedent"] = Opinion(auditor="precedent", verdict="pass",
+                                    summary="관리자 승인 판례 1건",
+                                    figures={"admin_approve_support": 1})
+    result = evaluate_guardrails(opinions, [], POLICY, amount=30_000)
+    assert result.decision == "proceed"
+
+
 def test_precedent_warn_escalates():
     opinions = _ok_opinions()
     opinions["precedent"] = Opinion(auditor="precedent", verdict="warn", summary="중복 의심")

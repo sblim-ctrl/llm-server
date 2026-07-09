@@ -37,8 +37,12 @@ def evaluate_guardrails(
     if rule_op is not None and rule_op.verdict == "fail":
         triggered.append("rule_violation")
     elif rule_op is not None and rule_op.verdict == "warn":
-        # 근거 불충분·해석 애매 — 경계 케이스의 정답은 escalate (§9.2)
-        triggered.append("rule_ambiguous")
+        # 근거 불충분·해석 애매 — 기본은 escalate (§9.2 경계 케이스).
+        # 단, 동일 사안 관리자 승인 판례가 있으면 판례가 회칙 공백을 메운다 (§4.4-b)
+        prec = opinions.get("precedent")
+        admin_support = bool(prec and prec.figures.get("admin_approve_support"))
+        if not admin_support:
+            triggered.append("rule_ambiguous")
     prec_op = opinions.get("precedent")
     if prec_op is not None and prec_op.verdict in ("warn", "fail"):
         triggered.append("precedent_suspicion")
