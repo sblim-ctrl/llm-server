@@ -17,18 +17,22 @@ def _headers() -> dict[str, str]:
     return {"Authorization": f"Bearer {get_settings().service_token}"}
 
 
-async def get_budget_status(team_id: str, category: str) -> dict[str, Any]:
-    """GET {BE}/internal/agent/teams/{id}/budget — 잔액·한도·사용률."""
+async def get_budget_status(team_id: str, category: str | None = None) -> dict[str, Any]:
+    """GET {BE}/internal/agent/teams/{id}/budget — 총예산·승인 지출 합계.
+
+    [팀 확인 2026-07-09] 예산 = 모임 전체 총액. 잔액 = total_budget − spent(승인 합계).
+    category는 내역 조회용 선택 파라미터 (한도 검사 기준 아님).
+    """
     s = get_settings()
     if s.mock_backend:
-        # 목 규약: team_id에 "lowbudget" 포함 → 잔액 부족 예산 (반려 케이스 생성용)
+        # 목 규약: team_id에 "lowbudget" 포함 → 잔액 부족 (반려 케이스 생성용, 잔액 1,000원)
         if "lowbudget" in team_id:
-            return {"category": category, "limit": 20_000, "spent": 19_000}
-        # 기본 고정값: 한도 30만, 기사용 11.8만
-        return {"category": category, "limit": 300_000, "spent": 118_000}
+            return {"total_budget": 20_000, "spent": 19_000}
+        # 기본 고정값: 총예산 30만, 승인 지출 11.8만
+        return {"total_budget": 300_000, "spent": 118_000}
     async with httpx.AsyncClient(base_url=s.backend_base_url, headers=_headers()) as client:
         r = await client.get(f"/internal/agent/teams/{team_id}/budget",
-                             params={"category": category})
+                             params={"category": category} if category else None)
         r.raise_for_status()
         return r.json()
 

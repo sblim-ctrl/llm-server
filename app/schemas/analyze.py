@@ -13,6 +13,8 @@ class AnalyzeRequest(BaseModel):
     team_id: str
     claim: ExpenseClaim
     receipt_signed_url: str | None = None
+    # 백엔드가 영수증에서 미리 추출한 텍스트 (있으면 Vision OCR 생략 — 저장 방식 확정 전 유연화)
+    receipt_text: str | None = None
 
 
 class AnalyzeAccepted(BaseModel):

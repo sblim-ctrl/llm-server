@@ -22,6 +22,7 @@ class ReviewState(TypedDict, total=False):
     team_id: str
     claim: ExpenseClaim
     receipt_url: str | None
+    receipt_text: str | None    # 백엔드가 미리 추출한 영수증 텍스트 (있으면 Vision 생략)
     # 컨텍스트 (load_context가 씀)
     policy_params: PolicyParams
     rule_version: int

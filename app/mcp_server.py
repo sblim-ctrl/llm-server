@@ -36,9 +36,9 @@ async def search_precedents(team_id: str, query: str) -> list[dict]:
 
 
 @mcp.tool()
-async def get_budget_status(team_id: str, category: str) -> dict:
-    """카테고리별 예산 한도·기사용액을 조회한다 (백엔드 읽기 API 경유)."""
-    return await _get_budget_status(team_id, category)
+async def get_budget_status(team_id: str) -> dict:
+    """총예산·승인 지출 합계를 조회한다 — 잔액 = 총예산 − 지출 (백엔드 읽기 API 경유)."""
+    return await _get_budget_status(team_id)
 
 
 @mcp.tool()

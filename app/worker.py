@@ -58,6 +58,7 @@ async def run_review_job(job: dict[str, Any]) -> dict[str, Any]:
             "team_id": req.team_id,
             "claim": req.claim,
             "receipt_url": req.receipt_signed_url,
+            "receipt_text": req.receipt_text,
         }
         final_state = await _review_graph.ainvoke(initial_state, config=config)
     else:
