@@ -206,7 +206,7 @@
 
       <div class="result empty" id="rv-result">
         <div id="rv-badge"></div>
-        <div id="rv-category" style="margin-top:8px"></div>
+        <div id="rv-category-result" style="margin-top:8px"></div>
         <div class="opinions" id="rv-opinions"></div>
         <div class="reasons" id="rv-reasons"></div>
         <span class="raw-toggle" data-target="rv-raw">원본 JSON 보기 ▾</span>
@@ -389,7 +389,7 @@ $("rv-submit").addEventListener("click", async () => {
     const r = final.result;
     $("rv-status").textContent = `완료 (attempts=${final.attempts})`;
     $("rv-badge").innerHTML = verdictBadge(r.verdict, r.confidence);
-    $("rv-category").innerHTML = r.category
+    $("rv-category-result").innerHTML = r.category
       ? `<span class="badge pending">카테고리: ${r.category}
            ${r.category_source === "ai" ? "· AI 자동 분류" : "· 사용자 입력"}</span>`
       : "";
