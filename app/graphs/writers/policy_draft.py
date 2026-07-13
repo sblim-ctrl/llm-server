@@ -15,12 +15,20 @@ from functools import lru_cache
 from pathlib import Path
 
 from langgraph.graph import END, START, StateGraph
+from pydantic import BaseModel
 from typing_extensions import TypedDict
 
+from app.llm.client import chat_structured
 from app.schemas.writers import PolicyDraft, PolicyDraftRequest, PolicyParamsSuggestion
 from app.tools.category_catalog import categories_for
 
 logger = logging.getLogger(__name__)
+
+MAX_EXTRA_RULES = 3
+
+
+class ExtraRules(BaseModel):
+    extra_rules: list[str] = []
 
 _TEMPLATES_PATH = Path(__file__).resolve().parents[3] / "templates" / "policy_templates.yaml"
 PER_MEAL_LIMIT = 30_000  # 1인당 식비 기본 한도 — 추후 팀 규모 기반 조정
@@ -46,11 +54,27 @@ async def load_template(state: DraftState) -> dict:
     return {"template": template}
 
 
-async def generate_draft(state: DraftState) -> dict:
-    """초안 조립. 한도 수치는 코드 계산, 조항 문구는 템플릿 + 치환.
+def _mock_extra_rules(description: str) -> list[str]:
+    """목 모드 휴리스틱 — 소개 문구 키워드 기반 추가 조항 제안. 소개 없으면 빈 목록."""
+    if not description:
+        return []
+    text = description.lower()
+    rules: list[str] = []
+    if any(k in text for k in ("등산", "캠핑", "액티비티", "레저", "운동")):
+        rules.append("야외·활동성 행사에 필요한 안전장비(구급용품 등) 구입은 활동 안전을 위한 지출로 우선 인정한다.")
+    if any(k in text for k in ("스터디", "개발", "코딩", "프로젝트", "실습")):
+        rules.append("실습에 필요한 서버·도메인·구독형 개발 도구 비용은 스터디 기간 내 결제분만 인정한다.")
+    if any(k in text for k in ("신입", "모집", "홍보", "리크루팅")):
+        rules.append("신입 모집 관련 홍보물 제작비는 모집 기간 내 집행 건에 한해 인정한다.")
+    return rules[:MAX_EXTRA_RULES]
 
-    TODO(실키 연결 후): description·member_count를 반영해 gpt-4o가 조항을
-    팀 맞춤으로 다듬는 단계 추가 (수치 placeholder는 코드 값 유지).
+
+async def generate_draft(state: DraftState) -> dict:
+    """초안 조립. 한도 수치는 코드 계산, 기본 조항은 템플릿 + 치환.
+
+    모임 소개가 있으면 LLM이 그 모임 특성에 맞는 추가 조항(최대 3개)을 제안한다.
+    기본 조항은 LLM이 절대 건드리지 않음 — 필수 조항 보장은 코드 검증(verify_draft)의
+    책임으로 유지하기 위해서다.
     """
     req, template = state["request"], state["template"]
 
@@ -60,12 +84,27 @@ async def generate_draft(state: DraftState) -> dict:
         auto_approve_limit=auto_limit,
         force_escalation_amount=auto_limit * 6,
     )
-    rules = [r.format(auto_approve_limit=f"{params.auto_approve_limit:,}",
-                      per_meal_limit=f"{PER_MEAL_LIMIT:,}")
-             for r in template["base_rules"]]
+    base_rules = [r.format(auto_approve_limit=f"{params.auto_approve_limit:,}",
+                           per_meal_limit=f"{PER_MEAL_LIMIT:,}")
+                 for r in template["base_rules"]]
+
+    extra_rules: list[str] = []
+    if req.description:
+        try:
+            result = await chat_structured(
+                agent="policy_drafter",
+                system="(prompts/policy_drafter/v1.yaml에서 로드)",
+                user=f"모임 유형: {req.team_type}\n모임 이름: {req.team_name}\n"
+                     f"모임 소개: {req.description}",
+                schema=ExtraRules,
+                mock_response=ExtraRules(extra_rules=_mock_extra_rules(req.description)),
+            )
+            extra_rules = result.extra_rules[:MAX_EXTRA_RULES]
+        except Exception:
+            logger.exception("policy_drafter 추가 조항 생성 실패 — 기본 조항만 사용")
 
     draft = PolicyDraft(
-        rules=rules, policy_params=params,
+        rules=base_rules + extra_rules, policy_params=params,
         recommended_categories=categories_for(req.team_type),  # 유형별 고정 6개 (신규 생성 없음)
         notes=f"'{req.team_name}' ({req.team_type}) 초기예산 {req.initial_budget:,}원 기준 자동 생성 초안 — 관리자 검토 후 확정",
     )

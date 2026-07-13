@@ -1,7 +1,10 @@
 """문서 생성 에이전트 순수 함수 테스트 — 검증(Generator-Evaluator)·집계."""
-from app.graphs.writers.policy_draft import load_templates, verify_draft_pure
+from app.graphs.writers.policy_draft import (
+    MAX_EXTRA_RULES, _mock_extra_rules, generate_draft, load_template, load_templates,
+    verify_draft_pure,
+)
 from app.graphs.writers.report import aggregate_pure, verify_report_pure
-from app.schemas.writers import BudgetReport, PolicyDraft, PolicyParamsSuggestion
+from app.schemas.writers import BudgetReport, PolicyDraft, PolicyDraftRequest, PolicyParamsSuggestion
 
 TEAM_TYPES = ["동아리/학생회", "스터디", "친목", "동호회", "회사"]
 
@@ -39,6 +42,44 @@ def test_verify_catches_unresolved_placeholder():
 
 def test_verify_passes_valid_draft():
     assert verify_draft_pure(_draft()) is None
+
+
+# ── generate_draft: description 기반 맞춤 조항 (목 모드) ─
+
+def test_no_description_adds_no_extra_rules():
+    assert _mock_extra_rules("") == []
+
+
+def test_hiking_description_adds_safety_rule():
+    rules = _mock_extra_rules("매주 등산을 가는 모임입니다")
+    assert len(rules) == 1
+    assert "안전장비" in rules[0]
+
+
+def test_multiple_keywords_still_capped_at_max():
+    text = "등산도 하고 개발 스터디도 하고 신입 모집도 하는 모임"
+    rules = _mock_extra_rules(text)
+    assert len(rules) <= MAX_EXTRA_RULES
+
+
+async def test_generate_draft_appends_extra_rules_without_touching_base():
+    req = PolicyDraftRequest(team_type="동호회", team_name="주말 등산 모임",
+                             initial_budget=500_000, description="매주 등산을 가는 모임입니다")
+    state = await load_template({"request": req})
+    result = await generate_draft({"request": req, "template": state["template"]})
+    draft = result["draft"]
+    base_count = len(load_templates()["동호회"]["base_rules"])
+    assert len(draft.rules) == base_count + 1          # 기본 6개 + 추가 1개
+    assert "안전장비" in draft.rules[-1]
+    assert verify_draft_pure(draft) is None            # placeholder 없이 정상 치환
+
+
+async def test_generate_draft_without_description_matches_old_behavior():
+    req = PolicyDraftRequest(team_type="회사", team_name="테스트팀", initial_budget=1_000_000)
+    state = await load_template({"request": req})
+    result = await generate_draft({"request": req, "template": state["template"]})
+    draft = result["draft"]
+    assert len(draft.rules) == len(load_templates()["회사"]["base_rules"])
 
 
 # ── ReportWriter ─────────────────────────────────────────
