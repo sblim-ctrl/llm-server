@@ -94,6 +94,27 @@ async def reject_expense(expense_id: str, idempotency_key: str, reason: str) -> 
         return r.json()
 
 
+async def get_team_profile(team_id: str) -> dict[str, Any]:
+    """팀 프로필(모임 유형 등) 조회 — 유형별 카테고리 카탈로그 선택에 사용.
+
+    목 규약: team_id에 포함된 단서로 유형 추론 (club/study/social/hobby/company).
+    실제 엔드포인트 경로는 풀스택 팀과 미확정.
+    """
+    s = get_settings()
+    if s.mock_backend:
+        tid = team_id.lower()
+        for hint, team_type in [("club", "동아리/학생회"), ("study", "스터디"),
+                                ("social", "친목"), ("hobby", "동호회"),
+                                ("company", "회사"), ("corp", "회사")]:
+            if hint in tid:
+                return {"team_type": team_type}
+        return {"team_type": "동아리/학생회"}  # 기본값
+    async with httpx.AsyncClient(base_url=s.backend_base_url, headers=_headers()) as client:
+        r = await client.get(f"/internal/agent/teams/{team_id}/profile")
+        r.raise_for_status()
+        return r.json()
+
+
 async def get_team_members(team_id: str) -> list[dict[str, Any]]:
     """팀 멤버 명단(실명·역할) — PIIMasker 치환용 (§4.3).
 

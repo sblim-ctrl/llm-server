@@ -1,13 +1,16 @@
-"""classify_category — 예산 카테고리 자동 분류 (팀 합의 사항, ADR-1 '분류=gpt-4o-mini').
+"""classify_category — 유형별 카테고리 자동 분류 (팀 확정 2026-07-10).
 
-카테고리가 비어 있는 청구만 분류해서 채운다 — 사용자가 직접 고른 카테고리는
-존중하고 건드리지 않는다(분류 결과와 다르더라도 판정은 회칙·예산 심사가 가린다).
+사용자가 지출 등록 시 카테고리를 선택하지 않으면, **그 모임 유형에 지정된
+6개 카테고리 안에서만** AI가 골라 채운다. 카테고리 동적 추가 금지(백엔드 협의) —
+후보 목록 밖의 값은 절대 만들지 않는다.
 
-분류 실패는 심사를 막지 않는다: '기타'로 채우고 진행 — 예산 심사에서 해당
-카테고리 한도가 없으면 어차피 보수적으로 처리된다.
+- 카탈로그: templates/category_catalog.yaml (tools/category_catalog.py가 로드)
+- 사용자가 직접 고른 카테고리는 존중하고 건드리지 않는다
+- 분류 실패는 심사를 막지 않는다: 유형별 fallback 카테고리로 채우고 진행
 
-목 모드: 키워드 규칙 기반 결정적 분류 (classify_by_keywords — 단위 테스트 대상).
-실모드: gpt-4o-mini 구조화 출력.
+목 모드: 카탈로그의 키워드 규칙 기반 결정적 분류.
+실모드: gpt-4o-mini 구조화 출력 — 후보 6개를 프롬프트에 강제하고,
+        목록 밖 답변은 코드가 키워드 분류로 교정 (환각 카테고리 차단).
 """
 import logging
 
@@ -15,28 +18,13 @@ from pydantic import BaseModel
 
 from app.graphs.review.state import ReviewState
 from app.llm.client import chat_structured
+from app.tools.category_catalog import (
+    DEFAULT_TEAM_TYPE, categories_for, classify_by_keywords,
+)
 
 logger = logging.getLogger(__name__)
 
-PROMPT_VERSION = "classifier/v1"
-
-CATEGORIES = ["식비", "다과", "도서", "교육", "대관", "비품", "용품",
-              "교통", "행사", "홍보", "여가", "기타"]
-
-# 키워드 → 카테고리 (목 모드·폴백용 결정적 규칙, 먼저 매칭되는 것 우선)
-_KEYWORD_RULES: list[tuple[tuple[str, ...], str]] = [
-    (("회식", "식사", "점심", "저녁", "밥", "치킨"), "식비"),
-    (("간식", "다과", "커피", "음료", "케이크"), "다과"),
-    (("교재", "책", "도서", "서적"), "도서"),
-    (("강의", "수강", "구독", "인강", "강좌"), "교육"),
-    (("대관", "스터디룸", "회의실", "코트", "펜션"), "대관"),
-    (("마커", "포스트잇", "문구", "사무", "프린트", "제본", "비품"), "비품"),
-    (("셔틀콕", "라켓", "유니폼", "장비", "공"), "용품"),
-    (("택시", "버스", "교통", "주차", "톨게이트", "기차"), "교통"),
-    (("MT", "엠티", "행사", "대회", "축제", "참가비"), "행사"),
-    (("현수막", "포스터", "홍보", "배너"), "홍보"),
-    (("보드게임", "영화", "노래방", "게임"), "여가"),
-]
+PROMPT_VERSION = "classifier/v2"  # v2: 모임 유형별 고정 카탈로그
 
 
 class CategoryPrediction(BaseModel):
@@ -44,33 +32,29 @@ class CategoryPrediction(BaseModel):
     confidence: float = 1.0
 
 
-def classify_by_keywords(text: str) -> str:
-    """결정적 키워드 분류 — 순수 함수 (단위 테스트 대상). 미매칭 시 '기타'."""
-    lowered = text.lower()
-    for keywords, category in _KEYWORD_RULES:
-        if any(k.lower() in lowered for k in keywords):
-            return category
-    return "기타"
-
-
 async def classify_category(state: ReviewState) -> dict:
     claim = state["claim"]
     if claim.category:
         return {"category_source": "user"}
 
+    team_type = state.get("team_type") or DEFAULT_TEAM_TYPE
+    candidates = categories_for(team_type)
     text = f"{claim.title} {claim.description}"
+
     try:
         pred = await chat_structured(
             agent="classifier",
             system="(prompts/classifier/v1.yaml에서 로드)",
-            user=f"카테고리 후보: {', '.join(CATEGORIES)}\n\n지출 내용: {text}",
+            user=f"모임 유형: {team_type}\n카테고리 후보(이 중에서만 선택): "
+                 f"{', '.join(candidates)}\n\n지출 내용: {text}",
             schema=CategoryPrediction,
-            mock_response=CategoryPrediction(category=classify_by_keywords(text)),
+            mock_response=CategoryPrediction(category=classify_by_keywords(text, team_type)),
         )
-        category = pred.category if pred.category in CATEGORIES else "기타"
+        category = pred.category if pred.category in candidates \
+            else classify_by_keywords(text, team_type)
     except Exception:
-        logger.exception("classify_category failed — '기타'로 폴백")
-        category = "기타"
+        logger.exception("classify_category failed — 유형 fallback으로 폴백")
+        category = classify_by_keywords("", team_type)  # 미매칭 → fallback 반환
 
     return {"claim": claim.model_copy(update={"category": category}),
             "category_source": "ai"}

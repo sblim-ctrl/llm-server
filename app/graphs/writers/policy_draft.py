@@ -18,6 +18,7 @@ from langgraph.graph import END, START, StateGraph
 from typing_extensions import TypedDict
 
 from app.schemas.writers import PolicyDraft, PolicyDraftRequest, PolicyParamsSuggestion
+from app.tools.category_catalog import categories_for
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +66,7 @@ async def generate_draft(state: DraftState) -> dict:
 
     draft = PolicyDraft(
         rules=rules, policy_params=params,
+        recommended_categories=categories_for(req.team_type),  # 유형별 고정 6개 (신규 생성 없음)
         notes=f"'{req.team_name}' ({req.team_type}) 초기예산 {req.initial_budget:,}원 기준 자동 생성 초안 — 관리자 검토 후 확정",
     )
     return {"draft": draft}

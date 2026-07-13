@@ -26,6 +26,7 @@ class ReviewState(TypedDict, total=False):
     # 컨텍스트 (load_context가 씀)
     policy_params: PolicyParams
     rule_version: int
+    team_type: str              # 모임 유형 — 유형별 카테고리 카탈로그 선택에 사용
     # 분류 (classify_category가 씀) — "user"(직접 입력) | "ai"(자동 분류)
     category_source: str
     # 진행 산출물

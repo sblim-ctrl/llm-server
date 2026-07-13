@@ -28,6 +28,8 @@ class PolicyDraft(BaseModel):
     예산 현황은 지난 지출 내역 기반(ReportWriter)으로 표시."""
     rules: list[str]                     # 회칙 초안 (조항 단위 — 그대로 인덱싱 가능)
     policy_params: PolicyParamsSuggestion
+    # 유형별 고정 카테고리 6개 (마법사 ①단계 "AI가 카테고리 추천" — 신규 생성 없음)
+    recommended_categories: list[str] = []
     notes: str = ""
 
 
