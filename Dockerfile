@@ -12,6 +12,7 @@ ENV PATH="/app/.venv/bin:$PATH"
 COPY app ./app
 COPY prompts ./prompts
 COPY templates ./templates
+COPY reference_docs ./reference_docs
 COPY eval ./eval
 COPY models.yaml ./models.yaml
 EXPOSE 8000

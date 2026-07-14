@@ -21,6 +21,7 @@ from typing_extensions import TypedDict
 from app.llm.client import chat_structured
 from app.schemas.writers import PolicyDraft, PolicyDraftRequest, PolicyParamsSuggestion
 from app.tools.category_catalog import categories_for
+from app.tools.search_references import search_references
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,7 @@ def load_templates() -> dict:
 class DraftState(TypedDict, total=False):
     request: PolicyDraftRequest
     template: dict
+    references: list[dict]
     draft: PolicyDraft
     verified: bool
     verify_error: str | None
@@ -52,6 +54,22 @@ async def load_template(state: DraftState) -> dict:
     req = state["request"]
     template = load_templates()[req.team_type]
     return {"template": template}
+
+
+async def retrieve_references(state: DraftState) -> dict:
+    """참고 규정 문서 검색 (RAG) — 생성 전 근거 자료 확보.
+
+    검색 실패는 생성 자체를 막지 않는다 — 참고자료 없이도 기본 템플릿으로
+    진행 가능하므로 fail-open. (강의 08 Agentic RAG 패턴)
+    """
+    req = state["request"]
+    query = f"{req.team_type} {req.description}".strip()
+    try:
+        refs = await search_references(query)
+    except Exception:
+        logger.exception("search_references failed — 참고자료 없이 진행")
+        refs = []
+    return {"references": refs}
 
 
 def _mock_extra_rules(description: str) -> list[str]:
@@ -90,12 +108,15 @@ async def generate_draft(state: DraftState) -> dict:
 
     extra_rules: list[str] = []
     if req.description:
+        refs = state.get("references") or []
+        ref_text = "\n".join(f"- {r['text']}" for r in refs) or "(참고자료 없음)"
         try:
             result = await chat_structured(
                 agent="policy_drafter",
                 system="(prompts/policy_drafter/v1.yaml에서 로드)",
                 user=f"모임 유형: {req.team_type}\n모임 이름: {req.team_name}\n"
-                     f"모임 소개: {req.description}",
+                     f"모임 소개: {req.description}\n\n"
+                     f"참고 규정(다른 모임 사례 — 그대로 베끼지 말고 참고만):\n{ref_text}",
                 schema=ExtraRules,
                 mock_response=ExtraRules(extra_rules=_mock_extra_rules(req.description)),
             )
@@ -133,10 +154,12 @@ async def verify_draft(state: DraftState) -> dict:
 def build_policy_draft_graph():
     g = StateGraph(DraftState)
     g.add_node("load_template", load_template)
+    g.add_node("retrieve_references", retrieve_references)
     g.add_node("generate_draft", generate_draft)
     g.add_node("verify_draft", verify_draft)
     g.add_edge(START, "load_template")
-    g.add_edge("load_template", "generate_draft")
+    g.add_edge("load_template", "retrieve_references")
+    g.add_edge("retrieve_references", "generate_draft")
     g.add_edge("generate_draft", "verify_draft")
     g.add_edge("verify_draft", END)
     return g.compile()
