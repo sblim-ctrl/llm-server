@@ -7,3 +7,4 @@ __pycache__/
 pgdata/
 .langsmith/
 eval/results/
+.claude/settings.local.json
