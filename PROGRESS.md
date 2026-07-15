@@ -41,6 +41,72 @@
 **다음 세션 최우선 순서**: ① API-043 정책 추천 계약 재설계 방향 사용자와 확정
 ② API-024 AI 요약 엔드포인트 신설 ③ 콜백 API-044/045 실제 트리거 경로 백엔드팀과
 확인 ④ 이후 스프린트1 B2~B7(LLM 하네스·LangSmith·워커 신뢰성·Vision OCR) 계속.
+
+## 0-1. 더 중요한 발견 — `기획/bravo_기술아키텍처설계서.docx` (풀스택 구현 설계서, 2026-07-15)
+
+xlsx는 "API 목록"일 뿐이고, 이 docx가 **우리 심사 파이프라인이 실제로 받는 요청의
+정확한 모양**을 규정한다. **결론: 지금 `/v1/analyze`(`AnalyzeRequest`)의 입력
+계약이 실제와 다르다 — 빠른 패치가 아니라 재설계 대상.** API-0XX 번호는 xlsx
+버전(v1/v2)마다 바뀌므로(예: ai-review가 문서 안에서도 API-041과 API-044 두 값으로
+등장) **URL 경로를 기준으로 식별할 것, 번호는 신뢰하지 말 것.**
+
+### 실제 심사 요청 payload (TABLE 18) — 지금 우리 스키마와 다름
+백엔드가 Agent Server(우리)에 보내는 필드는 딱 5개뿐: `jobId, expenseId,
+organizationId, 심사목표(자연어 지시문), Spring 내부 영수증 조회 경로`.
+**title/amount/category/description/영수증 파일은 요청에 없다.** 즉 지금
+`AnalyzeRequest`가 요구하는 `claim{title,amount,category,date,description}` +
+`receipt_signed_url` 인라인 방식은 실제와 다르다 — **push 모델(지금 우리) →
+pull 모델(실제)로 전환 필요**: 우리가 `organizationId`+`expenseId`로 지출 상세를
+백엔드에 되물어 가져와야 함.
+
+### 확인된 사실 (재설계 시 지켜야 할 것들)
+1. **jobId는 백엔드가 발급** — 우리가 `insert_job`에서 자체 UUID를 만드는 지금
+   방식과 다름. 콜백 때 받은 jobId를 그대로 돌려줘야 백엔드가 `expenses.ai_job_id`와
+   대조해 유효성 검증(재제출로 무효화된 옛 jobId면 무시).
+2. **영수증은 "조회 경로"(동적 참조)로 옴** — Agent 전용 토큰으로 Spring Boot에
+   재요청해서 이미지를 받아온다. 지금처럼 `receipt_signed_url`을 우리가 직접
+   fetch하는 방식이 아님. `backend_client.py`에 신규 함수 필요
+   (경로/토큰을 인자로 받는 형태).
+3. **LLM 호출 2단계 구조가 명시됨**: 1차=OCR "읽기"만(구조화 데이터+공개 가능한
+   심사 계획 생성), 2차=`organizationId`로 조회한 예산·회칙·최근지출까지 곁들인
+   "판단"(승인/반려/에스컬레이션 추천+근거). **이건 우리 `intake_receipt →
+   rule/budget/precedent 3심사관 → adjudicate` 구조와 개념적으로 일치** — 그래프
+   큰 골격은 재사용 가능해 보임, 안심 포인트.
+4. **`team_settings.auto_approve` 기본값 FALSE** — 꺼져 있으면 금액·판단과
+   무관하게 무조건 ESCALATED. 지금 우리 그래프엔 이 최상위 게이트가 없음(항상
+   confidence 기준 자동판정 시도) — `backend_client.py`에 team_settings 조회
+   함수(`auto_approve`, `auto_approve_limit`, `escalation_threshold`) 신규 필요,
+   `guardrail_gate` 이전에 이 체크가 선행돼야 함.
+5. **`expenses_reviews.final_verdict`는 APPROVED/REJECTED만 존재, ESCALATED는
+   그 테이블에 아예 안 남음** — escalate일 땐 `expenses.status`만 바뀌고 우리
+   콜백의 상세 내용은 기록 대상이 아닐 가능성. approve/reject와 escalate를
+   콜백에서 다르게 다뤄야 할 수 있음(확정 아님 — 백엔드팀 확인 필요).
+6. **`detail`(JSON)은 자유 필드** — 우리 `reasons`+`opinions`+`mismatch` 조합을
+   그대로 넣으면 될 걸로 보임(2026-07-15 커밋에서 이미 이 형태로 콜백 구성해둠,
+   변경 불필요해 보임).
+7. **AgentInternalController(`/api/internal/...`)가 콜백 수신처** — xlsx API
+   목록엔 없음(내부 전용). 지금 우리 `send_callback`이 치는 `{BE}/agent-callback`
+   경로가 실제로 이 경로와 같은지, Agent 전용 서비스 계정 토큰 인증 방식(4절
+   'Agent 전용 토큰')이 지금 `service_token` Bearer 방식과 같은지 확인 필요.
+8. **콜백 실패 시 백엔드가 이미 30초 타임아웃+1회 폴링+자동 ESCALATED 안전망을
+   가지고 있음** — 우리 쪽 재시도(B4 계획)는 이 백엔드 안전망과 별개로 유효하나,
+   중복 안전장치라는 것을 인지할 것(나쁘지 않음, 이중 보호).
+
+### 재설계가 필요한 파일 (다음 세션 착수 지점, 순서 무관하게 상호 의존적)
+- `app/schemas/analyze.py`(`AnalyzeRequest`) — 5필드 pull 모델로 축소
+- `app/graphs/review/nodes/load_context.py` — organizationId로 지출 상세·
+  team_settings·영수증을 백엔드에서 가져오는 로직 추가
+- `app/tools/backend_client.py` — `get_expense_detail`, `get_receipt_by_path`,
+  `get_team_settings`(또는 기존 `get_budget_status`류에 통합) 신규 함수
+- `app/db/pool.py`(`insert_job`) — 백엔드가 준 jobId를 우리 jobs.id로 쓸지,
+  별도 컬럼(`external_job_id`)으로 매핑할지 결정 필요
+- `app/graphs/review/graph.py` — `auto_approve` 최상위 게이트 추가 위치 결정
+- 골든셋 30건(`eval/golden/golden_v1.json`) — 입력 스키마가 바뀌면 전부 재작성
+  필요(영향 범위 큼 — 재설계 착수 전 이 점 감안)
+
+**중요**: 이 재설계는 범위가 크고 여러 파일에 걸쳐 있어 이번 세션에서는 문서화만
+하고 착수하지 않음(사용량 한계 고려). 다음 세션에서 사용자와 우선순위 재확인 후
+착수할 것.
 > 코드의 최신 진실은 항상 git log와 실제 코드 — 이 문서와 어긋나면 코드가 맞다.
 
 ---
