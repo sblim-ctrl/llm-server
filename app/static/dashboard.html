@@ -289,6 +289,24 @@
         <pre class="raw" id="ev-raw"></pre>
       </div>
     </div>
+
+    <div class="card">
+      <h2>라이터 골든셋 (문서 생성 3종)</h2>
+      <div class="desc">GET /v1/eval/writers — PolicyDrafter·ReportWriter·BriefingWriter 시나리오 17건. 하드 게이트는 검증(verified) 불통과 0건.</div>
+      <button class="btn" id="ew-submit">평가 실행 (수 초 소요)</button>
+      <div class="status-line" id="ew-status"></div>
+
+      <div class="result empty" id="ew-result">
+        <div class="summary-strip">
+          <div class="stat" id="ew-stat-acc"><div class="label">정확도</div><div class="value">-</div></div>
+          <div class="stat" id="ew-stat-uv"><div class="label">검증 불통과 (하드 게이트)</div><div class="value">-</div></div>
+          <div class="stat"><div class="label">전체 케이스</div><div class="value" id="ew-total">-</div></div>
+        </div>
+        <div id="ew-cases"></div>
+        <span class="raw-toggle" data-target="ew-raw">원본 JSON 보기 ▾</span>
+        <pre class="raw" id="ew-raw"></pre>
+      </div>
+    </div>
   </section>
 
   <footer>이 페이지는 <code>llm-api</code>가 직접 서빙합니다 (별도 서버 없음) · 근거: <code>llm-server</code> 리포 · 개발용 — 실사용자 화면 아님</footer>
@@ -517,6 +535,43 @@ $("ev-submit").addEventListener("click", async () => {
   } catch (e) {
     $("ev-status").textContent = "오류: " + e.message;
     $("ev-status").className = "status-line err";
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── ④-b 라이터 골든셋 평가 ──────────────────────────────
+$("ew-submit").addEventListener("click", async () => {
+  const btn = $("ew-submit");
+  btn.disabled = true;
+  $("ew-status").textContent = "17건 실행 중… (수 초 소요)";
+  $("ew-status").className = "status-line";
+  $("ew-result").classList.add("empty");
+  try {
+    const res = await fetch("/v1/eval/writers", { headers: authHeaders(false) });
+    if (!res.ok) throw new Error(`평가 실패 (${res.status}): ${await res.text()}`);
+    const s = await res.json();
+
+    $("ew-status").textContent = `완료 (골든셋 ${s.version})`;
+    const accStat = $("ew-stat-acc");
+    accStat.className = "stat " + (s.accuracy >= s.accuracy_threshold ? "ok" : "bad");
+    accStat.querySelector(".value").textContent = `${(s.accuracy * 100).toFixed(0)}%`;
+    const uvStat = $("ew-stat-uv");
+    uvStat.className = "stat " + (s.unverified_count === 0 ? "ok" : "bad");
+    uvStat.querySelector(".value").textContent = s.unverified_count + "건";
+    $("ew-total").textContent = s.total + "건";
+
+    $("ew-cases").innerHTML = s.results.map(r => `
+      <div class="case-row">
+        <span class="mark ${r.passed ? 'ok' : 'bad'}">${r.passed ? '✓' : '✗'}</span>
+        <span class="id">${r.kind} · ${r.id}</span>
+        <span class="exp-act">${r.failures.length ? r.failures.join(" | ") : r.scenario}</span>
+      </div>`).join("");
+    $("ew-raw").textContent = JSON.stringify(s, null, 2);
+    $("ew-result").classList.remove("empty");
+  } catch (e) {
+    $("ew-status").textContent = "오류: " + e.message;
+    $("ew-status").className = "status-line err";
   } finally {
     btn.disabled = false;
   }

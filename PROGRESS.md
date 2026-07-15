@@ -1,6 +1,6 @@
 # PROGRESS.md — BudgetOps LLM 서버 진행 기록
 
-> 새 세션에서 이 파일만 읽고 바로 이어서 작업할 수 있도록 작성. 최종 갱신: 2026-07-14.
+> 새 세션에서 이 파일만 읽고 바로 이어서 작업할 수 있도록 작성. 최종 갱신: 2026-07-15.
 > 코드의 최신 진실은 항상 git log와 실제 코드 — 이 문서와 어긋나면 코드가 맞다.
 
 ---
@@ -41,10 +41,15 @@ Python 3.12 고정, uv로 패키지 관리, docker-compose 3컨테이너.
   원자적 버전 전환.
 - **MCP 서버** (`/mcp`): 읽기 툴 4종 Streamable HTTP 노출. `scripts/smoke_mcp.py`로 검증.
 - **내부 검증 대시보드** (`/ui`): 순수 HTML 단일 파일, 4탭 (심사/초안/리포트/골든셋평가).
-- **평가**: 골든셋 30건 verdict 30/30, Trajectory 23/23, 오승인 0건. CSV 자동 출력 +
+- **평가**: 심사 골든셋 30건 verdict 30/30, Trajectory 23/23, 오승인 0건. CSV 자동 출력 +
   `eval/analysis.ipynb` 노트북(실행 검증 완료).
+- **라이터 골든셋** (2026-07-15 추가): 문서 생성 3종 시나리오 17건
+  (PolicyDrafter 10 / ReportWriter 3 / BriefingWriter 4) 17/17 통과.
+  하드 게이트 = verified(Generator-Evaluator 검증) 불통과 0건. CLI
+  `eval/run_eval_writers.py` + `GET /v1/eval/writers` + /ui 골든셋 탭 둘째 카드.
+  Briefing 케이스는 실행 시 판례를 팀 단위 삭제 후 재시드(멱등, save_precedent 경로 그대로).
 - **Docker 전체 스택**: `docker compose up --build` 빌드·기동·E2E 검증 완료 (2026-07-14).
-- 단위 테스트 70개 전부 통과, ruff 클린.
+- 단위 테스트 77개 전부 통과, ruff 클린.
 
 ### 안 되는 것 / 아직 가짜인 것
 - **모든 LLM 판단이 목(mock)**: `.env`의 `OPENAI_API_KEY`가 비어 있고 `MOCK_LLM=true`.
@@ -88,6 +93,8 @@ Python 3.12 고정, uv로 패키지 관리, docker-compose 3컨테이너.
 | `reference_docs/*.txt` (5개) | PolicyDrafter RAG 참고 문서 — **실제 기관 원문 아님, 관행 조사 후 재구성** (README에 명시) |
 | `eval/golden/golden_v1.json` | 골든셋 30건 + `expected_gate_includes`(Trajectory 라벨 23건) |
 | `eval/run_eval.py` / `eval/analysis.ipynb` | 회귀 CLI / 분석 노트북 |
+| `eval/golden/writers_golden_v1.json` | **(07-15)** 라이터 골든셋 17건. expect 규칙: `*_contain`/`*_not_contain`=부분 문자열, 그 외=동등 비교 |
+| `app/eval_writers.py` | **(07-15)** 라이터 평가 러너 — `run_writers_golden_set()`, `evaluate_expectations()` 순수 함수, CSV(`writers_golden_run.csv`). CLI(`eval/run_eval_writers.py`)와 `GET /v1/eval/writers`가 공유 |
 | `scripts/seed_reference_corpus.py` | 참고 문서 인덱싱 (멱등, DB 필요) |
 | `scripts/seed_demo.py` | 4주 시뮬레이션 — 에스컬레이션 100%→33%→25%→0% (데모 핵심 그래프) |
 | `scripts/smoke_review.py` / `smoke_mcp.py` | 스모크 |
@@ -135,8 +142,8 @@ Python 3.12 고정, uv로 패키지 관리, docker-compose 3컨테이너.
 2. **백엔드 계약 반영**: 필드명·Swagger 받으면 `app/schemas/`와 `backend_client.py`의
    URL·필드명만 교체 (노드 코드 불변이 설계 의도). camelCase면 Pydantic alias 사용.
 3. **LangSmith 연동**: 트레이싱 + CI 게이트 (`.env`에 LANGSMITH_* 이미 자리 있음).
-4. **골든셋 확장**: PolicyDrafter/ReportWriter/BriefingWriter는 단위 테스트만 있음 —
-   심사처럼 시나리오 골든셋 추가 후보.
+4. ~~골든셋 확장~~ → **완료 (2026-07-15)**: 라이터 3종 시나리오 골든셋 17건 추가, 17/17 통과.
+   실키 전환 후 LLM 생성 문구 기반 케이스(현재는 목 휴리스틱 기준) 재검토 필요.
 5. **동시요청·멱등성 스트레스 테스트**: 같은 expense_id 동시 제출 시 이중 처리 없는지
    (Idempotency-Key=job_id 설계 실증).
 6. **참고 코퍼스 확장**: 유형당 1→2~3개 문서. 실키로 검색 품질 실측 후 판단.
@@ -164,7 +171,8 @@ Python 3.12 고정, uv로 패키지 관리, docker-compose 3컨테이너.
 - **포트 8000 충돌**: llm-api(로컬이든 도커든)와 다른 프로젝트(hankyung은 8001로 옮겨둠),
   로컬 uv API와 도커 API 동시 실행 불가.
 - **골든셋/데모 팀 id 규약을 깨지 말 것**: `lowbudget` 포함=잔액부족, `club/study/social/hobby/company`
-  포함=유형 추론. 목 규약이 테스트 결정성의 기반.
+  포함=유형 추론, `noexpense` 포함=지출 이력 없음, `balanced` 포함=편중·저활용 없는 균형 이력
+  (뒤 2개는 07-15 라이터 골든셋용 추가). 목 규약이 테스트 결정성의 기반.
 - **AGENT 자기 판례는 위험 신호에서 제외** (자기 오염 루프 방지) — precedent_auditor 수정 시 유지할 것.
 - **판례 검색 쿼리도 마스킹 필수**: 저장본이 마스킹돼 있으므로 `masked_claim_summary()` 사용.
   실명으로 검색하면 유사도가 어긋남 (실제 버그였음).
@@ -192,6 +200,7 @@ docker compose down                        # 내리기
 uv run ruff check app tests scripts
 uv run pytest -q                           # 70 passed 기대
 uv run python eval/run_eval.py             # 30/30, Trajectory 23/23, 오승인 0 기대
+uv run python eval/run_eval_writers.py     # 라이터 골든셋 17/17, 검증 불통과 0 기대
 
 # 4. 데모·시드 (필요시, 멱등)
 uv run python scripts/seed_reference_corpus.py   # PolicyDrafter RAG 코퍼스 35청크

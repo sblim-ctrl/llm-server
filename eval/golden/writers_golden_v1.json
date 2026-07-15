@@ -1,0 +1,237 @@
+{
+  "version": "writers-v1",
+  "description": "문서 생성 에이전트 3종 시나리오 골든셋 (PROGRESS §6-4). 심사 골든셋(golden_v1.json)과 동일 철학 — 목 모드에서 결정적으로 재현 가능해야 한다. 목 규약: report는 team_id에 noexpense(빈 이력)/balanced(균형 지출) 단서 사용, briefing은 각 케이스의 precedents를 실행 전 DB에 시드(멱등 — 팀 단위 삭제 후 재삽입). expect 규칙: *_contain=부분 문자열 포함, *_not_contain=미포함, 그 외 키=동등 비교. verified=false는 건수와 무관하게 하드 게이트 실패.",
+  "policy_draft_cases": [
+    {
+      "id": "pd-club-base",
+      "scenario": "동아리/학생회 기본 — 예산 100만, 비율 5% → 자동승인 5만",
+      "input": {"team_type": "동아리/학생회", "team_name": "코딩 동아리", "initial_budget": 1000000},
+      "expect": {
+        "verified": true,
+        "rules_count": 5,
+        "auto_approve_limit": 50000,
+        "force_escalation_amount": 300000,
+        "categories_count": 6,
+        "rules_not_contain": ["{auto_approve_limit}", "{per_meal_limit}"]
+      }
+    },
+    {
+      "id": "pd-study-base",
+      "scenario": "스터디 기본 — 예산 60만 → 자동승인 3만",
+      "input": {"team_type": "스터디", "team_name": "알고리즘 스터디", "initial_budget": 600000},
+      "expect": {
+        "verified": true,
+        "rules_count": 5,
+        "auto_approve_limit": 30000,
+        "force_escalation_amount": 180000,
+        "categories_count": 6
+      }
+    },
+    {
+      "id": "pd-social-base",
+      "scenario": "친목 기본 — 비율 6%, 기본 조항 4개",
+      "input": {"team_type": "친목", "team_name": "금요 친목회", "initial_budget": 500000},
+      "expect": {
+        "verified": true,
+        "rules_count": 4,
+        "auto_approve_limit": 30000,
+        "force_escalation_amount": 180000,
+        "categories_count": 6
+      }
+    },
+    {
+      "id": "pd-hobby-base",
+      "scenario": "동호회 기본 — 50만×5%=2.5만 → 만원 단위 내림 2만",
+      "input": {"team_type": "동호회", "team_name": "자전거 동호회", "initial_budget": 500000},
+      "expect": {
+        "verified": true,
+        "rules_count": 5,
+        "auto_approve_limit": 20000,
+        "force_escalation_amount": 120000,
+        "categories_count": 6
+      }
+    },
+    {
+      "id": "pd-company-base",
+      "scenario": "회사 기본 — 비율 3%, 예산 300만 → 자동승인 9만",
+      "input": {"team_type": "회사", "team_name": "개발1팀", "initial_budget": 3000000},
+      "expect": {
+        "verified": true,
+        "rules_count": 5,
+        "auto_approve_limit": 90000,
+        "force_escalation_amount": 540000,
+        "categories_count": 6
+      }
+    },
+    {
+      "id": "pd-floor",
+      "scenario": "경계 — 소액 예산(10만)이라도 자동승인 한도는 최저 1만원 보장",
+      "input": {"team_type": "동아리/학생회", "team_name": "소모임", "initial_budget": 100000},
+      "expect": {
+        "verified": true,
+        "auto_approve_limit": 10000,
+        "force_escalation_amount": 60000
+      }
+    },
+    {
+      "id": "pd-desc-hiking",
+      "scenario": "소개 반영 — 등산 모임이면 안전장비 조항 추가 (기본 5 + 추가 1)",
+      "input": {"team_type": "동호회", "team_name": "주말 산행", "initial_budget": 500000, "description": "매주 북한산 등산과 캠핑을 즐기는 모임입니다"},
+      "expect": {
+        "verified": true,
+        "rules_count": 6,
+        "rules_contain": ["안전장비"]
+      }
+    },
+    {
+      "id": "pd-desc-study",
+      "scenario": "소개 반영 — 개발 실습 스터디면 서버·구독 도구 조항 추가",
+      "input": {"team_type": "스터디", "team_name": "리액트 스터디", "initial_budget": 600000, "description": "리액트 개발 프로젝트를 실습하는 스터디입니다"},
+      "expect": {
+        "verified": true,
+        "rules_count": 6,
+        "rules_contain": ["서버"]
+      }
+    },
+    {
+      "id": "pd-desc-recruit",
+      "scenario": "소개 반영 — 신입 모집 중심이면 홍보물 조항 추가",
+      "input": {"team_type": "동아리/학생회", "team_name": "밴드 동아리", "initial_budget": 1000000, "description": "3월 신입 회원 모집과 홍보 활동에 집중합니다"},
+      "expect": {
+        "verified": true,
+        "rules_count": 6,
+        "rules_contain": ["홍보물"]
+      }
+    },
+    {
+      "id": "pd-desc-multi",
+      "scenario": "상한 — 키워드 3그룹 모두 해당해도 추가 조항은 최대 3개 (5+3=8)",
+      "input": {"team_type": "스터디", "team_name": "만능 모임", "initial_budget": 600000, "description": "등산도 하고 개발 스터디도 하며 신입 모집 홍보까지 하는 모임"},
+      "expect": {
+        "verified": true,
+        "rules_count": 8,
+        "rules_contain": ["안전장비", "서버", "홍보물"]
+      }
+    }
+  ],
+  "report_cases": [
+    {
+      "id": "rp-standard",
+      "scenario": "기본 이력 8건 — 식비 61% 편중 경고 + 저활용(다과·비품) 재배분 제안",
+      "input": {"team_id": "eval-writers-report-club", "period": "2026-06"},
+      "expect": {
+        "verified": true,
+        "total_spent": 399000,
+        "expense_count": 8,
+        "top_category": "식비",
+        "recommendations_count": 4,
+        "recommendations_contain": ["편중", "사용률이 낮습니다", "최대 단건"]
+      }
+    },
+    {
+      "id": "rp-empty",
+      "scenario": "지출 없는 기간 — 수치 0으로도 검증 통과, 특이사항 없음 안내",
+      "input": {"team_id": "eval-writers-report-noexpense", "period": "2026-07"},
+      "expect": {
+        "verified": true,
+        "total_spent": 0,
+        "expense_count": 0,
+        "recommendations_count": 1,
+        "recommendations_contain": ["특이사항이 없습니다"]
+      }
+    },
+    {
+      "id": "rp-balanced",
+      "scenario": "균형 지출(20~30%) — 편중·저활용 경고 없이 최대 단건 안내만",
+      "input": {"team_id": "eval-writers-report-balanced", "period": "2026-06"},
+      "expect": {
+        "verified": true,
+        "total_spent": 300000,
+        "expense_count": 4,
+        "top_category": "식비",
+        "recommendations_count": 1,
+        "recommendations_contain": ["최대 단건", "분기 회식"],
+        "recommendations_not_contain": ["편중", "사용률이 낮습니다"]
+      }
+    }
+  ],
+  "briefing_cases": [
+    {
+      "id": "bf-empty",
+      "scenario": "판례 없음 — 특이 패턴 없음 안내, 수치 전부 0",
+      "team_id": "eval-writers-bf-empty",
+      "precedents": [],
+      "expect": {
+        "verified": true,
+        "total_precedents": 0,
+        "override_count": 0,
+        "escalated_count": 0,
+        "gap_categories": [],
+        "notes_contain": ["특이 패턴"]
+      }
+    },
+    {
+      "id": "bf-override",
+      "scenario": "override 2건 — 판례 정리 주의 노트, 갭 카테고리 없음",
+      "team_id": "eval-writers-bf-override",
+      "precedents": [
+        {"category": "식비", "title": "정기 회식", "amount": 45000, "decision": "approve", "decided_by": "AGENT", "is_override": false},
+        {"category": "도서", "title": "교재 구입", "amount": 30000, "decision": "approve", "decided_by": "AGENT", "is_override": false},
+        {"category": "비품", "title": "사무용품", "amount": 12000, "decision": "approve", "decided_by": "AGENT", "is_override": false},
+        {"category": "식비", "title": "야식비", "amount": 52000, "decision": "reject", "decided_by": "ADMIN", "is_override": true, "reason": "한도 초과"},
+        {"category": "행사", "title": "송별회", "amount": 88000, "decision": "reject", "decided_by": "ADMIN", "is_override": true, "reason": "사전 공유 없음"}
+      ],
+      "expect": {
+        "verified": true,
+        "total_precedents": 5,
+        "agent_decisions": 3,
+        "admin_decisions": 2,
+        "override_count": 2,
+        "escalated_count": 0,
+        "gap_categories": [],
+        "notes_contain": ["override"]
+      }
+    },
+    {
+      "id": "bf-gap",
+      "scenario": "행사 카테고리 에스컬레이션 2/6(33%) — 회칙 보완 후보로 감지",
+      "team_id": "eval-writers-bf-gap",
+      "precedents": [
+        {"category": "행사", "title": "개강 파티", "amount": 150000, "decision": "escalate", "decided_by": "AGENT", "is_override": false},
+        {"category": "행사", "title": "MT 대관", "amount": 220000, "decision": "escalate", "decided_by": "AGENT", "is_override": false},
+        {"category": "식비", "title": "정기 회식", "amount": 45000, "decision": "approve", "decided_by": "AGENT", "is_override": false},
+        {"category": "도서", "title": "교재 구입", "amount": 30000, "decision": "approve", "decided_by": "AGENT", "is_override": false},
+        {"category": "다과", "title": "모임 간식", "amount": 15000, "decision": "approve", "decided_by": "AGENT", "is_override": false},
+        {"category": "비품", "title": "프린트 제본", "amount": 9000, "decision": "approve", "decided_by": "AGENT", "is_override": false}
+      ],
+      "expect": {
+        "verified": true,
+        "total_precedents": 6,
+        "escalated_count": 2,
+        "override_count": 0,
+        "gap_categories": ["행사"],
+        "notes_contain": ["회칙", "행사"]
+      }
+    },
+    {
+      "id": "bf-mixed",
+      "scenario": "override + 갭 동시 — 인수인계 노트 2종 모두 생성",
+      "team_id": "eval-writers-bf-mixed",
+      "precedents": [
+        {"category": "식비", "title": "회식", "amount": 45000, "decision": "escalate", "decided_by": "AGENT", "is_override": false},
+        {"category": "식비", "title": "회식", "amount": 45000, "decision": "reject", "decided_by": "ADMIN", "is_override": true, "reason": "한도 초과"},
+        {"category": "도서", "title": "교재", "amount": 32000, "decision": "approve", "decided_by": "AGENT", "is_override": false}
+      ],
+      "expect": {
+        "verified": true,
+        "total_precedents": 3,
+        "agent_decisions": 2,
+        "admin_decisions": 1,
+        "override_count": 1,
+        "escalated_count": 1,
+        "gap_categories": ["식비"],
+        "notes_contain": ["override", "식비"]
+      }
+    }
+  ]
+}

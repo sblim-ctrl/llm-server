@@ -41,6 +41,18 @@ async def get_expense_history(team_id: str, **filters: Any) -> list[dict[str, An
     """GET {BE}/internal/agent/teams/{id}/expenses — 중복 탐지·리포트 집계용."""
     s = get_settings()
     if s.mock_backend:
+        # 목 규약 (골든셋·데모와 공유하는 team_id 단서 — §7 '규약을 깨지 말 것'):
+        #   "noexpense" 포함 → 지출 없음 (빈 기간 리포트 시나리오)
+        #   "balanced"  포함 → 편중·저활용 없는 균형 지출 (추천이 top 건 안내만 나와야 함)
+        if "noexpense" in team_id:
+            return []
+        if "balanced" in team_id:
+            return [
+                {"title": "분기 회식", "amount": 90000, "category": "식비", "date": "2026-06-06", "status": "APPROVED"},
+                {"title": "세미나실 대관", "amount": 75000, "category": "대관", "date": "2026-06-13", "status": "APPROVED"},
+                {"title": "공용 교재", "amount": 75000, "category": "도서", "date": "2026-06-20", "status": "APPROVED"},
+                {"title": "모임 다과", "amount": 60000, "category": "다과", "date": "2026-06-27", "status": "APPROVED"},
+            ]
         # 결정적 샘플 이력 (리포트 개발용) — 계약 확정 시 실 API로 교체
         return [
             {"title": "정기 회식", "amount": 84000, "category": "식비", "date": "2026-06-05", "status": "APPROVED"},
