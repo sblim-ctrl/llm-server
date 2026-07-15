@@ -2,10 +2,14 @@
 
 | 항목 | 내용 |
 |---|---|
-| 문서 버전 | v1.0 (2026-07-06) |
+| 문서 버전 | v1.1 (2026-07-09) |
 | 작성 | LLM 에이전트 개발팀 |
-| 근거 문서 | `요구사항정의서_LLM제안.xlsx`, `풀스택_협의_회의자료_LLM팀.md`, 화면목업 v2 |
+| 근거 문서 | `요구사항정의서_LLM제안.xlsx`, `풀스택_협의_회의자료_LLM팀.md`, 화면목업 v2, `BudgetOps_차별화전략_vs_AssoAI.md`(v2) + 차별화 목업 3종 |
 | 대상 독자 | LLM 팀(구현 기준), 풀스택 팀(인터페이스 계약 확인) |
+
+> **v1.1 변경 요약 (AssoAI 차별화 전략 반영, 2026-07-09)**
+> ① **BudgetPlanner**(예산 조정 제안)·**DigestWriter**(대시보드 AI 총무 브리핑) 그래프 추가 ② **PolicyDrafter에 '회칙 개정 제안' 모드** 추가 (판례 기반) ③ 심사 그래프 **dry-run 모드**(사전 문의, P2) ④ 카테고리 분류는 별도 Classifier 노드 없이 **Intake에 통합** (REQ-012 기반영, 지출 폼 카테고리 선택사항화) ⑤ UI 용어 규칙: override → **'AI와 다른 결정'** ⑥ `proposals` 테이블, 엔드포인트 4종, 콜백 필드(`category_assigned`·`dry_run`) 추가.
+> **기존 병렬 3심사관·가드레일·판례 루프는 무변경** — 차별화의 본체이므로 유지. 변경 표시는 [v1.1], 상세 근거는 ADR-7~9.
 
 ---
 
@@ -22,6 +26,10 @@ BudgetOps는 모임(동아리·스터디·회사 등)의 지출 요청을 **AI�
 | 컨텍스트 관리 | REQ-035·041 | 회칙·정책 버전별 재인덱싱 (RAG 인덱스) |
 | 판례 학습 루프 | REQ-042 | 관리자 결정을 임베딩 저장 → 유사 사례 검색에 재사용 |
 | 문서 생성 | REQ-019·020·043 | 정산 리포트 AI 요약, 인수인계 브리핑 |
+| 대시보드 AI 브리핑 [v1.1] | REQ-009, REQ-045(안) | DigestWriter — 자동 처리 현황·예산 소진 예측·이상 징후 주간 요약 |
+| 예산 조정 제안 [v1.1] | REQ-022·041, REQ-044(안) | BudgetPlanner — 소진 예측(코드)+조정안(LLM), 수락 실행은 백엔드 CRUD 경유 |
+| 회칙 개정 제안 [v1.1] | REQ-035·041·042 | PolicyDrafter 개정 모드 — 판례 기반 회칙-실운영 갭 개정안 |
+| 사전 문의 심사 [v1.1] | REQ-046(안) | 심사 그래프 dry-run — 실행·판례 저장 없이 소견만 반환 |
 
 ### 1.2 평가요소 ↔ 설계 매핑
 
@@ -118,17 +126,21 @@ API 서버와 워커는 **같은 Docker 이미지, 다른 entrypoint**로 실행
 
 | 에이전트 | 유형 | 모델 | 책임 (단일) |
 |---|---|---|---|
-| **Intake** | 전처리 | gpt-4o (Vision) | 영수증 OCR: 금액·날짜·상호·품목 추출, 청구 내용과 대조(REQ-028) |
+| **Intake** | 전처리 | gpt-4o (Vision) | 영수증 OCR: 금액·날짜·상호·품목 추출 + **카테고리 자동 분류(REQ-012)** [v1.1], 청구 내용과 대조(REQ-028) |
 | **RuleAuditor** (회칙 심사관) | 병렬 심사 | gpt-4o | 회칙 RAG 검색 → 위반 여부·근거 조항 판정 |
 | **BudgetAuditor** (예산 심사관) | 병렬 심사 | gpt-4o-mini + 결정적 계산 | 카테고리 한도·잔액·기간 사용률 검사. 수치 계산은 툴(코드)로, LLM은 해석만 |
 | **PrecedentAuditor** (판례·이상탐지 심사관) | 병렬 심사 | gpt-4o | 유사 판례 검색(pgvector), 중복 청구·패턴 이상 탐지 |
 | **Adjudicator** (판정 합성) | 합류 | gpt-4o + 결정적 가드레일 | 3개 소견 종합 → verdict·confidence·사유(요청자용/관리자용) 생성 |
-| **PolicyDrafter** | 독립 그래프 | gpt-4o | 마법사 3경로 중 "AI 초안" — 모임 유형 기반 회칙·예산 템플릿 생성(REQ-036) |
+| **PolicyDrafter** | 독립 그래프 | gpt-4o | ①마법사 "AI 초안" — 모임 유형 기반 회칙·예산 템플릿(REQ-036) ②[v1.1] 개정 모드 — 판례 기반 회칙 개정 제안(§4.4-e) |
 | **ReportWriter** | 독립 그래프 | gpt-4o-mini | 정산 리포트 AI 요약(REQ-019), 집계 수치는 백엔드 API 결과를 그대로 사용 |
 | **BriefingWriter** | 독립 그래프 | gpt-4o | 인수인계 브리핑 — 판례 로그 기반, 회칙 vs 실운영 갭 분석, 익명화(REQ-043) |
+| **BudgetPlanner** [v1.1] | 독립 그래프 | gpt-4o-mini + 결정적 계산 | 예산 소진 예측(코드)·카테고리 조정 제안 — 대시보드 예측, 예산 탭 제안 카드, 리포트 "다음 달 예산 제안" 공용(§4.4-d) |
+| **DigestWriter** [v1.1] | 독립 그래프 | gpt-4o-mini | 대시보드 "AI 총무 브리핑" 주간 생성 — 자동 처리 현황·소진 예측·이상 징후 요약(§4.4-c) |
 | **Indexer** | 파이프라인(비 LLM) | embeddings | REQ-041 이벤트 수신 → 청크·임베딩·버전 태깅 |
 
 > 모델 라우팅 원칙: **판단이 필요한 곳은 gpt-4o, 요약·분류·해석은 gpt-4o-mini.** 라우팅은 설정 파일(`models.yaml`)로 관리해 코드 수정 없이 교체 가능(§12).
+
+> [v1.1] 카테고리 분류용 **별도 Classifier 노드는 두지 않는다** — REQ-012 정책("제출 시 LLM이 금액/카테고리 자동 추출")을 Intake가 이미 수행. 지출 폼의 카테고리는 선택사항(미선택 시 AI 분류)이며, 최종 분류는 콜백 `category_assigned`로 반환한다(ADR-7).
 
 ### 3.2 왜 병렬 3-심사관 구조인가
 
@@ -188,6 +200,8 @@ flowchart TD
     PS --> END([END])
 ```
 
+> [v1.1] **Dry-run 모드 (사전 문의, REQ-046안)**: `dry_run=true` 잡은 동일 그래프를 타되 `execute_decision`·`persist_precedent`를 건너뛰고 소견·예상 판정만 콜백한다. 상태 변경·판례 오염 없음. 지출 폼의 "쓰기 전에 물어보기"가 사용 (우선순위 P2).
+
 ### 4.2 노드 단일책임 정의
 
 각 노드는 **입력 상태의 일부만 읽고, 자신 몫의 키만 쓴다.** 노드 간 결합은 상태 스키마로만 존재한다.
@@ -212,13 +226,15 @@ flowchart TD
 class ReviewState(TypedDict):
     # 입력
     job_id: str; expense_id: str; team_id: str
-    claim: ExpenseClaim              # 제목·금액·카테고리·날짜·설명
+    dry_run: bool                    # [v1.1] 사전 문의 모드 — 실행·판례 저장 스킵
+    claim: ExpenseClaim              # 제목·금액·카테고리(선택)·날짜·설명
     receipt_url: str | None
     # 컨텍스트
     policy_params: PolicyParams      # auto_approve_limit, force_escalation_amount, θ
     rule_version: int
     # 진행 산출물
     receipt_data: ReceiptData | None
+    category_assigned: str | None    # [v1.1] Intake 카테고리 분류 결과 (REQ-012)
     mismatch: list[Mismatch]
     opinions: Annotated[dict[str, Opinion], merge_opinions]  # 병렬 reducer
     gate_result: GateResult | None
@@ -268,7 +284,13 @@ flowchart LR
 
 에스컬레이션된 건을 관리자가 결정하면(특히 AI 추천을 뒤집은 override 건) 그 결정·사유가 판례로 저장되고, 이후 유사 지출 심사 시 PrecedentAuditor가 인용한다. **데모 핵심 그래프: 판례 축적 → 에스컬레이션 비율 감소.**
 
-**(c) 문서 생성 그래프** — PolicyDrafter(마법사 회칙 초안), ReportWriter(정산 요약), BriefingWriter(인수인계). 공통 패턴: `데이터 수집(백엔드 API·판례 조회) → 구조화 → 생성 → 검증(수치 대조) → 반환`. 수치가 들어가는 문서는 **생성 후 원본 수치와 프로그램적으로 대조**하는 검증 노드를 필수로 둔다(환각 수치 차단).
+> [v1.1] **override 정의·용어 규칙 (ADR-9)**: AI가 명시적 추천(승인/반려)을 낸 에스컬레이션 건에서 관리자가 **반대로 결정한 경우만** `is_override=true`. 추천 채택, 추천 없이 넘어온 건(판독 불능·심사 실패·강제 에스컬레이션 금액), AI 자동 처리 건은 미해당 — 이 경우 신규 판례로만 저장. override 건은 사유 입력 필수(REQ-015)이며 골든셋 편입 1순위. UI 표기는 **'AI와 다른 결정'**(뱃지 '다른 결정'), DB·API 필드명 `is_override`는 유지.
+
+**(c) 문서 생성 그래프** — PolicyDrafter(마법사 회칙 초안), ReportWriter(정산 요약), BriefingWriter(인수인계), [v1.1] **DigestWriter**(대시보드 "AI 총무 브리핑" — 주간 스케줄 잡 또는 수동 트리거, 자동 처리 현황·소진 예측·이상 징후 요약). 공통 패턴: `데이터 수집(백엔드 API·판례 조회) → 구조화 → 생성 → 검증(수치 대조) → 반환`. 수치가 들어가는 문서는 **생성 후 원본 수치와 프로그램적으로 대조**하는 검증 노드를 필수로 둔다(환각 수치 차단).
+
+**(d) 예산 조정 제안 그래프 (BudgetPlanner) [v1.1]** — `지출 이력·예산 조회(백엔드 API) → 소진 예측(순수 코드: burn-rate·이관 여력) → 조정안 생성(LLM) → 검증(수치 대조) → proposals 저장·반환`. 관리자가 예산 탭에서 수락하면 **백엔드가 기존 REQ-022 CRUD로 예산을 갱신**하고 REQ-041 이벤트가 발행된다 — **LLM 서버는 예산을 직접 변경하지 않는다** (쓰기 경계 §2.3 유지, ADR-8). 대시보드 소진 예측·예산 탭 제안 카드·정산 리포트 "다음 달 예산 제안"이 산출물을 공용한다.
+
+**(e) 회칙 개정 제안 (PolicyDrafter 개정 모드) [v1.1]** — BriefingWriter의 회칙 vs 실운영 갭 분석을 상시화한 그래프: `판례 조회(동일 사유 반복 탐지, 기본 임계치 3회) → 갭 요약 → 개정 조항 초안(LLM) → proposals 저장·반환`. 관리자가 "개정안 보기 → 반영"하면 백엔드가 회칙 버전업(REQ-035) → REQ-041 재인덱싱. 판례 루프(b)의 출력을 정책 개선 입력으로 되돌리는 두 번째 학습 회로다.
 
 ---
 
@@ -288,6 +310,8 @@ flowchart LR
 | `budget_calculator(amounts)` | BudgetAuditor | 순수 Python | 수치 계산은 LLM에 맡기지 않음 |
 | `approve_expense(expense_id, idempotency_key)` | execute_decision | 백엔드 Agent API | 서비스 계정, 멱등성 키 |
 | `reject_expense(expense_id, reason, idempotency_key)` | execute_decision | 백엔드 Agent API | 〃 |
+| `burn_rate_forecast(budgets, expenses)` [v1.1] | BudgetPlanner | 순수 Python | 소진 시점·이관 여력 계산 — LLM은 해석·문안만 |
+| `detect_repeated_overrides(team_id, threshold)` [v1.1] | PolicyDrafter 개정 모드 | pgvector + SQL | 동일 사유 반복 판례 탐지 (기본 3회) |
 
 ### 5.2 MCP 서버
 
@@ -322,10 +346,16 @@ context_chunks(id, team_id, doc_type,                  -- rule|policy|category
 -- 판례 (REQ-042)
 precedents(id, team_id, expense_summary,               -- 익명화된 요약
      decision, decided_by,                             -- AGENT|ADMIN
-     reason, is_override boolean, confidence,
+     reason, is_override boolean, confidence,          -- is_override: AI 명시적 추천에 반대한 결정만 (UI 'AI와 다른 결정', §4.4-b)
      rule_version int, model_version, prompt_version,
      embedding vector(1536), active boolean,           -- 삭제 대신 비활성화
      created_at)
+
+-- 제안 (v1.1: 예산 조정·회칙 개정 — 수락 '실행'은 백엔드 CRUD 경유, 여기엔 제안·결정 상태만)
+proposals(id, team_id, type,                           -- budget|rule_amendment
+     payload jsonb,                                    -- 제안 본문·근거 수치·근거 판례 id
+     status,                                           -- proposed|accepted|dismissed
+     decided_by, created_at, decided_at)               -- 수락률 = 제안 품질 지표(§9)
 
 -- LangGraph checkpointer: langgraph-checkpoint-postgres 기본 스키마 사용
 ```
@@ -347,7 +377,7 @@ sequenceDiagram
     participant AI as OpenAI
 
     FE->>BE: 지출 제출 (영수증 첨부)
-    BE->>BE: 상태 SUBMITTED→PENDING_AI
+    BE->>BE: status=PENDING, actor=AGENT 설정
     BE->>API: POST /v1/analyze
     API->>API: jobs INSERT (queued)
     API-->>BE: 202 { job_id }
@@ -374,12 +404,16 @@ sequenceDiagram
 
 | 메서드 | 경로 | 설명 |
 |---|---|---|
-| POST | `/v1/analyze` | 심사 잡 생성 → 202 + job_id. 페이로드: expense_id, team_id, 제목·금액·카테고리·날짜·설명, receipt_signed_url |
+| POST | `/v1/analyze` | 심사 잡 생성 → 202 + job_id. 페이로드: expense_id, team_id, 제목·금액·카테고리(선택 [v1.1])·날짜·설명, receipt_signed_url, dry_run(기본 false [v1.1]) |
 | GET | `/v1/jobs/{job_id}` | 잡 상태·결과 조회 (폴링 fallback) |
 | POST | `/v1/context/refresh` | REQ-041 이벤트 수신: team_id, change_type(rule\|category\|params), version |
 | POST | `/v1/policy-draft` | 마법사 회칙·예산 초안 생성 (동기, 스트리밍 가능) |
 | POST | `/v1/reports/summary` | 정산 리포트 AI 요약 잡 생성 |
 | POST | `/v1/briefings` | 인수인계 브리핑 잡 생성 |
+| POST | `/v1/digests` [v1.1] | 대시보드 "AI 총무 브리핑" 잡 생성 (DigestWriter — 주간 스케줄·수동 트리거) |
+| POST | `/v1/proposals/budget` [v1.1] | 예산 조정 제안 잡 생성 (BudgetPlanner) |
+| POST | `/v1/proposals/rule-amendment` [v1.1] | 판례 기반 회칙 개정 제안 잡 생성 (PolicyDrafter 개정 모드) |
+| PATCH | `/v1/proposals/{id}` [v1.1] | 제안 상태 통보 (accepted/dismissed — 수락 실행 후 백엔드가 호출, 수락률 지표용) |
 | GET | `/healthz`, `/readyz` | liveness / readiness (DB·OpenAI 연결 점검) |
 
 **백엔드 제공 (LLM 서버가 호출):**
@@ -406,6 +440,8 @@ sequenceDiagram
     {"auditor": "precedent", "verdict": "warn", "summary": "…", "similar_cases": ["…"]}
   ],
   "mismatch": [],
+  "category_assigned": "회의비",
+  "dry_run": false,
   "reasons": { "requester": "요청자용 한 줄 사유", "admin": "근거 조항·수치 포함 상세 사유" },
   "model_version": "gpt-4o-2024-11-20",
   "prompt_version": "review/v3",
@@ -413,24 +449,46 @@ sequenceDiagram
 }
 ```
 
-### 7.3 지출 상태 머신 (REQ-037·038 — 양팀 공유 계약)
+### 7.3 지출 상태 모델 (REQ-037·038 — 양팀 공유 계약, 2026-07-06 합의 확정)
+
+**합의 결과: 상태 1컬럼 × 주체 1컬럼의 2축 모델.** 상태를 6종으로 나열하는 대신 두 컬럼의 조합으로 표현한다.
+
+- `status` ∈ `PENDING`(심사중) · `APPROVED`(승인) · `REJECTED`(반려)
+- `actor_type` ∈ `AGENT`(AI) · `HUMAN`(사람) — **PENDING에서는 "지금 누가 처리할 차례인가", 종결 상태에서는 "누가 결정했는가"**를 의미
+
+| status | actor_type | 의미 (기존 표기) |
+|---|---|---|
+| PENDING | AGENT | AI 심사 중 (구 PENDING_AI) |
+| PENDING | HUMAN | **관리자 확인 필요 = 에스컬레이션** (구 ESCALATED) |
+| APPROVED | AGENT | AI 자동 승인 (구 AI_APPROVED) |
+| APPROVED | HUMAN | 관리자 승인 |
+| REJECTED | AGENT | AI 자동 반려 (구 AI_REJECTED) |
+| REJECTED | HUMAN | 관리자 반려 |
 
 ```mermaid
 stateDiagram-v2
-    [*] --> DRAFT
-    DRAFT --> PENDING_AI: 제출(REQ-012)
-    PENDING_AI --> AI_APPROVED: Agent 승인 (가드레일 전부 통과)
-    PENDING_AI --> AI_REJECTED: Agent 반려 (예: 잔액 부족)
-    PENDING_AI --> ESCALATED: 보류·불일치·호출 실패(fail-safe)
-    ESCALATED --> APPROVED: 관리자 승인 (override 시 사유 필수)
-    ESCALATED --> REJECTED: 관리자 반려
-    AI_APPROVED --> [*]
-    AI_REJECTED --> [*]
-    APPROVED --> [*]
-    REJECTED --> [*]
+    [*] --> P_AI: 제출(REQ-012) → PENDING·AGENT
+    P_AI: PENDING · AGENT (AI 심사 중)
+    P_H: PENDING · HUMAN (관리자 확인 필요)
+    A_AI: APPROVED · AGENT
+    R_AI: REJECTED · AGENT
+    A_H: APPROVED · HUMAN
+    R_H: REJECTED · HUMAN
+    P_AI --> A_AI: Agent 승인 (가드레일 전부 통과)
+    P_AI --> R_AI: Agent 반려 (예: 잔액 부족)
+    P_AI --> P_H: 보류·불일치·호출 실패(fail-safe)
+    P_H --> A_H: 관리자 승인 (override 시 사유 필수)
+    P_H --> R_H: 관리자 반려
+    A_AI --> [*]
+    R_AI --> [*]
+    A_H --> [*]
+    R_H --> [*]
 ```
 
-모든 전이 레코드에 `actor_type(AGENT|HUMAN)`·사유·`model/prompt_version`(AGENT인 경우)이 기록된다.
+이 모델의 장점: 정산 리포트(REQ-018)는 `status=APPROVED`만 집계하면 주체 무관 단일 쿼리, 지출 목록의 AI 뱃지·필터(REQ-010)는 `actor_type`으로 처리, 상태 enum 추가 없이 REQ-037 원문("처리 주체 필드 추가")과 일치. 전이 이력에는 사유·`model/prompt_version`(AGENT 결정 시)이 함께 기록된다. DRAFT(임시저장, REQ-011·우선순위 하)는 제출 전 단계로 `status` 앞단에 두되 심사 모델과 무관.
+
+> 본 문서의 다른 절에서 쓰는 `ESCALATED`는 `(PENDING, HUMAN)` 조합의 약칭이다.
+> [v1.1] UI 용어: override는 화면에서 **'AI와 다른 결정'**(뱃지 '다른 결정')으로 표기한다. 판정 기준·미해당 케이스는 §4.4(b), 채택 근거는 ADR-9. dry-run 잡은 이 상태 머신에 진입하지 않는다(상태 변경 없음).
 
 ---
 
@@ -466,6 +524,8 @@ stateDiagram-v2
 | Intake (OCR) | 금액·날짜 추출 정확도 | ≥ 95% | 라벨된 영수증 세트 |
 | 사유 텍스트 | 근거 충실성·톤 적절성 | 5점 척도 ≥ 4 | LLM-as-Judge (gpt-4o, 별도 프롬프트) |
 | 시스템 | p95 지연 / 건당 비용 | < 15s / < $0.05 | LangSmith 트레이스 집계 |
+| BudgetPlanner [v1.1] | 소진 예측·이관 수치 정확도 | 100% (계산은 코드) | 단위 테스트 |
+| 제안 품질 [v1.1] | 예산·회칙 제안 수락률 | 관찰 지표 | `proposals` 상태 집계 — 낮으면 프롬프트·임계치 조정 |
 
 ### 9.2 골든셋 구성
 
@@ -579,8 +639,8 @@ llm-server/
 | 2 | 심사 그래프 v1 (단일 심사관, 가드레일, 콜백), 컨텍스트 인덱싱 파이프라인 | 제출→콜백 E2E (스테이징) |
 | 3 | 병렬 3-심사관 + Adjudicator, Intake OCR·불일치 게이트, 골든셋 v1 30건 | 마법사·정책 화면 연동 |
 | 4 | 판례 저장·검색 루프, Agent 승인 API 연동(멱등성), LangSmith CI 게이트 | 에스컬레이션 E2E |
-| 5 | ReportWriter·BriefingWriter·PolicyDrafter, MCP 서버, 골든셋 60건+ | 통합 테스트·시드 데이터 데모 |
-| 6 | 버퍼: 성능 튜닝(비용·지연), 데모 시나리오, 문서 마감 | 리허설 |
+| 5 | ReportWriter·BriefingWriter·PolicyDrafter, [v1.1] DigestWriter·BudgetPlanner·회칙 개정 제안, MCP 서버, 골든셋 60건+ | 통합 테스트·시드 데이터 데모 |
+| 6 | 버퍼: 성능 튜닝(비용·지연), [v1.1] dry-run 사전 문의(여유 시, P2), 데모 시나리오, 문서 마감 | 리허설 |
 
 ---
 
@@ -595,6 +655,7 @@ llm-server/
 | 회칙 형식 다양화 (PDF·이미지) | Indexer 앞단에 파서만 추가 (파이프라인 단계 분리 덕분) |
 | 알림 채널 확장 (카카오 등) | LLM 서버 무관 — 콜백 계약 뒤편은 백엔드 소관 (경계 설계 §2.3의 효과) |
 | 타사 연동·자동화 | MCP 서버가 이미 표준 인터페이스 제공 |
+| 제안 유형 추가 (예: 회비 조정 제안) [v1.1] | `proposals.type` 확장 + writers 공통 패턴 재사용 — 수락 실행은 항상 백엔드 CRUD 경유(ADR-8) |
 
 유지보수성 핵심: ① 노드 단일책임 + 순수함수 가드레일(테스트 용이) ② 프롬프트·모델·정책의 코드 외부화 ③ 계약 기반 팀 경계 ④ 전 판정의 버전 태깅(재현 가능성).
 
@@ -611,4 +672,12 @@ llm-server/
 **ADR-4 — 잡 큐: Postgres 테이블 + 전용 워커.** `FOR UPDATE SKIP LOCKED` 폴링으로 경합 없는 잡 분배, 상태·재시도·비용이 한 테이블에서 관측 가능. Celery+Redis는 컨테이너·개념 추가 대비 이득 없음(현 트래픽). 워커 인터페이스를 추상화해 추후 Redis 큐 교체 가능.
 
 **ADR-5 — 문서화: Markdown+Mermaid 리포 커밋.** 계약·설계의 변경이 PR 리뷰를 거치게 하여 협업 평가 요소(문서화 체계)와 직결. 제출용 포맷 필요 시 md에서 변환.
+
+**ADR-6 — 지출 상태: 2컬럼 모델 (2026-07-06, 풀스택 공동 결정).** 상태 6종 enum 대신 `status`(PENDING/APPROVED/REJECTED) × `actor_type`(AGENT/HUMAN) 조합으로 표현. PENDING의 actor_type은 "현재 처리 차례", 종결 상태에서는 "결정 주체"로 해석. 근거: 정산 집계·필터 쿼리 단순화, REQ-037 원문과 일치, 상태 추가 없이 에스컬레이션 표현 가능. 대안(ESCALATED 별도 상태, boolean 플래그)은 컬럼 의미 중복 또는 enum 비대화로 기각. 상세는 §7.3.
+
+**ADR-7 — 카테고리 분류: 전용 노드 없이 Intake 통합 (2026-07-09, v1.1).** REQ-012 정책("제출 시 LLM이 금액/카테고리 자동 추출")이 분류를 이미 규정하므로 별도 Classifier 노드는 중복. 지출 폼의 카테고리는 선택사항화하고 Intake 산출 `category_assigned`를 콜백으로 반환. 근거: AssoAI 차별화 전략 v2 — 경쟁사에도 있는 '자동 분류'는 심사의 입력으로만 포지셔닝하고 노드·비용을 늘리지 않는다.
+
+**ADR-8 — 제안(proposal) 기능의 실행 경계 (2026-07-09, v1.1).** BudgetPlanner(예산 조정)·PolicyDrafter 개정 모드(회칙 개정)는 LLM 서버가 **제안 생성까지만** 담당하고, 수락 시 실행(예산 CRUD·회칙 버전업)은 백엔드 기존 API(REQ-022·035)를 경유한다. §2.3 쓰기 경계 원칙 유지 — 에이전트의 직접 쓰기 권한은 지출 승인/반려 2종에 한정. 제안·결정 상태는 `proposals` 테이블로 추적해 수락률을 품질 지표로 사용(§9).
+
+**ADR-9 — UI 용어: override → 'AI와 다른 결정' (2026-07-09, v1.1).** 사용자 대면 화면에서 override는 'AI와 다른 결정'(뱃지 '다른 결정')으로 표기. 판정 기준: AI가 명시적 추천을 낸 에스컬레이션 건에서 관리자가 반대로 결정한 경우만(§4.4-b). DB 필드 `is_override`·API 필드는 유지해 코드 영향 없음. 대안 '추천 번복'(뉘앙스 단호), 'AI 교정'(AI 오류 전제) 대비 중립성·자기설명성 우위로 채택.
 
