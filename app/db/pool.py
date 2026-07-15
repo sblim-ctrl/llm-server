@@ -48,8 +48,37 @@ async def apply_schema() -> None:
 # ── jobs 헬퍼 ─────────────────────────────────────────────
 
 async def insert_job(team_id: str, job_type: str, payload: dict[str, Any],
-                     expense_id: str | None = None, max_attempts: int = 3) -> str:
+                     expense_id: str | None = None, max_attempts: int = 3,
+                     dedupe_active: bool = False) -> str:
+    """잡 생성. dedupe_active=True면 같은 expense_id의 활성(queued/running) 심사 잡이
+    이미 있을 때 새 잡을 만들지 않고 기존 job_id를 반환한다 — 멱등 수락 (§8).
+    동시 요청 경합은 uq_jobs_active_review 부분 유니크 인덱스가 DB 레벨에서 보장.
+    """
     async with get_pool().connection() as conn:
+        if dedupe_active and expense_id is not None:
+            # 충돌 직후 기존 잡이 완료되는 좁은 틈이 있어 짧게 재시도 —
+            # 전부 빗나가면 아래 일반 삽입으로 진행(그 시점엔 활성 잡이 없다는 뜻)
+            for _ in range(3):
+                row = await (await conn.execute(
+                    """INSERT INTO jobs (expense_id, team_id, type, payload, max_attempts)
+                       VALUES (%s, %s, %s, %s, %s)
+                       ON CONFLICT (expense_id)
+                       WHERE type = 'review' AND status IN ('queued', 'running')
+                             AND expense_id IS NOT NULL
+                       DO NOTHING
+                       RETURNING id""",
+                    (expense_id, team_id, job_type, json.dumps(payload), max_attempts),
+                )).fetchone()
+                if row is not None:
+                    return str(row["id"])
+                existing = await (await conn.execute(
+                    """SELECT id FROM jobs
+                       WHERE expense_id = %s AND type = %s AND status IN ('queued', 'running')
+                       ORDER BY created_at LIMIT 1""",
+                    (expense_id, job_type),
+                )).fetchone()
+                if existing is not None:
+                    return str(existing["id"])
         row = await (await conn.execute(
             """INSERT INTO jobs (expense_id, team_id, type, payload, max_attempts)
                VALUES (%s, %s, %s, %s, %s) RETURNING id""",

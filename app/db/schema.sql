@@ -21,6 +21,11 @@ CREATE TABLE IF NOT EXISTS jobs (
     updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs (status, created_at);
+-- 같은 지출의 활성(대기·실행 중) 심사 잡은 1개만 — 동시 중복 제출 방지 (§8 멱등성).
+-- 완료(succeeded/failed/dead)된 뒤의 재제출은 막지 않는다 (재심사 허용).
+CREATE UNIQUE INDEX IF NOT EXISTS uq_jobs_active_review
+    ON jobs (expense_id)
+    WHERE type = 'review' AND status IN ('queued', 'running') AND expense_id IS NOT NULL;
 
 -- 회칙·정책 임베딩 (REQ-041)
 CREATE TABLE IF NOT EXISTS context_chunks (

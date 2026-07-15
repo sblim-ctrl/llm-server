@@ -98,6 +98,7 @@ Python 3.12 고정, uv로 패키지 관리, docker-compose 3컨테이너.
 | `scripts/seed_reference_corpus.py` | 참고 문서 인덱싱 (멱등, DB 필요) |
 | `scripts/seed_demo.py` | 4주 시뮬레이션 — 에스컬레이션 100%→33%→25%→0% (데모 핵심 그래프) |
 | `scripts/smoke_review.py` / `smoke_mcp.py` | 스모크 |
+| `scripts/stress_idempotency.py` | **(07-15)** 동시 중복 제출 멱등성 실증 — API·워커 떠 있어야 함 |
 
 ## 4. 핵심 결정사항 (왜 이렇게 만들었나)
 
@@ -144,8 +145,11 @@ Python 3.12 고정, uv로 패키지 관리, docker-compose 3컨테이너.
 3. **LangSmith 연동**: 트레이싱 + CI 게이트 (`.env`에 LANGSMITH_* 이미 자리 있음).
 4. ~~골든셋 확장~~ → **완료 (2026-07-15)**: 라이터 3종 시나리오 골든셋 17건 추가, 17/17 통과.
    실키 전환 후 LLM 생성 문구 기반 케이스(현재는 목 휴리스틱 기준) 재검토 필요.
-5. **동시요청·멱등성 스트레스 테스트**: 같은 expense_id 동시 제출 시 이중 처리 없는지
-   (Idempotency-Key=job_id 설계 실증).
+5. ~~동시요청·멱등성 스트레스 테스트~~ → **완료 (2026-07-15)**: 같은 expense_id의
+   활성(queued/running) 심사 잡은 1개만 생성 — `uq_jobs_active_review` 부분 유니크
+   인덱스(DB 레벨 보장) + `insert_job(dedupe_active=True)` 멱등 수락(기존 job_id 반환).
+   완료 후 재제출은 새 잡(재심사 허용). `scripts/stress_idempotency.py`로 실증
+   (동시 20건→잡 1개, 대조군 5건→5개, 도커 스택 상대로 통과).
 6. **참고 코퍼스 확장**: 유형당 1→2~3개 문서. 실키로 검색 품질 실측 후 판단.
 7. **팀 저장소 push**: 원격 미연결 상태. GitHub Organization + 별도 리포 권장(모노리포 아님),
    main 직push 말고 `feature/llm-server-skeleton` 브랜치→PR로.
