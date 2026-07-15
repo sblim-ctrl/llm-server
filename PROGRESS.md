@@ -179,8 +179,16 @@ Python 3.12 고정, uv로 패키지 관리, docker-compose 3컨테이너.
 - **B2 하네스 완료(2026-07-15)**: Retry(chat·embeddings 각 3회/30s), PII 마스킹
   (`chat_structured(mask_with=)` — load_context가 멤버 명단 적재), 호출 메타
   (`tuple[T, LLMCallMeta]` — tokens/cost/latency, models.yaml `pricing:` 단가표).
-  호출부 5곳 전환, 리뷰 노드는 `llm_meta` reducer로 state 적재. **콜백·jobs 테이블로의
-  합산 반영(B4)은 미착수** — CallbackPayload의 model_version/cost_usd가 아직 정적값.
+  호출부 5곳 전환, 리뷰 노드는 `llm_meta` reducer로 state 적재.
+- **콜백·판례에 실측 메타 반영 완료(2026-07-15)**: CallbackPayload의 model_version/
+  prompt_version/cost_usd(전 호출 합산)/latency_ms(started_at 대비)가 llm_meta에서
+  채워짐 — adjudicator 미실행 escalate 경로는 `.get()` 안전 접근(크래시 방지).
+  persist_precedent도 실제 모델·프롬프트 버전 기록. **jobs 테이블 cost/tokens 합산
+  (finish_job 확장)만 남음.**
+- **프롬프트 A/B 비교 러너 완료(2026-07-15)**: `eval/compare_prompts.py agent=v2` —
+  베이스라인 vs 오버라이드 골든셋 2회 실행, 케이스별 판정 변화(↑개선/↓악화)·오승인
+  증가 시 exit 1. 오버라이드는 `PROMPT_VERSION_{AGENT}` 환경변수(load_prompt가 해석).
+  배관 검증 완료(v1 vs v1) — **실측 비교는 실키 후** (목은 프롬프트를 안 읽음).
 
 ## 3. 이 세션에서 변경/생성한 파일 (커밋 순)
 

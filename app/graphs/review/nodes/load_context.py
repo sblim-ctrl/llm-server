@@ -7,6 +7,7 @@
 TODO(계약 확정 후): 팀별 실제 정책 파라미터(auto_approve_limit 등)도 백엔드에서 조회.
 """
 import logging
+import time
 
 from app.graphs.review.state import ReviewState
 from app.schemas.common import PolicyParams
@@ -34,6 +35,7 @@ async def load_context(state: ReviewState) -> dict:
         team_members = []
 
     return {
+        "started_at": time.time(),
         "policy_params": PolicyParams(),
         "rule_version": 1,
         "team_type": team_type,

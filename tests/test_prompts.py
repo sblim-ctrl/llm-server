@@ -28,3 +28,13 @@ def test_empty_few_shot_returns_system_unchanged():
 
 def test_load_prompt_is_cached():
     assert load_prompt("adjudicator") is load_prompt("adjudicator")
+
+
+def test_env_override_selects_version(monkeypatch, tmp_path):
+    """PROMPT_VERSION_{AGENT} 오버라이드 — A/B 비교 러너(eval/compare_prompts.py)의 기반."""
+    monkeypatch.setenv("PROMPT_VERSION_ADJUDICATOR", "v1")  # v1뿐이라 같은 파일로 검증
+    assert load_prompt("adjudicator").version == "adjudicator/v1"
+    monkeypatch.setenv("PROMPT_VERSION_ADJUDICATOR", "v999")
+    import pytest as _pytest
+    with _pytest.raises(FileNotFoundError):
+        load_prompt("adjudicator")  # 없는 버전이면 조용히 폴백하지 않고 즉시 실패

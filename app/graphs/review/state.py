@@ -30,6 +30,7 @@ class ReviewState(TypedDict, total=False):
     receipt_url: str | None
     receipt_text: str | None    # 백엔드가 미리 추출한 영수증 텍스트 (있으면 Vision 생략)
     # 컨텍스트 (load_context가 씀)
+    started_at: float           # 심사 시작 시각(time.time()) — 콜백 latency_ms 계산용 (B4)
     policy_params: PolicyParams
     rule_version: int
     team_type: str              # 모임 유형 — 유형별 카테고리 카탈로그 선택에 사용

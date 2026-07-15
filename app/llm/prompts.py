@@ -5,6 +5,7 @@
 version / system / output_schema(문서용 주석) / few_shot 4키로 고정
 (기존 prompts/rule_auditor/v1.yaml 기준). 신규 에이전트 프롬프트도 동일 형식.
 """
+import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -12,6 +13,7 @@ import yaml
 from pydantic import BaseModel
 
 _PROMPTS_DIR = Path(__file__).resolve().parents[2] / "prompts"
+_ENV_PREFIX = "PROMPT_VERSION_"   # A/B 실험용 오버라이드: PROMPT_VERSION_ADJUDICATOR=v2
 
 
 class PromptSpec(BaseModel):
@@ -30,8 +32,18 @@ class PromptSpec(BaseModel):
 
 
 @lru_cache
-def load_prompt(agent: str, version: str = "v1") -> PromptSpec:
+def _load(agent: str, version: str) -> PromptSpec:
     path = _PROMPTS_DIR / agent / f"{version}.yaml"
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     return PromptSpec(version=data["version"], system=data["system"],
                       few_shot=data.get("few_shot") or [])
+
+
+def load_prompt(agent: str, version: str | None = None) -> PromptSpec:
+    """version 미지정 시 `PROMPT_VERSION_{AGENT}` 환경변수 → 'v1' 순으로 해석.
+
+    환경변수 해석을 캐시 밖에서 하므로, A/B 비교 러너(eval/compare_prompts.py)가
+    같은 프로세스 안에서 버전을 바꿔가며 실행해도 즉시 반영된다.
+    """
+    version = version or os.environ.get(f"{_ENV_PREFIX}{agent.upper()}", "v1")
+    return _load(agent, version)

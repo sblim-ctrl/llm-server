@@ -13,6 +13,8 @@ logger = logging.getLogger(__name__)
 async def persist_precedent(state: ReviewState) -> dict:
     claim = state["claim"]
     reasons = state.get("reasons")
+    # 재현성(§5.3): 판례에 실제 사용한 모델·프롬프트 버전 기록 (adjudicator 미실행 경로는 기본값)
+    adj = (state.get("llm_meta") or {}).get("adjudicator")
     try:
         await save_precedent(
             team_id=state["team_id"],
@@ -22,6 +24,9 @@ async def persist_precedent(state: ReviewState) -> dict:
             reason=reasons.admin if reasons else None,
             confidence=state.get("confidence"),
             rule_version=state.get("rule_version"),
+            model_version=adj.model if adj else "mock",
+            prompt_version=(adj.prompt_version if adj and adj.prompt_version
+                            else "review/v1"),
         )
     except Exception as e:
         # 판례 저장 실패가 심사 결과 자체를 무효화하면 안 됨
