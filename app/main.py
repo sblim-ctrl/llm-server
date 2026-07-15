@@ -11,6 +11,7 @@ from app.api import (
 )
 from app.db.pool import apply_schema, close_pool, open_pool
 from app.mcp_server import mcp_app, mcp_session_manager
+from app.observability import setup_langsmith
 from app.middleware.auth import AuthMiddleware
 from app.middleware.request_log import RequestLogMiddleware
 
@@ -21,6 +22,7 @@ logging.basicConfig(level=logging.INFO)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    setup_langsmith()  # B3 — PolicyDrafter 동기 호출(§2.2 예외)도 트레이싱 대상
     await open_pool()
     await apply_schema()
     async with mcp_session_manager():  # MCP Streamable HTTP 세션 (§5.2)

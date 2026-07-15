@@ -173,7 +173,14 @@ Python 3.12 고정, uv로 패키지 관리, docker-compose 3컨테이너.
 - **백엔드 연동 전부 목**: `MOCK_BACKEND=true`. 실제 필드명·엔드포인트는 풀스택 팀과
   미확정 ("다음에 받기로" 한 상태). 경계는 `app/tools/backend_client.py` 한 파일.
 - **Intake Vision OCR**: 실키 필요. 현재 목은 URL 쿼리 파라미터/추출 텍스트 정규식 파싱.
-- **LangSmith**: 미연동 (키·계정 필요).
+- **LangSmith**: 배선 완료(B3, 2026-07-15 — `app/observability.py`: `setup_langsmith()`
+  기동 주입 + `langsmith_config()` C9 태깅, review 잡 적용). **실키·계정으로 트레이스
+  실확인은 미완** — `.env`에 `LANGSMITH_TRACING=true`+`LANGSMITH_API_KEY` 넣으면 활성.
+- **B2 하네스 완료(2026-07-15)**: Retry(chat·embeddings 각 3회/30s), PII 마스킹
+  (`chat_structured(mask_with=)` — load_context가 멤버 명단 적재), 호출 메타
+  (`tuple[T, LLMCallMeta]` — tokens/cost/latency, models.yaml `pricing:` 단가표).
+  호출부 5곳 전환, 리뷰 노드는 `llm_meta` reducer로 state 적재. **콜백·jobs 테이블로의
+  합산 반영(B4)은 미착수** — CallbackPayload의 model_version/cost_usd가 아직 정적값.
 
 ## 3. 이 세션에서 변경/생성한 파일 (커밋 순)
 

@@ -15,6 +15,7 @@ from app.config import get_settings
 from app.db.pool import apply_schema, close_pool, finish_job, get_pool, open_pool
 from app.graphs.indexing.graph import indexing_graph
 from app.graphs.review.graph import build_review_graph
+from app.observability import langsmith_config, setup_langsmith
 from app.graphs.writers.briefing import briefing_graph
 from app.graphs.writers.report import report_graph
 from app.schemas.analyze import AnalyzeRequest, ContextRefreshRequest
@@ -48,7 +49,8 @@ async def run_review_job(job: dict[str, Any]) -> dict[str, Any]:
     req = AnalyzeRequest.model_validate(job["payload"])
     job_id = str(job["id"])
     # thread_id=job_id → 잡 1건 = 체크포인트 스레드 1개 (§4.2)
-    config = {"configurable": {"thread_id": job_id}}
+    # run_name/tags → LangSmith 트레이스 식별 (B3, C9 형식)
+    config = langsmith_config("review", job_id, req.team_id, thread_id=job_id)
 
     if job["attempts"] <= 1:
         # 최초 시도 — START부터 실행
@@ -137,6 +139,7 @@ async def poll_loop() -> None:
 
 async def main() -> None:
     global _review_graph
+    setup_langsmith()  # B3 — 켜져 있으면 LANGCHAIN_* env 주입 (그래프 자동 트레이싱)
     await open_pool()
     await apply_schema()
 

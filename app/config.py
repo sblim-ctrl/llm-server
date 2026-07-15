@@ -25,9 +25,10 @@ class Settings(BaseSettings):
     worker_poll_interval_sec: float = 2.0
     job_max_attempts: int = 3
 
-    # 관측
+    # 관측 (B3 — langsmith_tracing=true + api_key 설정 시 기동 코드가 LANGCHAIN_* env 주입)
     langsmith_tracing: bool = False
     langsmith_project: str = "budgetops-llm"
+    langsmith_api_key: str = ""
 
 
 @lru_cache
