@@ -177,7 +177,7 @@ async def send_callback(payload: dict[str, Any]) -> bool:
     s = get_settings()
     if s.mock_backend:
         logger.info("MOCK callback: verdict=%s expense=%s",
-                    payload.get("verdict"), payload.get("expense_id"))
+                    payload.get("verdict"), payload.get("expenseId"))
         return True
     try:
         async with httpx.AsyncClient(base_url=s.backend_base_url, headers=_headers()) as client:

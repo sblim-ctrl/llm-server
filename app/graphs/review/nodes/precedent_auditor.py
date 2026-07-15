@@ -11,13 +11,12 @@ import logging
 
 from app.graphs.review.state import ReviewState
 from app.llm.client import chat_structured
+from app.llm.prompts import load_prompt
 from app.schemas.common import Opinion
 from app.tools.precedent_store import masked_claim_summary
 from app.tools.search_precedents import search_precedents
 
 logger = logging.getLogger(__name__)
-
-PROMPT_VERSION = "precedent_auditor/v1"
 SIMILARITY_WARN_DISTANCE = 0.35
 
 
@@ -61,7 +60,7 @@ async def precedent_auditor(state: ReviewState) -> dict:
 
         opinion = await chat_structured(
             agent="precedent_auditor",
-            system="(prompts/precedent_auditor/v1.yaml에서 로드)",
+            system=load_prompt("precedent_auditor").system_with_few_shot(),
             user=f"{claim.model_dump_json()}\n\n유사 판례:\n"
                  + "\n".join(f"- {c['expense_summary']} → {c['decision']}"
                              f" ({c['reason'] or '사유 없음'})" for c in cases),

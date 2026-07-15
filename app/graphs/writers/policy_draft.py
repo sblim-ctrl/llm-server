@@ -19,6 +19,7 @@ from pydantic import BaseModel
 from typing_extensions import TypedDict
 
 from app.llm.client import chat_structured
+from app.llm.prompts import load_prompt
 from app.schemas.writers import PolicyDraft, PolicyDraftRequest, PolicyParamsSuggestion
 from app.tools.category_catalog import categories_for
 from app.tools.search_references import search_references
@@ -113,7 +114,7 @@ async def generate_draft(state: DraftState) -> dict:
         try:
             result = await chat_structured(
                 agent="policy_drafter",
-                system="(prompts/policy_drafter/v1.yaml에서 로드)",
+                system=load_prompt("policy_drafter").system_with_few_shot(),
                 user=f"모임 유형: {req.team_type}\n모임 이름: {req.team_name}\n"
                      f"모임 소개: {req.description}\n\n"
                      f"참고 규정(다른 모임 사례 — 그대로 베끼지 말고 참고만):\n{ref_text}",

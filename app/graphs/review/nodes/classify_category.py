@@ -18,13 +18,12 @@ from pydantic import BaseModel
 
 from app.graphs.review.state import ReviewState
 from app.llm.client import chat_structured
+from app.llm.prompts import load_prompt
 from app.tools.category_catalog import (
     DEFAULT_TEAM_TYPE, categories_for, classify_by_keywords,
 )
 
 logger = logging.getLogger(__name__)
-
-PROMPT_VERSION = "classifier/v2"  # v2: 모임 유형별 고정 카탈로그
 
 
 class CategoryPrediction(BaseModel):
@@ -44,7 +43,7 @@ async def classify_category(state: ReviewState) -> dict:
     try:
         pred = await chat_structured(
             agent="classifier",
-            system="(prompts/classifier/v1.yaml에서 로드)",
+            system=load_prompt("classifier").system_with_few_shot(),
             user=f"모임 유형: {team_type}\n카테고리 후보(이 중에서만 선택): "
                  f"{', '.join(candidates)}\n\n지출 내용: {text}",
             schema=CategoryPrediction,

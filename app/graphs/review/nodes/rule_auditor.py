@@ -17,12 +17,11 @@ import logging
 
 from app.graphs.review.state import ReviewState
 from app.llm.client import chat_structured
+from app.llm.prompts import load_prompt
 from app.schemas.common import ExpenseClaim, Opinion
 from app.tools.search_rules import search_rules
 
 logger = logging.getLogger(__name__)
-
-PROMPT_VERSION = "rule_auditor/v2"  # v2: CRAG 검색 보정 추가
 
 # 이 거리보다 멀면 근거로 사용하지 않음 (실제 임베딩 연결 후 골든셋으로 보정 필요)
 RELEVANCE_MAX_DISTANCE = 0.5
@@ -76,7 +75,7 @@ async def rule_auditor(state: ReviewState) -> dict:
         evidence_text = "\n".join(f"- {c['text']}" for c in chunks)
         opinion = await chat_structured(
             agent="rule_auditor",
-            system="(prompts/rule_auditor/v1.yaml에서 로드)",
+            system=load_prompt("rule_auditor").system_with_few_shot(),
             user=f"{claim.model_dump_json()}\n\n관련 회칙 조항 (검증된 근거만):\n{evidence_text}",
             schema=Opinion,
             mock_response=Opinion(

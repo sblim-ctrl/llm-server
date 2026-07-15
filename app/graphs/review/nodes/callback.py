@@ -10,6 +10,7 @@ def build_callback_payload(state: ReviewState) -> CallbackPayload:
         expense_id=state["expense_id"],
         team_id=state["team_id"],
         verdict=state.get("verdict") or "escalate",
+        suggested_category=state["claim"].category or None,
         confidence=state.get("confidence"),
         opinions=list(state.get("opinions", {}).values()),
         mismatch=state.get("mismatch", []),
@@ -19,5 +20,6 @@ def build_callback_payload(state: ReviewState) -> CallbackPayload:
 
 async def callback(state: ReviewState) -> dict:
     payload = build_callback_payload(state)
-    ok = await send_callback(payload.model_dump(mode="json"))
+    # by_alias=True 필수 — 백엔드 API는 전부 camelCase (§ bravo_API명세서.xlsx)
+    ok = await send_callback(payload.model_dump(mode="json", by_alias=True))
     return {"callback_status": "sent" if ok else "failed"}

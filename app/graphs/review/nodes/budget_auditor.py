@@ -14,7 +14,7 @@ from app.tools.budget_calculator import check_budget
 
 logger = logging.getLogger(__name__)
 
-PROMPT_VERSION = "budget_auditor/v2"  # v2: 총액 기준 잔액 검사
+# budget_auditor는 LLM을 호출하지 않는 결정적 계산 노드 — 프롬프트·버전 개념 없음 (B1 정리)
 
 
 async def budget_auditor(state: ReviewState) -> dict:

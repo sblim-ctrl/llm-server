@@ -9,11 +9,10 @@ from pydantic import BaseModel
 
 from app.graphs.review.state import ReviewState
 from app.llm.client import chat_structured
+from app.llm.prompts import load_prompt
 from app.schemas.common import Reasons
 
 logger = logging.getLogger(__name__)
-
-PROMPT_VERSION = "adjudicator/v1"
 
 
 class AdjudicationResult(BaseModel):
@@ -49,7 +48,7 @@ async def adjudicate(state: ReviewState) -> dict:
     opinions = state["opinions"]
     result = await chat_structured(
         agent="adjudicator",
-        system="(prompts/adjudicator/v1.yaml에서 로드)",
+        system=load_prompt("adjudicator").system_with_few_shot(),
         user="\n".join(f"[{k}] {v.verdict}: {v.summary}" for k, v in opinions.items()),
         schema=AdjudicationResult,
         mock_response=_mock_result(state),

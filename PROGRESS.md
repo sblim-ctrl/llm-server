@@ -1,6 +1,46 @@
 # PROGRESS.md — BudgetOps LLM 서버 진행 기록
 
-> 새 세션에서 이 파일만 읽고 바로 이어서 작업할 수 있도록 작성. 최종 갱신: 2026-07-15.
+> 새 세션에서 이 파일만 읽고 바로 이어서 작업할 수 있도록 작성. 최종 갱신: 2026-07-15(2차).
+
+## 0. 최우선 — 실제 풀스택 API 명세 확보됨 (2026-07-15)
+
+`기획/bravo_API명세서.xlsx`(풀스택 bravo팀, API 49개 + 상태코드 시트) 수령.
+**`기획/업무분장_스프린트1_작업명세.md`(다른 세션이 작성한 A/B 2인 분장 문서)의 신규
+기능 3종 — BudgetPlanner(예산 제안)·DigestWriter(주간 브리핑)·PolicyDrafter 개정
+모드(회칙 개정 제안) — 는 49개 API 어디에도 없다. 사용자 확인: "신규 기능 마음대로
+추가 금지, 그런 기능(주간 리포트) 없음" → **이 3개는 진행하지 않는다.** 스프린트1
+문서의 A1~A7 항목은 폐기, B1~B7(실모드 전환·신뢰성·평가)만 유효하고 그마저 아래
+내용으로 갱신됨.
+
+**LLM 서버가 실제로 관련된 API는 4개뿐**(명세서 원본은 `기획/` 폴더 참조):
+- **API-044** `POST /api/expenses/{id}/ai-review` — 지출 등록(API-016) 시 백엔드가
+  내부적으로 호출(프론트가 직접 호출 안 함). 우리 심사 그래프가 이 내부 호출을 받는
+  실질적 소비자로 추정(정확한 트리거 경로는 백엔드팀 확인 필요 — 지금 `/v1/analyze`가
+  이 역할을 하는지, 백엔드가 별도로 감쌀 것인지 미확정).
+- **API-045** `GET /api/expenses/{id}/review-result` — 응답
+  `review:{finalVerdict, detail, suggestedCategory, processedBy, createdAt}`.
+  우리 콜백(`/agent-callback`, API 목록엔 없음 — 내부 전용 채널로 추정)이 이 필드를
+  채울 데이터를 실어 보내야 한다. **2026-07-15 반영**: `CallbackPayload`에
+  `suggested_category`(classify_category 결과)·`processed_by`(기본"AI") 추가,
+  전체 필드 camelCase 직렬화(`by_alias=True`) — 백엔드 전 API가 camelCase라서
+  snake_case로 보내면 백엔드가 못 읽는다. `detail`은 우리 쪽 `reasons`+`opinions`를
+  조합해 백엔드가 구성하는 것으로 가정(확정 아님).
+- **API-043** `POST /api/policies/recommend` — body는 **`teamId` 하나뿐**, 응답은
+  `recommendedPolicies: [{title, policyType, content}]` **배열**. **현재 우리
+  `/v1/policy-draft`·`PolicyDraftRequest`(team_type/team_name/initial_budget/
+  description 요구)·`PolicyDraft`(rules 문자열 배열+policy_params) 응답 구조와
+  완전히 다르다 — 계약 재설계 필요, 아직 미착수.** teamId만 오므로 team_type 등은
+  `get_team_profile`/`get_budget_status`로 우리가 직접 조회해야 함. **미해결 — 다음
+  세션에서 사용자와 상의 후 착수**(policyType이 뭘 의미하는지, 몇 개 추천할지 등
+  백엔드팀 확인 필요할 수 있음).
+- **API-024** `GET /api/teams/{id}/dashboard/ai-summary` — 응답은 `{summary}` 문자열
+  하나. 지금 우리에게 대응하는 엔드포인트 없음(새 기능 아니라 실제 명세에 있는 진짜
+  요구사항). ReportWriter의 `summary` 필드를 재활용해 가벼운 동기 엔드포인트로 노출
+  가능해 보임 — **미착수**.
+
+**다음 세션 최우선 순서**: ① API-043 정책 추천 계약 재설계 방향 사용자와 확정
+② API-024 AI 요약 엔드포인트 신설 ③ 콜백 API-044/045 실제 트리거 경로 백엔드팀과
+확인 ④ 이후 스프린트1 B2~B7(LLM 하네스·LangSmith·워커 신뢰성·Vision OCR) 계속.
 > 코드의 최신 진실은 항상 git log와 실제 코드 — 이 문서와 어긋나면 코드가 맞다.
 
 ---
@@ -56,6 +96,14 @@ Python 3.12 고정, uv로 패키지 관리, docker-compose 3컨테이너.
   `app/llm/client.py`의 `chat_structured()`/`embed_texts()`가 mock_response/해시 벡터를
   반환. **"AI가 판단했다"고 보이는 모든 것이 사실은 코드에 박힌 고정 응답·키워드 규칙**.
   임베딩도 해시 기반이라 유사도 검색의 "의미적 관련성"은 검증 불가(SQL·스코프만 검증됨).
+  **2026-07-15 진전**: 노드들이 보내던 `system="(prompts/…yaml에서 로드)"` **글자
+  그대로의 플레이스홀더 문자열**을 실제로 보내고 있던 버그를 고침 — `app/llm/prompts.py`
+  신규(`load_prompt(agent) -> PromptSpec`, YAML의 `version:` 필드가 진실 원천, lru_cache)
+  + adjudicate·rule_auditor·precedent_auditor·classify_category·policy_draft 5개 노드
+  전부 연결. 목 모드에선 어차피 mock_response를 쓰므로 동작 변화 없음(무회귀 확인) —
+  **실키 전환 시 비로소 효과가 나는 수정**이었음. 여전히 남은 문제: PII 마스킹이 LLM
+  프롬프트 경로에 미연결(실키 전환 시 실명 유출 위험), Retry/타임아웃 없음, model/cost/
+  latency가 정적값(`app/schemas/callback.py`의 `model_version="mock"` 등 하드코딩).
 - **백엔드 연동 전부 목**: `MOCK_BACKEND=true`. 실제 필드명·엔드포인트는 풀스택 팀과
   미확정 ("다음에 받기로" 한 상태). 경계는 `app/tools/backend_client.py` 한 파일.
 - **Intake Vision OCR**: 실키 필요. 현재 목은 URL 쿼리 파라미터/추출 텍스트 정규식 파싱.
@@ -83,6 +131,8 @@ Python 3.12 고정, uv로 패키지 관리, docker-compose 3컨테이너.
 | `app/tools/search_rules.py` / `search_precedents.py` | pgvector 검색 (version 고정 / active만) |
 | `app/tools/precedent_store.py` | `save_precedent()`(마스킹+임베딩), `summarize_claim()`, `masked_claim_summary()` |
 | `app/tools/backend_client.py` | 백엔드 경계. 목 규약: team_id에 `lowbudget`→잔액1000원, `club/study/social/hobby/company`→유형 추론(`get_team_profile`) |
+| `app/llm/prompts.py` | **(07-15)** 프롬프트 YAML 로더 — `load_prompt(agent) -> PromptSpec(version, system, few_shot)`. C3 계약 |
+| `app/schemas/callback.py` | **(07-15)** camelCase 직렬화(`alias_generator=to_camel`) + `suggested_category`/`processed_by` 추가 — bravo_API명세서 API-045 정합 |
 | `app/middleware/pii_masker.py` | `mask_names()` 실명→역할 치환 |
 | `app/mcp_server.py` | FastMCP, `mcp.settings.streamable_http_path="/"`로 `/mcp` 마운트. lifespan에서 `mcp_session_manager()` 필요 |
 | `app/eval_support.py` | `run_golden_set()` — CLI와 `GET /v1/eval/golden` 공유. Trajectory 채점 + CSV 출력(`export_results_csv`) |
