@@ -198,6 +198,8 @@ Python 3.12 고정, uv로 패키지 관리, docker-compose 3컨테이너.
 | `app/tools/precedent_store.py` | `save_precedent()`(마스킹+임베딩), `summarize_claim()`, `masked_claim_summary()` |
 | `app/tools/backend_client.py` | 백엔드 경계. 목 규약: team_id에 `lowbudget`→잔액1000원, `club/study/social/hobby/company`→유형 추론(`get_team_profile`) |
 | `app/llm/prompts.py` | **(07-15)** 프롬프트 YAML 로더 — `load_prompt(agent) -> PromptSpec(version, system, few_shot)`. C3 계약 |
+| `prompts/*/v1.yaml` | **(07-15)** 4종 보강: few_shot(인젝션 방어 사례 포함)·confidence 산출 기준(adjudicator)·근거 인용 규칙(rule_auditor). `prompts/intake/v1.yaml` 신규 — 실명세 'LLM 2단계' 중 1차(읽기 전용) 프롬프트, B6 Vision 배선 대기. **실키 후 골든셋 실측으로 튜닝 시작점** |
+| `기획/업무분장_스프린트1_작업명세_v3_초안.md` | **(07-15)** 리포 밖 — 실명세 정합(N1~N6) 반영 + 사용자=프롬프트·평가·관측 축 배정. 팀 리뷰 대기 |
 | `app/schemas/callback.py` | **(07-15)** camelCase 직렬화(`alias_generator=to_camel`) + `suggested_category`/`processed_by` 추가 — bravo_API명세서 API-045 정합 |
 | `app/middleware/pii_masker.py` | `mask_names()` 실명→역할 치환 |
 | `app/mcp_server.py` | FastMCP, `mcp.settings.streamable_http_path="/"`로 `/mcp` 마운트. lifespan에서 `mcp_session_manager()` 필요 |

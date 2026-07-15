@@ -3,7 +3,8 @@ import pytest
 
 from app.llm.prompts import load_prompt
 
-AGENTS = ["adjudicator", "classifier", "policy_drafter", "precedent_auditor", "rule_auditor"]
+AGENTS = ["adjudicator", "classifier", "intake", "policy_drafter", "precedent_auditor",
+          "rule_auditor"]
 
 
 @pytest.mark.parametrize("agent", AGENTS)
@@ -14,8 +15,15 @@ def test_loads_and_has_required_fields(agent):
 
 
 def test_few_shot_appended_when_present():
-    spec = load_prompt("rule_auditor")
-    assert spec.system_with_few_shot() == spec.system  # few_shot=[] → 원문 그대로
+    spec = load_prompt("rule_auditor")  # 2026-07-15 보강으로 few_shot 2건 보유
+    assembled = spec.system_with_few_shot()
+    assert assembled != spec.system and assembled.startswith(spec.system)
+    assert "예시 1" in assembled and "예시 2" in assembled
+
+
+def test_empty_few_shot_returns_system_unchanged():
+    spec = load_prompt("policy_drafter")  # few_shot=[] 유지 중
+    assert spec.system_with_few_shot() == spec.system
 
 
 def test_load_prompt_is_cached():
