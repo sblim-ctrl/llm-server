@@ -58,17 +58,20 @@ async def precedent_auditor(state: ReviewState) -> dict:
         cases = await search_precedents(state["team_id"],
                                         await masked_claim_summary(state["team_id"], claim))
 
-        opinion = await chat_structured(
+        spec = load_prompt("precedent_auditor")
+        opinion, meta = await chat_structured(
             agent="precedent_auditor",
-            system=load_prompt("precedent_auditor").system_with_few_shot(),
+            system=spec.system_with_few_shot(),
             user=f"{claim.model_dump_json()}\n\n유사 판례:\n"
                  + "\n".join(f"- {c['expense_summary']} → {c['decision']}"
                              f" ({c['reason'] or '사유 없음'})" for c in cases),
             schema=Opinion,
             mock_response=_mock_opinion(cases),
+            mask_with=state.get("team_members") or [],
+            prompt_version=spec.version,
         )
         opinion.auditor = "precedent"
-        return {"opinions": {"precedent": opinion}}
+        return {"opinions": {"precedent": opinion}, "llm_meta": {"precedent_auditor": meta}}
     except Exception:
         logger.exception("precedent_auditor failed")
         return {"opinions": {"precedent": Opinion(

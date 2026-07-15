@@ -40,15 +40,20 @@ async def classify_category(state: ReviewState) -> dict:
     candidates = categories_for(team_type)
     text = f"{claim.title} {claim.description}"
 
+    llm_meta = {}
     try:
-        pred = await chat_structured(
+        spec = load_prompt("classifier")
+        pred, meta = await chat_structured(
             agent="classifier",
-            system=load_prompt("classifier").system_with_few_shot(),
+            system=spec.system_with_few_shot(),
             user=f"모임 유형: {team_type}\n카테고리 후보(이 중에서만 선택): "
                  f"{', '.join(candidates)}\n\n지출 내용: {text}",
             schema=CategoryPrediction,
             mock_response=CategoryPrediction(category=classify_by_keywords(text, team_type)),
+            mask_with=state.get("team_members") or [],
+            prompt_version=spec.version,
         )
+        llm_meta = {"classifier": meta}
         category = pred.category if pred.category in candidates \
             else classify_by_keywords(text, team_type)
     except Exception:
@@ -56,4 +61,4 @@ async def classify_category(state: ReviewState) -> dict:
         category = classify_by_keywords("", team_type)  # 미매칭 → fallback 반환
 
     return {"claim": claim.model_copy(update={"category": category}),
-            "category_source": "ai"}
+            "category_source": "ai", "llm_meta": llm_meta}

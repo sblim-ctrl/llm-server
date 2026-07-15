@@ -112,14 +112,16 @@ async def generate_draft(state: DraftState) -> dict:
         refs = state.get("references") or []
         ref_text = "\n".join(f"- {r['text']}" for r in refs) or "(참고자료 없음)"
         try:
-            result = await chat_structured(
+            spec = load_prompt("policy_drafter")
+            result, _meta = await chat_structured(
                 agent="policy_drafter",
-                system=load_prompt("policy_drafter").system_with_few_shot(),
+                system=spec.system_with_few_shot(),
                 user=f"모임 유형: {req.team_type}\n모임 이름: {req.team_name}\n"
                      f"모임 소개: {req.description}\n\n"
                      f"참고 규정(다른 모임 사례 — 그대로 베끼지 말고 참고만):\n{ref_text}",
                 schema=ExtraRules,
                 mock_response=ExtraRules(extra_rules=_mock_extra_rules(req.description)),
+                prompt_version=spec.version,
             )
             extra_rules = result.extra_rules[:MAX_EXTRA_RULES]
         except Exception:

@@ -6,12 +6,18 @@
 from typing import Annotated, TypedDict
 
 from app.schemas.common import (
-    ExpenseClaim, GateResult, Mismatch, Opinion, PolicyParams, Reasons, ReceiptData, Verdict,
+    ExpenseClaim, GateResult, LLMCallMeta, Mismatch, Opinion, PolicyParams, Reasons,
+    ReceiptData, Verdict,
 )
 
 
 def merge_opinions(left: dict[str, Opinion] | None,
                    right: dict[str, Opinion] | None) -> dict[str, Opinion]:
+    return {**(left or {}), **(right or {})}
+
+
+def merge_llm_meta(left: dict[str, LLMCallMeta] | None,
+                   right: dict[str, LLMCallMeta] | None) -> dict[str, LLMCallMeta]:
     return {**(left or {}), **(right or {})}
 
 
@@ -27,12 +33,15 @@ class ReviewState(TypedDict, total=False):
     policy_params: PolicyParams
     rule_version: int
     team_type: str              # 모임 유형 — 유형별 카테고리 카탈로그 선택에 사용
+    team_members: list[dict]    # PII 마스킹용 멤버 명단 — 조회 실패 시에도 [] 보장 (B2)
     # 분류 (classify_category가 씀) — "user"(직접 입력) | "ai"(자동 분류)
     category_source: str
     # 진행 산출물
     receipt_data: ReceiptData | None
     mismatch: list[Mismatch]
     opinions: Annotated[dict[str, Opinion], merge_opinions]
+    # LLM 호출 계측 — 병렬 노드가 자기 agent 키로만 쓰고 reducer가 병합 (B2)
+    llm_meta: Annotated[dict[str, LLMCallMeta], merge_llm_meta]
     gate_result: GateResult | None
     # 최종
     verdict: Verdict | None

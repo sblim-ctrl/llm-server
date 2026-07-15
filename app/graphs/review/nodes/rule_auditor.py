@@ -73,9 +73,10 @@ async def rule_auditor(state: ReviewState) -> dict:
             )}}
 
         evidence_text = "\n".join(f"- {c['text']}" for c in chunks)
-        opinion = await chat_structured(
+        spec = load_prompt("rule_auditor")
+        opinion, meta = await chat_structured(
             agent="rule_auditor",
-            system=load_prompt("rule_auditor").system_with_few_shot(),
+            system=spec.system_with_few_shot(),
             user=f"{claim.model_dump_json()}\n\n관련 회칙 조항 (검증된 근거만):\n{evidence_text}",
             schema=Opinion,
             mock_response=Opinion(
@@ -83,9 +84,11 @@ async def rule_auditor(state: ReviewState) -> dict:
                 summary=f"'{claim.category}' 카테고리 지출로 회칙상 금지 항목에 해당하지 않음 (mock)",
                 evidence=[c["text"] for c in chunks],
             ),
+            mask_with=state.get("team_members") or [],
+            prompt_version=spec.version,
         )
         opinion.auditor = "rule"
-        return {"opinions": {"rule": opinion}}
+        return {"opinions": {"rule": opinion}, "llm_meta": {"rule_auditor": meta}}
     except Exception:
         logger.exception("rule_auditor failed")
         return {"opinions": {"rule": Opinion(

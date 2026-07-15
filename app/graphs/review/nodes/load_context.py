@@ -10,7 +10,7 @@ import logging
 
 from app.graphs.review.state import ReviewState
 from app.schemas.common import PolicyParams
-from app.tools.backend_client import get_team_profile
+from app.tools.backend_client import get_team_members, get_team_profile
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +25,17 @@ async def load_context(state: ReviewState) -> dict:
         logger.exception("get_team_profile failed — 기본 유형으로 진행")
         team_type = DEFAULT_TEAM_TYPE
 
+    # PII 마스킹용 멤버 명단 (B2, §4.3) — 실패해도 반드시 [] 반환 (심사를 막지 않음,
+    # 노드들은 state.get("team_members") or []로 접근해 load_context 없이도 동작)
+    try:
+        team_members = await get_team_members(state["team_id"])
+    except Exception:
+        logger.exception("get_team_members failed — 마스킹 없이 진행")
+        team_members = []
+
     return {
         "policy_params": PolicyParams(),
         "rule_version": 1,
         "team_type": team_type,
+        "team_members": team_members,
     }

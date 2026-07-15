@@ -46,12 +46,15 @@ def _mock_result(state: ReviewState) -> AdjudicationResult:
 
 async def adjudicate(state: ReviewState) -> dict:
     opinions = state["opinions"]
-    result = await chat_structured(
+    spec = load_prompt("adjudicator")
+    result, meta = await chat_structured(
         agent="adjudicator",
-        system=load_prompt("adjudicator").system_with_few_shot(),
+        system=spec.system_with_few_shot(),
         user="\n".join(f"[{k}] {v.verdict}: {v.summary}" for k, v in opinions.items()),
         schema=AdjudicationResult,
         mock_response=_mock_result(state),
+        mask_with=state.get("team_members") or [],
+        prompt_version=spec.version,
     )
 
     threshold = state["policy_params"].confidence_threshold
@@ -63,6 +66,7 @@ async def adjudicate(state: ReviewState) -> dict:
         "verdict": verdict,
         "confidence": result.confidence,
         "reasons": Reasons(requester=result.reason_requester, admin=result.reason_admin),
+        "llm_meta": {"adjudicator": meta},
     }
 
 

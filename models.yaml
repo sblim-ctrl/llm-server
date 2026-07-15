@@ -12,3 +12,9 @@ agents:
   briefing_writer: gpt-4o
 
 embeddings: text-embedding-3-small   # 1536차원
+
+# 단가표 (USD / 1M tokens) — cost_usd 계산용 (B2). 모델 교체 시 여기도 갱신할 것.
+pricing:
+  gpt-4o: {input: 2.50, output: 10.00}
+  gpt-4o-mini: {input: 0.15, output: 0.60}
+  text-embedding-3-small: {input: 0.02, output: 0.00}

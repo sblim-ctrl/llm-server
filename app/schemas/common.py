@@ -7,6 +7,17 @@ Verdict = Literal["approve", "reject", "escalate"]
 AuditorVerdict = Literal["pass", "warn", "fail", "error"]
 
 
+class LLMCallMeta(BaseModel):
+    """LLM 호출 1건의 계측 메타 (§5.3 재현성·§9 비용 지표) — chat_structured가 채운다."""
+    model: str
+    prompt_version: str = ""
+    tokens_in: int = 0
+    tokens_out: int = 0
+    cost_usd: float = 0.0
+    latency_ms: int = 0
+    mock: bool = False
+
+
 class ExpenseClaim(BaseModel):
     """지출 청구 내용 (백엔드가 /v1/analyze 페이로드로 전달).
 
