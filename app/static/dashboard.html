@@ -198,7 +198,7 @@
         <div class="field grow"><label>설명</label><textarea id="rv-desc">알고리즘 스터디 교재 2권</textarea></div>
       </div>
       <div class="row">
-        <div class="field grow"><label>영수증 URL (비우면 미첨부 / mock://receipt?amount=&date= 로 불일치 생성)</label>
+        <div class="field grow"><label>영수증 조회 경로 receiptPath (비우면 미첨부 / mock://receipt?amount=&date= 로 불일치 생성)</label>
           <input id="rv-receipt" value="https://example.com/r/demo-1"></div>
       </div>
       <button class="btn" id="rv-submit">심사 요청 보내기</button>
@@ -386,13 +386,19 @@ $("rv-submit").addEventListener("click", async () => {
   $("rv-status").className = "status-line";
   $("rv-result").classList.add("empty");
   try {
+    // pull 모델 (bravo 설계서 TABLE 18) — 백엔드처럼 5필드만 보낸다. 지출 상세는
+    // 목 규약(expenseId의 ?title=&amount=... 쿼리)으로 load_context가 되물어 채움.
+    const q = `title=${encodeURIComponent($("rv-title").value)}`
+      + `&amount=${Number($("rv-amount").value)}`
+      + `&category=${encodeURIComponent($("rv-category").value)}`
+      + `&date=${$("rv-date").value}`
+      + `&description=${encodeURIComponent($("rv-desc").value)}`;
     const payload = {
-      expense_id: "ui-" + Date.now(), team_id: $("rv-team").value,
-      claim: {
-        title: $("rv-title").value, amount: Number($("rv-amount").value),
-        category: $("rv-category").value, date: $("rv-date").value, description: $("rv-desc").value,
-      },
-      receipt_signed_url: $("rv-receipt").value || null,
+      jobId: "ui-job-" + Date.now(),
+      expenseId: `ui-${Date.now()}?${q}`,
+      organizationId: $("rv-team").value,
+      reviewGoal: "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+      receiptPath: $("rv-receipt").value || null,
     };
     const res = await fetch("/v1/analyze", { method: "POST", headers: authHeaders(), body: JSON.stringify(payload) });
     if (!res.ok) throw new Error(`analyze 실패 (${res.status}): ${await res.text()}`);

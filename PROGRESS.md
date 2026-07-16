@@ -1,6 +1,49 @@
 # PROGRESS.md — BudgetOps LLM 서버 진행 기록
 
-> 새 세션에서 이 파일만 읽고 바로 이어서 작업할 수 있도록 작성. 최종 갱신: 2026-07-15(2차).
+> 새 세션에서 이 파일만 읽고 바로 이어서 작업할 수 있도록 작성. 최종 갱신: 2026-07-16.
+
+## 0-2. `/v1/analyze` pull 모델 재설계 완료 (2026-07-16)
+
+§0-1이 예고한 재설계를 구현 완료. 단위 테스트 110개 통과, ruff 클린.
+**단, 골든셋 30건 E2E 재실행은 미완 — Docker dockerInference 잠김(3회째, §5)으로
+llm-postgres를 못 띄움. 재부팅 후 `uv run python eval/run_eval.py` 1회 필수.**
+(골든셋 30건이 새 스키마로 파싱되고 목 pull로 지출 상세가 복원되는 것까지는
+DB 없이 검증 완료.)
+
+무엇이 바뀌었나 (커밋 1개, 이 세션):
+- **`AnalyzeRequest` 5필드 pull 모델** (`app/schemas/analyze.py`): camelCase alias
+  (`jobId/expenseId/organizationId/reviewGoal/receiptPath` — 뒤 2개 키 이름은 가정,
+  백엔드 회신 후 alias만 조정). 구 push 계약(claim 인라인)은 수락 안 됨.
+- **backend_client 신규 3함수**: `get_expense_detail`(목 규약: expense_id의
+  `?title=&amount=...` 쿼리 오버라이드 — api/worker가 별도 프로세스라 in-memory
+  시딩 불가, ID 인코딩만이 양쪽에서 동작), `get_team_settings`(목 규약: org id에
+  `noauto` 포함 → auto_approve=False), `get_receipt_by_path`(Agent 토큰 재요청 자리).
+- **load_context가 pull 수행**: claim 없으면 백엔드에 되물어 구성(조회 실패 = 예외
+  전파 → 재시도/fail-safe), team_settings → PolicyParams(조회 실패 시
+  auto_approve=False fail-safe). 초기 상태에 claim이 있으면(직접 그래프 호출 —
+  smoke·seed_demo·단위테스트) 조회 생략.
+- **auto_approve 최상위 게이트**: `PolicyParams.auto_approve` 신설(실계약 기본
+  FALSE), `evaluate_guardrails` 규칙 0번 `auto_approve_disabled` — 꺼져 있으면
+  소견·금액 무관 무조건 escalate(반려 후보도). 소견 수집은 그대로 해서 관리자
+  참고용 detail은 콜백에 실림.
+- **jobId 매핑**: 백엔드 발급 jobId는 `jobs.external_job_id` 컬럼(신설, ALTER 포함)에
+  저장 — 내부 jobs.id(UUID)는 thread_id·체크포인트 키로 유지. 콜백·fail-safe 콜백은
+  external을 echo(ai_job_id 대조 통과용), `GET /v1/jobs/{id}`는 양쪽 id 모두 조회
+  가능. 활성 잡 dedupe 시 external_job_id 최신화(재제출 대응; 이미 실행 중이면
+  payload는 안 건드림 — 옛 jobId 콜백은 백엔드 폴링 안전망에 위임).
+- **fail-safe 콜백 버그 수정**: 워커 재시도 소진 콜백이 snake_case dict를 보내고
+  있었음 → 정식 CallbackPayload(camelCase) + external jobId echo로 교정.
+- **골든셋 30건 입력 재작성** (`eval/golden/golden_v1.json`): pull 모델 5필드로 변환
+  (스크립트 일괄 변환, 시나리오·기대값 불변). 쿼리 값은 최소 이스케이프(%,&,=,+,#만)
+  — 한글 가독성 유지, parse_qs가 복원.
+- **대시보드 심사 탭·stress_idempotency.py** 새 계약으로 갱신. `AnalyzeAccepted`는
+  내부 job_id(dedupe 가시성) + external_job_id echo 둘 다 반환.
+- **신규 테스트**: `tests/test_analyze_pull_model.py`(계약·목 규약·fail-safe 9건) +
+  guardrail auto_approve 2건 + callback external echo 2건.
+
+미결(백엔드 확인 대기, §0-1 질의요청서와 동일): reviewGoal/receiptPath 실제 JSON 키,
+지출 상세·team_settings·영수증 조회 엔드포인트 경로, 콜백 수신 경로·토큰 방식,
+ESCALATED의 review-result 기록 여부. 전부 `backend_client.py`/alias 한 곳 교체로 대응.
 
 ## 0. 최우선 — 실제 풀스택 API 명세 확보됨 (2026-07-15, 같은 날 2차 정정됨)
 
@@ -102,7 +145,7 @@ pull 모델(실제)로 전환 필요**: 우리가 `organizationId`+`expenseId`�
    가지고 있음** — 우리 쪽 재시도(B4 계획)는 이 백엔드 안전망과 별개로 유효하나,
    중복 안전장치라는 것을 인지할 것(나쁘지 않음, 이중 보호).
 
-### 재설계가 필요한 파일 (다음 세션 착수 지점, 순서 무관하게 상호 의존적)
+### 재설계가 필요한 파일 (✅ 2026-07-16 완료 — §0-2 참고. 아래는 당시 계획 원문)
 - `app/schemas/analyze.py`(`AnalyzeRequest`) — 5필드 pull 모델로 축소
 - `app/graphs/review/nodes/load_context.py` — organizationId로 지출 상세·
   team_settings·영수증을 백엔드에서 가져오는 로직 추가
@@ -114,9 +157,8 @@ pull 모델(실제)로 전환 필요**: 우리가 `organizationId`+`expenseId`�
 - 골든셋 30건(`eval/golden/golden_v1.json`) — 입력 스키마가 바뀌면 전부 재작성
   필요(영향 범위 큼 — 재설계 착수 전 이 점 감안)
 
-**중요**: 이 재설계는 범위가 크고 여러 파일에 걸쳐 있어 이번 세션에서는 문서화만
-하고 착수하지 않음(사용량 한계 고려). 다음 세션에서 사용자와 우선순위 재확인 후
-착수할 것.
+**(2026-07-16 갱신)**: 위 재설계는 완료됨 — 상세는 §0-2. 골든셋 입력 스키마도
+30건 전부 재작성됨(시나리오·기대값 불변).
 > 코드의 최신 진실은 항상 git log와 실제 코드 — 이 문서와 어긋나면 코드가 맞다.
 
 ---
@@ -270,9 +312,11 @@ Python 3.12 고정, uv로 패키지 관리, docker-compose 3컨테이너.
 - **카테고리 오선택 미검증**: 사용자가 교재 구입을 "식비"로 선택해도 그대로 승인됨
   (의도된 동작 — 승인은 카테고리 안 봄). 관리자 사유에 "카테고리 재확인" 참고 메모를
   넣을지 팀 논의 중, **사용자 답변 대기**. 재현: /ui에서 아무 지출이나 카테고리만 엉뚱하게.
-- **Docker Desktop dockerInference 잠김 (2회 발생)**: `C:\Users\user\AppData\Local\Docker\run\dockerInference`
-  파일이 커널 레벨로 잠겨 Docker가 안 뜸. **어떤 삭제 방법도 안 통함 — 재부팅만이 해결책.**
+- **Docker Desktop dockerInference 잠김 (3회 발생 — 최근 2026-07-16)**:
+  `C:\Users\user\AppData\Local\Docker\run\dockerInference` 파일이 커널 레벨로 잠겨
+  Docker가 안 뜸. **어떤 삭제 방법도 안 통함 — 재부팅만이 해결책.**
   증상: "The file cannot be accessed by the system" / `ls`에서 `-?????????` 표시.
+  이것 때문에 pull 모델 재설계(§0-2)의 골든셋 E2E 재실행이 재부팅 대기 중.
 - **목 임베딩은 의미 없음**: 해시 기반이라 회칙이 인덱싱된 팀에서 rule_auditor가 거의 항상
   "근거 불충분(insufficient)"→escalate. 실키 후 `RELEVANCE_MAX_DISTANCE=0.5` 임계값 재조정 필요.
 - **hankyung-docker는 별개 프로젝트**: `C:\Users\user\hankyung-docker` (강의 실습).
@@ -280,6 +324,10 @@ Python 3.12 고정, uv로 패키지 관리, docker-compose 3컨테이너.
 
 ## 6. 남은 작업 (우선순위 순)
 
+0. **재부팅 후 골든셋 E2E 재실행** (pull 모델 재설계 검증 마무리, §0-2):
+   `docker compose up -d llm-postgres` → `uv run python eval/run_eval.py`
+   (기대: verdict 30/30, 오승인 0). 여유 되면 도커 풀스택으로
+   `scripts/stress_idempotency.py`도 재실행(새 5필드 payload로 갱신돼 있음).
 1. **실 OpenAI 키 전환** (키 받으면 최우선): `.env`에 `OPENAI_API_KEY=` 채우고 `MOCK_LLM=false`.
    그 다음 ① 골든셋 재실행(LLM 판정 품질 첫 실측) ② rule_auditor 거리 임계값 조정
    ③ 프롬프트 튜닝 ④ 참고 코퍼스 검색 품질 확인 ⑤ Intake Vision OCR 구현(`parse_receipt` 툴).

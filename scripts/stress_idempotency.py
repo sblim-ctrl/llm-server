@@ -29,17 +29,16 @@ JOB_TIMEOUT_SEC = 60
 
 
 def _payload(expense_id: str) -> dict:
+    # pull 모델 5필드 (bravo 설계서 TABLE 18). jobId는 매 제출마다 새로 발급된다고
+    # 가정(백엔드 재제출 시나리오) — 그래도 같은 expense_id면 내부 잡은 1개여야 한다.
+    # 지출 상세는 expenseId의 목 규약 쿼리로 load_context가 되물어 채운다.
     return {
-        "expense_id": expense_id,
-        "team_id": "stress-club-1",
-        "claim": {
-            "title": "스트레스 테스트 교재",
-            "amount": 32000,
-            "category": "도서",
-            "date": "2026-07-15",
-            "description": "동시 제출 멱등성 검증용",
-        },
-        "receipt_signed_url": f"https://example.com/r/{expense_id}",
+        "jobId": f"be-job-{uuid.uuid4().hex[:12]}",
+        "expenseId": (f"{expense_id}?title=스트레스 테스트 교재&amount=32000"
+                      f"&category=도서&date=2026-07-15&description=동시 제출 멱등성 검증용"),
+        "organizationId": "stress-club-1",
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": f"https://example.com/r/{expense_id}",
     }
 
 

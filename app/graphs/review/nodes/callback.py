@@ -13,7 +13,8 @@ def build_callback_payload(state: ReviewState) -> CallbackPayload:
     adj = llm_meta.get("adjudicator")
     started_at = state.get("started_at")
     return CallbackPayload(
-        job_id=state["job_id"],
+        # 백엔드 발급 jobId를 echo (pull 모델) — 없으면(직접 그래프 호출) 내부 id
+        job_id=state.get("external_job_id") or state["job_id"],
         expense_id=state["expense_id"],
         team_id=state["team_id"],
         verdict=state.get("verdict") or "escalate",

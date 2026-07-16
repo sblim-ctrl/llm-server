@@ -19,7 +19,8 @@ class LLMCallMeta(BaseModel):
 
 
 class ExpenseClaim(BaseModel):
-    """지출 청구 내용 (백엔드가 /v1/analyze 페이로드로 전달).
+    """지출 청구 내용 — pull 모델에서는 요청에 없고 load_context가 백엔드
+    get_expense_detail 조회 결과로 구성한다 (직접 그래프 호출 시엔 초기 상태로 주입).
 
     category는 선택 — 비어 있으면 classify_category 노드가 AI 분류로 채운다 (팀 합의 사항).
     """
@@ -48,7 +49,12 @@ class Mismatch(BaseModel):
 
 
 class PolicyParams(BaseModel):
-    """팀별 심사 파라미터 — 관리자 설정."""
+    """팀별 심사 파라미터 — 관리자 설정 (team_settings에서 load_context가 채움)."""
+    # AI 자동판정 권한 스위치 (bravo 설계서: team_settings.auto_approve, 실서비스
+    # 기본 FALSE). 꺼져 있으면 금액·판단과 무관하게 무조건 ESCALATED — guardrail_gate
+    # 최상위 규칙. 모델 기본값 True는 목·단위테스트의 기존 흐름 보존용이고, 실제 값은
+    # 항상 백엔드 조회 결과로 덮인다(조회 실패 시 load_context가 False로 fail-safe).
+    auto_approve: bool = True
     auto_approve_limit: int = 50_000          # 이 금액 초과 시 무조건 에스컬레이션
     force_escalation_amount: int = 300_000    # 절대 상한
     confidence_threshold: float = 0.8         # θ (§3.3)

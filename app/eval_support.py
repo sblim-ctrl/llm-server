@@ -17,13 +17,16 @@ VERDICT_LABELS = {"approve": "승인", "reject": "반려", "escalate": "보류"}
 
 
 async def run_case(case: dict[str, Any]) -> dict[str, Any]:
+    # pull 모델 — 워커(run_review_job)와 같은 초기 상태로 실행. 지출 상세는
+    # load_context가 expense_id의 목 규약("?title=..&amount=..")으로 되물어 채운다.
     req = AnalyzeRequest.model_validate(case["input"])
     final_state = await review_graph.ainvoke({
         "job_id": f"eval-{case['id']}",
+        "external_job_id": req.job_id,
         "expense_id": req.expense_id,
-        "team_id": req.team_id,
-        "claim": req.claim,
-        "receipt_url": req.receipt_signed_url,
+        "team_id": req.organization_id,
+        "review_goal": req.review_goal,
+        "receipt_path": req.receipt_path,
     })
     actual = final_state.get("verdict") or "escalate"
     expected = case["expected_verdict"]

@@ -18,6 +18,12 @@ def evaluate_guardrails(
 ) -> GateResult:
     triggered: list[str] = []
 
+    # 0. AI 자동판정 권한 스위치 (bravo 설계서: team_settings.auto_approve, 기본 FALSE)
+    #    — 꺼져 있으면 금액·소견과 무관하게 무조건 ESCALATED. 심사관 소견은 그대로
+    #    수집해 관리자 참고용 detail로 콜백에 실린다 (판정 권한만 없는 것).
+    if not policy.auto_approve:
+        triggered.append("auto_approve_disabled")
+
     # 1. 심사관 누락·실패 → ESCALATED (부분 소견으로 판정하지 않음)
     for name in REQUIRED_AUDITORS:
         op = opinions.get(name)

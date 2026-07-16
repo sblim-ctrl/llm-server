@@ -22,12 +22,15 @@ def merge_llm_meta(left: dict[str, LLMCallMeta] | None,
 
 
 class ReviewState(TypedDict, total=False):
-    # 입력
-    job_id: str
+    # 입력 (pull 모델 — bravo 설계서 TABLE 18: 백엔드는 5필드만 보낸다)
+    job_id: str                 # 내부 jobs.id — thread_id·체크포인트 키
+    external_job_id: str        # 백엔드 발급 jobId — 콜백에서 그대로 echo (ai_job_id 대조)
     expense_id: str
-    team_id: str
-    claim: ExpenseClaim
-    receipt_url: str | None
+    team_id: str                # 백엔드 organizationId — 내부 키 이름은 team_id 유지
+    review_goal: str            # 심사 목표 자연어 지시문 (프롬프트 반영 TODO — 프롬프트 트랙)
+    receipt_path: str | None    # 영수증 조회 경로 — intake가 Agent 토큰으로 되물어 조회
+    claim: ExpenseClaim         # load_context가 pull로 채움 (직접 호출 시엔 초기 상태로 주입 가능)
+    receipt_url: str | None     # 구 계약 잔재 — 직접 그래프 호출·mock:// 오버라이드용
     receipt_text: str | None    # 백엔드가 미리 추출한 영수증 텍스트 (있으면 Vision 생략)
     # 컨텍스트 (load_context가 씀)
     started_at: float           # 심사 시작 시각(time.time()) — 콜백 latency_ms 계산용 (B4)

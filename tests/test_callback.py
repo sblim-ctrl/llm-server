@@ -36,6 +36,18 @@ def test_by_name_construction_still_works():
     assert payload.expense_id == "exp-1"
 
 
+def test_external_job_id_is_echoed():
+    """pull 모델 — 백엔드 발급 jobId를 echo해야 expenses.ai_job_id 대조를 통과한다."""
+    state = _state()
+    state["external_job_id"] = "be-issued-42"
+    assert build_callback_payload(state).job_id == "be-issued-42"
+
+
+def test_internal_job_id_fallback_without_external():
+    """직접 그래프 호출(external 없음) — 내부 job_id로 fallback."""
+    assert build_callback_payload(_state()).job_id == "job-1"
+
+
 # ── llm_meta 실측치 반영 (B2→B4) ─────────────────────────
 
 

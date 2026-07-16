@@ -6,6 +6,9 @@ CREATE EXTENSION IF NOT EXISTS vector;
 -- 비동기 잡 (ADR-4)
 CREATE TABLE IF NOT EXISTS jobs (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    -- 백엔드가 발급한 jobId (pull 모델) — 형식(UUID 여부) 미확정이라 TEXT 별도 컬럼으로
+    -- 매핑. 콜백은 이 값을 echo하고, 백엔드 폴링 조회(GET /v1/jobs/{id})도 이 값 허용.
+    external_job_id TEXT,
     expense_id   TEXT,
     team_id      TEXT NOT NULL,
     type         TEXT NOT NULL DEFAULT 'review',   -- review | context_refresh | report | briefing
@@ -20,7 +23,11 @@ CREATE TABLE IF NOT EXISTS jobs (
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- 기존 DB에도 idempotent 적용 (CREATE TABLE IF NOT EXISTS는 기존 테이블에 컬럼을 안 더함)
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS external_job_id TEXT;
 CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs (status, created_at);
+CREATE INDEX IF NOT EXISTS idx_jobs_external_id ON jobs (external_job_id)
+    WHERE external_job_id IS NOT NULL;
 -- 같은 지출의 활성(대기·실행 중) 심사 잡은 1개만 — 동시 중복 제출 방지 (§8 멱등성).
 -- 완료(succeeded/failed/dead)된 뒤의 재제출은 막지 않는다 (재심사 허용).
 CREATE UNIQUE INDEX IF NOT EXISTS uq_jobs_active_review

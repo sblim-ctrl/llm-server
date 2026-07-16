@@ -19,6 +19,8 @@ from app.observability import langsmith_config, setup_langsmith
 from app.graphs.writers.briefing import briefing_graph
 from app.graphs.writers.report import report_graph
 from app.schemas.analyze import AnalyzeRequest, ContextRefreshRequest
+from app.schemas.callback import CallbackPayload
+from app.schemas.common import Reasons
 from app.schemas.writers import BriefingRequest, ReportRequest
 from app.tools.backend_client import send_callback
 
@@ -50,17 +52,17 @@ async def run_review_job(job: dict[str, Any]) -> dict[str, Any]:
     job_id = str(job["id"])
     # thread_id=job_id → 잡 1건 = 체크포인트 스레드 1개 (§4.2)
     # run_name/tags → LangSmith 트레이스 식별 (B3, C9 형식)
-    config = langsmith_config("review", job_id, req.team_id, thread_id=job_id)
+    config = langsmith_config("review", job_id, req.organization_id, thread_id=job_id)
 
     if job["attempts"] <= 1:
-        # 최초 시도 — START부터 실행
+        # 최초 시도 — START부터 실행. 지출 상세는 여기 없다 — load_context가 pull.
         initial_state = {
-            "job_id": job_id,
+            "job_id": job_id,                    # 내부 id — thread_id·체크포인트 키
+            "external_job_id": req.job_id,       # 백엔드 발급 jobId — 콜백 echo용
             "expense_id": req.expense_id,
-            "team_id": req.team_id,
-            "claim": req.claim,
-            "receipt_url": req.receipt_signed_url,
-            "receipt_text": req.receipt_text,
+            "team_id": req.organization_id,
+            "review_goal": req.review_goal,
+            "receipt_path": req.receipt_path,
         }
         final_state = await _review_graph.ainvoke(initial_state, config=config)
     else:
@@ -103,15 +105,20 @@ async def handle_job(job: dict[str, Any]) -> None:
         logger.exception("job %s failed", job_id)
         if job["attempts"] >= job["max_attempts"]:
             await finish_job(job_id, "dead")
-            # fail-safe: 재시도 소진 → ESCALATED 콜백 (§8)
-            await send_callback({
-                "job_id": job_id,
-                "expense_id": job.get("expense_id"),
-                "team_id": job["team_id"],
-                "verdict": "escalate",
-                "reasons": {"requester": "심사 지연으로 관리자 확인이 필요합니다.",
-                            "admin": "AI 분석 실패 (재시도 소진) — fail-safe 에스컬레이션"},
-            })
+            # fail-safe: 재시도 소진 → ESCALATED 콜백 (§8).
+            # 정식 CallbackPayload로 camelCase 직렬화 — 백엔드 발급 jobId를 echo해야
+            # expenses.ai_job_id 대조를 통과한다 (snake_case·내부 id면 무시됨)
+            fail_safe = CallbackPayload(
+                job_id=job.get("external_job_id") or job_id,
+                expense_id=job.get("expense_id") or "",
+                team_id=job["team_id"],
+                verdict="escalate",
+                reasons=Reasons(
+                    requester="심사 지연으로 관리자 확인이 필요합니다.",
+                    admin="AI 분석 실패 (재시도 소진) — fail-safe 에스컬레이션",
+                ),
+            )
+            await send_callback(fail_safe.model_dump(mode="json", by_alias=True))
         else:
             # 재큐잉 — claim_next_job의 attempts 증가와 함께 재시도
             async with get_pool().connection() as conn:

@@ -5,6 +5,7 @@
 """
 import logging
 from typing import Any
+from urllib.parse import parse_qs, urlsplit
 
 import httpx
 
@@ -104,6 +105,80 @@ async def reject_expense(expense_id: str, idempotency_key: str, reason: str) -> 
             return {"status": "duplicate", "idempotent": True}
         r.raise_for_status()
         return r.json()
+
+
+async def get_expense_detail(organization_id: str, expense_id: str) -> dict[str, Any]:
+    """지출 상세 조회 — pull 모델의 핵심 (bravo 설계서 TABLE 18).
+
+    백엔드 심사 요청에는 jobId·expenseId·organizationId·심사목표·영수증 경로만 오고
+    제목·금액·카테고리는 없다 — 이 함수로 되물어 가져온다. 정확한 엔드포인트 경로는
+    풀스택 질의요청서 회신 대기 중 — 확정되면 아래 URL만 교체.
+
+    목 규약 (골든셋·대시보드와 공유 — §7 '규약을 깨지 말 것'):
+      expense_id에 "?"가 있으면 query로 상세를 오버라이드 —
+      "exp-1?title=교재&amount=32000&category=도서&date=2026-07-01&description=..."
+      (in-memory 시딩은 api/worker가 별도 프로세스라 전달 불가 — ID에 인코딩하는
+      방식만이 두 프로세스에서 동일하게 동작한다). 없는 키는 기본값.
+    """
+    s = get_settings()
+    if s.mock_backend:
+        detail = {"title": "모의 지출", "amount": 30_000, "category": "",
+                  "date": "2026-07-01", "description": ""}
+        if "?" in expense_id:
+            params = parse_qs(urlsplit(expense_id).query)
+            for key in ("title", "category", "date", "description"):
+                if key in params:
+                    detail[key] = params[key][0]
+            if "amount" in params:
+                detail["amount"] = int(params["amount"][0])
+        return detail
+    async with httpx.AsyncClient(base_url=s.backend_base_url, headers=_headers()) as client:
+        r = await client.get(
+            f"/internal/agent/organizations/{organization_id}/expenses/{expense_id}")
+        r.raise_for_status()
+        return r.json()
+
+
+async def get_team_settings(organization_id: str) -> dict[str, Any]:
+    """team_settings 조회 — auto_approve 최상위 게이트용 (bravo 설계서 4절).
+
+    실계약에서 auto_approve 기본값은 FALSE(꺼짐) — 꺼져 있으면 금액·판단과 무관하게
+    무조건 ESCALATED. 값 자체는 백엔드 DB가 진실 원천이고 우리는 읽기만 한다.
+
+    목 규약: organization_id에 "noauto" 포함 → auto_approve=False (게이트 검증용).
+    그 외에는 True — 골든셋·데모의 자동판정 흐름을 보존하기 위한 목 전용 기본값이며
+    실서비스 기본값(False)과 다르다는 점에 주의.
+    """
+    s = get_settings()
+    if s.mock_backend:
+        return {
+            "auto_approve": "noauto" not in organization_id.lower(),
+            "auto_approve_limit": 50_000,
+            "escalation_threshold": 0.8,
+        }
+    async with httpx.AsyncClient(base_url=s.backend_base_url, headers=_headers()) as client:
+        r = await client.get(
+            f"/internal/agent/organizations/{organization_id}/team-settings")
+        r.raise_for_status()
+        return r.json()
+
+
+async def get_receipt_by_path(receipt_path: str) -> bytes | None:
+    """영수증 이미지 조회 — 백엔드가 준 '조회 경로'로 Spring에 재요청 (동적 참조).
+
+    signed URL 직접 fetch 방식이 아니라 Agent 전용 토큰으로 백엔드에 되묻는 방식
+    (bravo 설계서 4절 'Agent 전용 토큰'). 목 모드에서는 None을 반환하고
+    intake_receipt가 청구 일치 영수증을 생성한다(mock://receipt?... 오버라이드는
+    intake 쪽 규약 그대로).
+    TODO(실키 연결 후): 반환된 bytes를 Vision OCR(parse_receipt)에 전달.
+    """
+    s = get_settings()
+    if s.mock_backend:
+        return None
+    async with httpx.AsyncClient(base_url=s.backend_base_url, headers=_headers()) as client:
+        r = await client.get(receipt_path)
+        r.raise_for_status()
+        return r.content
 
 
 async def get_team_profile(team_id: str) -> dict[str, Any]:

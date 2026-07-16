@@ -51,6 +51,23 @@ def test_unreadable_receipt_escalates():
     assert "receipt_unreadable" in result.triggered_rules
 
 
+def test_auto_approve_disabled_escalates_everything():
+    """team_settings.auto_approve=False → 소견·금액 무관 무조건 ESCALATED (실계약 기본값)."""
+    policy = PolicyParams(auto_approve=False)
+    result = evaluate_guardrails(_ok_opinions(), [], policy, amount=1_000)
+    assert result.decision == "escalate"
+    assert "auto_approve_disabled" in result.triggered_rules
+
+
+def test_auto_approve_disabled_beats_reject_candidate():
+    """auto_approve OFF면 반려 후보(잔액 부족)도 escalate — 판정 권한 자체가 없다."""
+    opinions = _ok_opinions()
+    opinions["budget"] = Opinion(auditor="budget", verdict="fail", summary="잔액 부족")
+    result = evaluate_guardrails(opinions, [], PolicyParams(auto_approve=False),
+                                 amount=1_000)
+    assert result.decision == "escalate"
+
+
 def test_rule_violation_escalates_regardless_of_amount():
     opinions = _ok_opinions()
     opinions["rule"] = Opinion(auditor="rule", verdict="fail", summary="금지 항목")
