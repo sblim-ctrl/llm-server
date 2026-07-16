@@ -5,10 +5,9 @@
 ## 0-2. `/v1/analyze` pull 모델 재설계 완료 (2026-07-16)
 
 §0-1이 예고한 재설계를 구현 완료. 단위 테스트 110개 통과, ruff 클린.
-**단, 골든셋 30건 E2E 재실행은 미완 — Docker dockerInference 잠김(3회째, §5)으로
-llm-postgres를 못 띄움. 재부팅 후 `uv run python eval/run_eval.py` 1회 필수.**
-(골든셋 30건이 새 스키마로 파싱되고 목 pull로 지출 상세가 복원되는 것까지는
-DB 없이 검증 완료.)
+**E2E 검증도 완료(재부팅 후 같은 날)**: 골든셋 30/30·Trajectory 23/23·오승인 0건,
+멱등성 스트레스 테스트(도커 스택 리빌드 후 새 5필드 payload로) 통과 — 동시 20건
+(각기 다른 백엔드 jobId) → 내부 잡 1개 수렴, 완료 후 재제출은 새 잡.
 
 무엇이 바뀌었나 (커밋 1개, 이 세션):
 - **`AnalyzeRequest` 5필드 pull 모델** (`app/schemas/analyze.py`): camelCase alias
@@ -324,10 +323,8 @@ Python 3.12 고정, uv로 패키지 관리, docker-compose 3컨테이너.
 
 ## 6. 남은 작업 (우선순위 순)
 
-0. **재부팅 후 골든셋 E2E 재실행** (pull 모델 재설계 검증 마무리, §0-2):
-   `docker compose up -d llm-postgres` → `uv run python eval/run_eval.py`
-   (기대: verdict 30/30, 오승인 0). 여유 되면 도커 풀스택으로
-   `scripts/stress_idempotency.py`도 재실행(새 5필드 payload로 갱신돼 있음).
+0. ~~재부팅 후 골든셋 E2E 재실행~~ — **완료(2026-07-16)**: 골든셋 30/30·오승인 0,
+   스트레스 테스트 통과. §0-2 참고.
 1. **실 OpenAI 키 전환** (키 받으면 최우선): `.env`에 `OPENAI_API_KEY=` 채우고 `MOCK_LLM=false`.
    그 다음 ① 골든셋 재실행(LLM 판정 품질 첫 실측) ② rule_auditor 거리 임계값 조정
    ③ 프롬프트 튜닝 ④ 참고 코퍼스 검색 품질 확인 ⑤ Intake Vision OCR 구현(`parse_receipt` 툴).
