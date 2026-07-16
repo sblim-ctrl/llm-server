@@ -3,8 +3,8 @@ import pytest
 
 from app.llm.prompts import load_prompt
 
-AGENTS = ["adjudicator", "classifier", "intake", "policy_drafter", "precedent_auditor",
-          "rule_auditor"]
+AGENTS = ["adjudicator", "classifier", "digest_writer", "intake", "policy_drafter",
+          "precedent_auditor", "rule_auditor"]
 
 
 @pytest.mark.parametrize("agent", AGENTS)

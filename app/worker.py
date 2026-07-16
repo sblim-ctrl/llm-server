@@ -81,24 +81,38 @@ async def run_review_job(job: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+async def run_report_job(job: dict[str, Any]) -> dict[str, Any]:
+    req = ReportRequest.model_validate(job["payload"])
+    final = await report_graph.ainvoke({"request": req})
+    return final["report"].model_dump(mode="json")
+
+
+async def run_briefing_job(job: dict[str, Any]) -> dict[str, Any]:
+    req = BriefingRequest.model_validate(job["payload"])
+    final = await briefing_graph.ainvoke({"request": req})
+    return final["briefing"].model_dump(mode="json")
+
+
+# 잡 타입 → 핸들러 레지스트리 (C6 계약, A-2). 신규 잡 3종(digest·proposal_budget·
+# proposal_rule_amendment)은 각 핸들러 작성자가 자기 worker.py 머지 슬롯에서 등록한다.
+# 핸들러 시그니처: async (job: dict) -> result dict — C9 태깅은 각 핸들러 내부에서.
+JOB_HANDLERS: dict[str, Any] = {
+    "review": run_review_job,
+    "context_refresh": run_context_refresh_job,
+    "report": run_report_job,
+    "briefing": run_briefing_job,
+}
+
+
 async def handle_job(job: dict[str, Any]) -> None:
     job_id = str(job["id"])
     logger.info("job %s start (type=%s attempt=%s)", job_id, job["type"], job["attempts"])
     try:
-        if job["type"] == "review":
-            result = await run_review_job(job)
-        elif job["type"] == "context_refresh":
-            result = await run_context_refresh_job(job)
-        elif job["type"] == "report":
-            req = ReportRequest.model_validate(job["payload"])
-            final = await report_graph.ainvoke({"request": req})
-            result = final["report"].model_dump(mode="json")
-        elif job["type"] == "briefing":
-            req = BriefingRequest.model_validate(job["payload"])
-            final = await briefing_graph.ainvoke({"request": req})
-            result = final["briefing"].model_dump(mode="json")
-        else:
+        handler = JOB_HANDLERS.get(job["type"])
+        if handler is None:
             result = {"status": "unknown_job_type"}
+        else:
+            result = await handler(job)
         await finish_job(job_id, "succeeded", result)
         logger.info("job %s succeeded: %s", job_id, result.get("verdict"))
     except Exception:

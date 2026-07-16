@@ -3,6 +3,7 @@
 연동 방식이 확정되지 않았으므로 MOCK_BACKEND=true(기본)로 개발한다.
 실제 엔드포인트 경로·인증이 확정되면 이 파일의 URL만 바꾸면 된다 — 노드 코드는 불변.
 """
+import asyncio
 import logging
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
@@ -247,18 +248,43 @@ async def get_policy_document(team_id: str, doc_type: str, version: int) -> str:
         return r.json()["text"]
 
 
+CALLBACK_MAX_ATTEMPTS = 3
+CALLBACK_BACKOFF_BASE_SEC = 1.0  # 1s → 2s → (4s는 없음: 3회째 실패 시 포기)
+
+
+async def _post_callback(payload: dict[str, Any]) -> None:
+    """콜백 1회 전송 — 실패는 예외로 전파 (재시도 루프가 잡는다). 테스트 대체 지점."""
+    s = get_settings()
+    async with httpx.AsyncClient(base_url=s.backend_base_url, headers=_headers()) as client:
+        r = await client.post("/agent-callback", json=payload, timeout=10)
+        r.raise_for_status()
+
+
 async def send_callback(payload: dict[str, Any]) -> bool:
-    """POST {BE}/agent-callback — 실패해도 예외 없이 False (백엔드가 폴링 fallback)."""
+    """POST {BE}/agent-callback — 지수 백오프 3회 재시도 (A-5).
+
+    최종 실패해도 예외 없이 False — 백엔드의 폴링 fallback이 설계상 최종 안전망
+    (§7.1)이므로 콜백 실패가 심사 잡을 죽이면 안 된다. 반환은 지금 bool이지만,
+    늦은 콜백 규칙(질의요청서 C6②) 확정 시 백엔드 응답 status('저장만 됨' 등)를
+    실어 나를 수 있도록 이 함수에서만 확장하면 되는 구조를 유지할 것.
+    """
     s = get_settings()
     if s.mock_backend:
         logger.info("MOCK callback: verdict=%s expense=%s",
                     payload.get("verdict"), payload.get("expenseId"))
         return True
-    try:
-        async with httpx.AsyncClient(base_url=s.backend_base_url, headers=_headers()) as client:
-            r = await client.post("/agent-callback", json=payload, timeout=10)
-            r.raise_for_status()
+    for attempt in range(1, CALLBACK_MAX_ATTEMPTS + 1):
+        try:
+            await _post_callback(payload)
             return True
-    except httpx.HTTPError:
-        logger.exception("callback failed — 백엔드 폴링 fallback에 위임")
-        return False
+        except httpx.HTTPError:
+            if attempt == CALLBACK_MAX_ATTEMPTS:
+                logger.error(
+                    "callback failed after %d attempts (job=%s) — 백엔드 폴링 fallback에 위임",
+                    CALLBACK_MAX_ATTEMPTS, payload.get("jobId"), exc_info=True)
+                return False
+            delay = CALLBACK_BACKOFF_BASE_SEC * (2 ** (attempt - 1))
+            logger.warning("callback attempt %d/%d failed (job=%s) — %.0fs 후 재시도",
+                           attempt, CALLBACK_MAX_ATTEMPTS, payload.get("jobId"), delay)
+            await asyncio.sleep(delay)
+    return False  # 도달 불가 — 타입 체커용

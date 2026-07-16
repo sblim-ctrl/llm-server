@@ -30,3 +30,5 @@ class CallbackPayload(BaseModel):
     prompt_version: str = "review/v1"
     cost_usd: float = 0.0
     latency_ms: int = 0
+    # dry-run 기능은 Sprint 1 범위 외(P2) — 콜백 필드만 선반영 (업무분장 C5·§4)
+    dry_run: bool = False
