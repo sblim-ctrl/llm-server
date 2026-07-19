@@ -1,4 +1,5 @@
 """환경 설정 — .env 로드 (pydantic-settings)."""
+
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -24,6 +25,8 @@ class Settings(BaseSettings):
     # 워커
     worker_poll_interval_sec: float = 2.0
     job_max_attempts: int = 3
+    # B-7 고아 잡 회수 — running으로 방치된 잡을 재큐잉하는 한계 시간 (p95 15s 대비 충분)
+    worker_visibility_timeout_sec: int = 300
 
     # 관측 (B3 — langsmith_tracing=true + api_key 설정 시 기동 코드가 LANGCHAIN_* env 주입)
     langsmith_tracing: bool = False
