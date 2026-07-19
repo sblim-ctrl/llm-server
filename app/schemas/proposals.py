@@ -5,6 +5,11 @@ from typing import Any, Literal
 from pydantic import BaseModel
 
 
+class ProposalBudgetRequest(BaseModel):
+    team_id: str
+    period: str | None = None  # "YYYY-MM" — 미지정 시 실행 시점의 당월
+
+
 class ProposalAccepted(BaseModel):
     proposal_id: str
 

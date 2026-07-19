@@ -10,6 +10,7 @@ agents:
   policy_drafter: gpt-4o
   report_writer: gpt-4o-mini
   briefing_writer: gpt-4o
+  budget_planner: gpt-4o-mini   # 수치는 코드(burn_rate_forecast), LLM은 문구만 (C7 — B 소유 줄)
 
 embeddings: text-embedding-3-small   # 1536차원
 

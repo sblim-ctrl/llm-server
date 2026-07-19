@@ -1,4 +1,5 @@
 """FastAPI 앱 — 라우터·미들웨어 조립만 (§11.1). LLM 호출은 워커에만 존재 (§10.2)."""
+
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -7,7 +8,16 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 
 from app.api import (
-    analyze, briefings, context, drafts, eval as eval_api, health, jobs, precedents, reports,
+    analyze,
+    briefings,
+    context,
+    drafts,
+    eval as eval_api,
+    health,
+    jobs,
+    precedents,
+    proposals,
+    reports,
 )
 from app.db.pool import apply_schema, close_pool, open_pool
 from app.mcp_server import mcp_app, mcp_session_manager
@@ -48,6 +58,7 @@ app.include_router(precedents.router)
 app.include_router(drafts.router)
 app.include_router(reports.router)
 app.include_router(briefings.router)
+app.include_router(proposals.router)
 app.include_router(eval_api.router)
 
 

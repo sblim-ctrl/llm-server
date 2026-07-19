@@ -4,6 +4,7 @@
 실패 시 max_attempts까지 자동 재시도(잡 재큐잉), 소진 시 dead 처리 후
 fail-safe 에스컬레이션 콜백을 보낸다 — 어떤 실패도 자동 승인으로 이어지지 않는다 (§8).
 """
+
 import asyncio
 import logging
 import signal
@@ -17,8 +18,10 @@ from app.graphs.indexing.graph import indexing_graph
 from app.graphs.review.graph import build_review_graph
 from app.observability import langsmith_config, setup_langsmith
 from app.graphs.writers.briefing import briefing_graph
+from app.graphs.writers.budget_planner import budget_planner_graph
 from app.graphs.writers.report import report_graph
 from app.schemas.analyze import AnalyzeRequest, ContextRefreshRequest
+from app.schemas.proposals import ProposalBudgetRequest
 from app.schemas.writers import BriefingRequest, ReportRequest
 from app.tools.backend_client import send_callback
 
@@ -37,11 +40,13 @@ async def run_context_refresh_job(job: dict[str, Any]) -> dict[str, Any]:
     if req.change_type not in INDEXABLE_CHANGE_TYPES:
         return {"status": "skipped", "reason": f"non-indexable change_type: {req.change_type}"}
 
-    final_state = await indexing_graph.ainvoke({
-        "team_id": req.team_id,
-        "doc_type": req.change_type,
-        "version": req.version,
-    })
+    final_state = await indexing_graph.ainvoke(
+        {
+            "team_id": req.team_id,
+            "doc_type": req.change_type,
+            "version": req.version,
+        }
+    )
     return {"status": "indexed", "chunks_indexed": final_state.get("chunks_indexed", 0)}
 
 
@@ -95,6 +100,13 @@ async def handle_job(job: dict[str, Any]) -> None:
             req = BriefingRequest.model_validate(job["payload"])
             final = await briefing_graph.ainvoke({"request": req})
             result = final["briefing"].model_dump(mode="json")
+        elif job["type"] == "proposal_budget":
+            req = ProposalBudgetRequest.model_validate(job["payload"])
+            final = await budget_planner_graph.ainvoke(
+                {"request": req},
+                config=langsmith_config("proposal_budget", job_id, req.team_id),  # C9 태깅
+            )
+            result = {"proposal_id": final.get("proposal_id"), "payload": final.get("payload")}
         else:
             result = {"status": "unknown_job_type"}
         await finish_job(job_id, "succeeded", result)
@@ -104,14 +116,18 @@ async def handle_job(job: dict[str, Any]) -> None:
         if job["attempts"] >= job["max_attempts"]:
             await finish_job(job_id, "dead")
             # fail-safe: 재시도 소진 → ESCALATED 콜백 (§8)
-            await send_callback({
-                "job_id": job_id,
-                "expense_id": job.get("expense_id"),
-                "team_id": job["team_id"],
-                "verdict": "escalate",
-                "reasons": {"requester": "심사 지연으로 관리자 확인이 필요합니다.",
-                            "admin": "AI 분석 실패 (재시도 소진) — fail-safe 에스컬레이션"},
-            })
+            await send_callback(
+                {
+                    "job_id": job_id,
+                    "expense_id": job.get("expense_id"),
+                    "team_id": job["team_id"],
+                    "verdict": "escalate",
+                    "reasons": {
+                        "requester": "심사 지연으로 관리자 확인이 필요합니다.",
+                        "admin": "AI 분석 실패 (재시도 소진) — fail-safe 에스컬레이션",
+                    },
+                }
+            )
         else:
             # 재큐잉 — claim_next_job의 attempts 증가와 함께 재시도
             async with get_pool().connection() as conn:
@@ -123,6 +139,7 @@ async def handle_job(job: dict[str, Any]) -> None:
 
 async def poll_loop() -> None:
     from app.db.pool import claim_next_job
+
     interval = get_settings().worker_poll_interval_sec
     logger.info("worker started (poll every %.1fs)", interval)
     while not _shutdown.is_set():
