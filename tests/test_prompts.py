@@ -1,10 +1,19 @@
 """프롬프트 로더 (B1) — YAML 4종 로드·version 필드 정합성."""
+
 import pytest
 
 from app.llm.prompts import load_prompt
 
-AGENTS = ["adjudicator", "classifier", "intake", "policy_drafter", "precedent_auditor",
-          "rule_auditor"]
+AGENTS = [
+    "adjudicator",
+    "budget_planner",
+    "classifier",
+    "intake",
+    "policy_drafter",
+    "precedent_auditor",
+    "rule_amendment",
+    "rule_auditor",
+]  # B-5 크로스 수정 (C3)
 
 
 @pytest.mark.parametrize("agent", AGENTS)
@@ -36,5 +45,6 @@ def test_env_override_selects_version(monkeypatch, tmp_path):
     assert load_prompt("adjudicator").version == "adjudicator/v1"
     monkeypatch.setenv("PROMPT_VERSION_ADJUDICATOR", "v999")
     import pytest as _pytest
+
     with _pytest.raises(FileNotFoundError):
         load_prompt("adjudicator")  # 없는 버전이면 조용히 폴백하지 않고 즉시 실패
