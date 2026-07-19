@@ -20,8 +20,9 @@ from app.observability import langsmith_config, setup_langsmith
 from app.graphs.writers.briefing import briefing_graph
 from app.graphs.writers.budget_planner import budget_planner_graph
 from app.graphs.writers.report import report_graph
+from app.graphs.writers.rule_amendment import rule_amendment_graph
 from app.schemas.analyze import AnalyzeRequest, ContextRefreshRequest
-from app.schemas.proposals import ProposalBudgetRequest
+from app.schemas.proposals import ProposalBudgetRequest, RuleAmendmentRequest
 from app.schemas.writers import BriefingRequest, ReportRequest
 from app.tools.backend_client import send_callback
 
@@ -107,6 +108,13 @@ async def handle_job(job: dict[str, Any]) -> None:
                 config=langsmith_config("proposal_budget", job_id, req.team_id),  # C9 태깅
             )
             result = {"proposal_id": final.get("proposal_id"), "payload": final.get("payload")}
+        elif job["type"] == "proposal_rule_amendment":
+            req = RuleAmendmentRequest.model_validate(job["payload"])
+            final = await rule_amendment_graph.ainvoke(
+                {"request": req},
+                config=langsmith_config("proposal_rule_amendment", job_id, req.team_id),  # C9 태깅
+            )
+            result = {"proposals": final.get("proposal_ids") or [], "reason": final.get("reason")}
         else:
             result = {"status": "unknown_job_type"}
         await finish_job(job_id, "succeeded", result)

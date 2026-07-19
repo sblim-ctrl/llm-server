@@ -9,6 +9,7 @@
 출력: 주차별 에스컬레이션 비율 표 + eval/results/demo_weeks.csv (PPT 그래프용)
 실행 후 판례가 DB에 남으므로 /ui 대시보드·브리핑 데모에도 그대로 사용 가능 (팀: demo-growth).
 """
+
 import asyncio
 import csv
 import sys
@@ -45,22 +46,31 @@ CLAIMS = [
 ]
 # 주차별로 사용할 템플릿 인덱스 (이전 주 유형 반복 + 신규 유입)
 WEEK_PLAN = {
-    1: list(range(0, 6)),           # 전부 처음 보는 유형
-    2: list(range(0, 9)),           # 6개 반복 + 3개 신규
-    3: list(range(0, 12)),          # 9개 반복 + 3개 신규
-    4: list(range(0, 12)),          # 전부 기존 유형
+    1: list(range(0, 6)),  # 전부 처음 보는 유형
+    2: list(range(0, 9)),  # 6개 반복 + 3개 신규
+    3: list(range(0, 12)),  # 9개 반복 + 3개 신규
+    4: list(range(0, 12)),  # 전부 기존 유형
 }
 
 
 async def submit(week: int, idx: int) -> dict:
     title, amount, category, desc = CLAIMS[idx]
-    claim = ExpenseClaim(title=title, amount=amount, category=category,
-                         date=f"2026-07-{week * 7:02d}", description=desc)
-    state = await review_graph.ainvoke({
-        "job_id": f"demo-w{week}-{idx}", "expense_id": f"demo-exp-w{week}-{idx}",
-        "team_id": TEAM, "claim": claim,
-        "receipt_url": f"https://example.com/r/demo-{week}-{idx}",
-    })
+    claim = ExpenseClaim(
+        title=title,
+        amount=amount,
+        category=category,
+        date=f"2026-07-{week * 7:02d}",
+        description=desc,
+    )
+    state = await review_graph.ainvoke(
+        {
+            "job_id": f"demo-w{week}-{idx}",
+            "expense_id": f"demo-exp-w{week}-{idx}",
+            "team_id": TEAM,
+            "claim": claim,
+            "receipt_url": f"https://example.com/r/demo-{week}-{idx}",
+        }
+    )
     return {"claim": claim, "verdict": state["verdict"]}
 
 
@@ -82,17 +92,41 @@ async def main() -> None:
             results = [await submit(week, i) for i in plan]
             escalated = [r for r in results if r["verdict"] == "escalate"]
             rate = len(escalated) / len(results)
-            rows.append({"week": week, "total": len(results),
-                         "escalated": len(escalated), "rate": rate})
-            print(f"{week}주차: {len(results)}건 중 에스컬레이션 {len(escalated)}건 "
-                  f"({rate:.0%})")
+            rows.append(
+                {"week": week, "total": len(results), "escalated": len(escalated), "rate": rate}
+            )
+            print(f"{week}주차: {len(results)}건 중 에스컬레이션 {len(escalated)}건 ({rate:.0%})")
 
             # 관리자가 에스컬레이션 건을 전부 승인 → 판례 축적 (학습 루프)
             for r in escalated:
                 await save_precedent(
-                    team_id=TEAM, summary=summarize_claim(r["claim"]),
-                    decision="approve", decided_by="ADMIN",
-                    reason="정상적인 모임 활동 지출로 확인 — 승인")
+                    team_id=TEAM,
+                    summary=summarize_claim(r["claim"]),
+                    decision="approve",
+                    decided_by="ADMIN",
+                    reason="정상적인 모임 활동 지출로 확인 — 승인",
+                )
+
+        # B-6 시드 확장 (append-only — 기존 시드는 A-4 anomalies 테스트·골든셋이 의존, C10)
+        # 동일 청구 반복 → summarize_claim이 날짜를 제외하므로 바이트 동일 요약
+        # → 목 해시 임베딩 distance 0 → detect_repeated_overrides 군집 성립 (임계 3 충족)
+        override_claim = ExpenseClaim(
+            title="정기 회식",
+            amount=35_000,
+            category="식비",
+            date="2026-07-05",
+            description="회식비 3.5만원 — 한도 초과분 재량 승인",
+        )
+        for _ in range(3):
+            await save_precedent(
+                team_id=TEAM,
+                summary=summarize_claim(override_claim),
+                decision="approve",
+                decided_by="ADMIN",
+                is_override=True,
+                reason="관리자 재량으로 한도 초과 승인",
+            )
+        print("\nB-6 시드: 동일 패턴 ADMIN override 판례 3건 추가 (회칙 개정 제안 데모용)")
 
         out = ROOT / "eval" / "results" / "demo_weeks.csv"
         out.parent.mkdir(parents=True, exist_ok=True)

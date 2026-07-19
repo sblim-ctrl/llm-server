@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 
 from app.db.pool import insert_job
 from app.schemas.analyze import AnalyzeAccepted
-from app.schemas.proposals import ProposalBudgetRequest, ProposalPatch
+from app.schemas.proposals import ProposalBudgetRequest, ProposalPatch, RuleAmendmentRequest
 from app.tools.proposal_store import update_proposal_status
 
 router = APIRouter(prefix="/v1", tags=["proposals"])
@@ -14,6 +14,14 @@ router = APIRouter(prefix="/v1", tags=["proposals"])
 async def create_budget_proposal_job(req: ProposalBudgetRequest) -> AnalyzeAccepted:
     job_id = await insert_job(
         team_id=req.team_id, job_type="proposal_budget", payload=req.model_dump(mode="json")
+    )
+    return AnalyzeAccepted(job_id=job_id)
+
+
+@router.post("/proposals/rule-amendment", response_model=AnalyzeAccepted, status_code=202)
+async def create_rule_amendment_job(req: RuleAmendmentRequest) -> AnalyzeAccepted:
+    job_id = await insert_job(
+        team_id=req.team_id, job_type="proposal_rule_amendment", payload=req.model_dump(mode="json")
     )
     return AnalyzeAccepted(job_id=job_id)
 

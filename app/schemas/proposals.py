@@ -10,6 +10,10 @@ class ProposalBudgetRequest(BaseModel):
     period: str | None = None  # "YYYY-MM" — 미지정 시 실행 시점의 당월
 
 
+class RuleAmendmentRequest(BaseModel):
+    team_id: str
+
+
 class ProposalAccepted(BaseModel):
     proposal_id: str
 
