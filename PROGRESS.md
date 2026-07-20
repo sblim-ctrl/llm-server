@@ -94,6 +94,22 @@ DigestWriter(주간 브리핑)·PolicyDrafter 개정 모드(회칙 개정 제안
 ② API-024 AI 요약 엔드포인트 신설 ③ 콜백 API-044/045 실제 트리거 경로 백엔드팀과
 확인 ④ 이후 스프린트1 B2~B7(LLM 하네스·LangSmith·워커 신뢰성·Vision OCR) 계속.
 
+## 0-3. 업무분장 후 개발자 A 트랙 진행 (2026-07-20, cowbro 브랜치)
+
+담당 확정: 사용자 = **개발자 A** (`docs/업무분장_스프린트1_작업명세_v2.md` 3차 개정).
+브랜치 전략: 각자 개인 브랜치(sblim=팀장/cowbro=A) → 완료 시 main.
+
+- **A-1 로더·A-3 하네스**: 업무분장 전 세션에서 기완료 (07-15 커밋들).
+- **A-2 레지스트리·A-5 잔여(콜백 3회 재시도+dry_run)·A-7 digest YAML**: 85e2f3c.
+- **A-4 DigestWriter**: eecb883 — 주간 집계·이상 징후 2종(목 데이터 발화 확인)·
+  BurnForecast 재사용(C8, B-2는 팀장 커밋 08f72d2 체리픽). E2E 검증 완료
+  (202→succeeded→verified=true, weekly_spent 108,000원·식비 급증 발화).
+  핸들러 계약 (result, final_state|None) 확장 선반영 (7/20 팀 합의 ①).
+- **다음**: 팀장 sblim→main 병합(FF) 후 A가 3파일 해소(worker.py=레지스트리에
+  proposal 2종 흡수+B-7 계측, pool.py=external_job_id+B 추가분, test_prompts=
+  AGENTS union). fail-safe 콜백은 합집합(camelCase echo + review 한정 가드 — 합의 ②).
+  이후 A-8 대시보드 탭, 실키 오면 A-6 Vision·A-9.
+
 ## 0-1. 더 중요한 발견 — `기획/bravo_기술아키텍처설계서.docx` (풀스택 구현 설계서, 2026-07-15)
 
 xlsx는 "API 목록"일 뿐이고, 이 docx가 **우리 심사 파이프라인이 실제로 받는 요청의
