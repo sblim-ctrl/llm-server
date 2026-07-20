@@ -97,8 +97,11 @@ async def _invoke_structured(agent: str, model: str, messages: list, schema: typ
     settings = get_settings()
     from langchain_openai import ChatOpenAI  # 지연 임포트 — 목 모드에선 불필요
 
+    # temperature=0 — 심사·판정은 창의성이 아니라 재현성이 목표 (§5.3). 실측에서
+    # 같은 입력에 판정이 흔들리는 편차(도서 승인 건이 회차에 따라 pass/위반)를
+    # 확인해 고정 (2026-07-20 6차 실측). 같은 입력 → 같은 판정.
     llm = ChatOpenAI(model=model, api_key=settings.openai_api_key,
-                     timeout=30, max_retries=3)
+                     timeout=30, max_retries=3, temperature=0)
     # method="function_calling" 필수 (A-9 실측에서 발견): 기본 json_schema strict
     # 모드는 Opinion.figures 같은 자유 dict 필드를 400으로 거부한다
     # ("Extra required key 'figures' supplied") — 목 모드에선 절대 안 드러나는 버그.

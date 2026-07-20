@@ -16,10 +16,11 @@ _PROMPTS_DIR = Path(__file__).resolve().parents[2] / "prompts"
 _ENV_PREFIX = "PROMPT_VERSION_"   # A/B 실험용 오버라이드: PROMPT_VERSION_ADJUDICATOR=v2
 
 # 에이전트별 기본 버전 — 실측 A/B로 우세가 재현된 버전만 승격한다 (미등재=v1).
-# rule_auditor·adjudicator v2 승격 근거(2026-07-20 실모드 골든셋, 오승인 전 회차 0):
-# v1 80.0% vs v2 93.3%·90.0%(재현) — 상세는 PROGRESS §6-1.
+# 승격 근거(2026-07-20 실모드 골든셋 6회전, 오승인 전 회차 0 — 상세 PROGRESS §6-1):
+# rule_auditor v1 80.0% → v2 93.3%·90.0%(재현) → v3+temp0 100.0% (연 한도 편차 해소)
+# adjudicator v1 80.0% → v2 93.3%~ (잔액 부족 확신 반려)
 DEFAULT_VERSIONS = {
-    "rule_auditor": "v2",
+    "rule_auditor": "v3",
     "adjudicator": "v2",
 }
 
