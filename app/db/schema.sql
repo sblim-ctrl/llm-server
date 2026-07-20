@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     external_job_id TEXT,
     expense_id   TEXT,
     team_id      TEXT NOT NULL,
-    type         TEXT NOT NULL DEFAULT 'review',   -- review | context_refresh | report | briefing
+    type         TEXT NOT NULL DEFAULT 'review',   -- review | context_refresh | report | briefing | digest | proposal_budget | proposal_rule_amendment
     status       TEXT NOT NULL DEFAULT 'queued',   -- queued | running | succeeded | failed | dead
     attempts     INT  NOT NULL DEFAULT 0,
     max_attempts INT  NOT NULL DEFAULT 3,
@@ -65,6 +65,19 @@ CREATE TABLE IF NOT EXISTS precedents (
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_precedents_team_active ON precedents (team_id) WHERE active;
+
+-- 제안 (§6, C2) — BudgetPlanner·PolicyDrafter 개정 모드 산출물. 상태 전이: proposed → accepted | dismissed
+CREATE TABLE IF NOT EXISTS proposals (
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    team_id    TEXT NOT NULL,
+    type       TEXT NOT NULL,                    -- budget | rule_amendment
+    payload    JSONB NOT NULL,
+    status     TEXT NOT NULL DEFAULT 'proposed', -- proposed | accepted | dismissed
+    decided_by TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    decided_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_proposals_team_status ON proposals (team_id, status);
 
 -- HNSW 인덱스는 데이터가 쌓인 뒤 생성 (2주차):
 -- CREATE INDEX ON context_chunks USING hnsw (embedding vector_cosine_ops);
