@@ -374,8 +374,10 @@ Python 3.12 고정, uv로 패키지 관리, docker-compose 3컨테이너.
    ① temperature=0 고정(심사 재현성 — 편차 케이스 해소의 본질) ② rule_auditor/v3
    (연 한도 조항은 '제공된 정보만으로 — 누적 미제공 시 이번 청구만 비교' +
    해당 few_shot). v3 승격 완료(DEFAULT_VERSIONS).
-   CSV: eval/results/golden_realmode_*.csv (하니스는 일회성 스크립트 — receipt_text
-   변환·실인덱싱·전후 정리 포함, 정식 실모드 하니스는 Sprint 2).
+   CSV: eval/results/golden_realmode_*.csv. **실모드 하니스 정식화 완료
+   (`eval/run_eval_real.py` — Sprint 2 선행)**: 6회전 절차 전부 코드화, 오승인>0이면
+   exit 1. **골든셋 v1.1(42건, 신규 12건 포함) 실모드 42/42=100% (2026-07-20,
+   $0.30)** — noauto 게이트·경계 정밀·복합 불일치·자동 분류까지 실 LLM 검증.
 2. **백엔드 계약 반영**: 필드명·Swagger 받으면 `app/schemas/`와 `backend_client.py`의
    URL·필드명만 교체 (노드 코드 불변이 설계 의도). camelCase면 Pydantic alias 사용.
 3. **LangSmith 연동 — 완료 (개발자 B, B-4, 커밋 5c8d4ff `app/observability.py`)**: 트레이싱 배선·
