@@ -367,7 +367,6 @@ CALLBACK_BACKOFF_BASE_SEC = 1.0  # 1s → 2s → (4s는 없음: 3회째 실패 �
 
 async def _post_callback(payload: dict[str, Any]) -> None:
     """콜백 1회 전송 — 실패는 예외로 전파 (재시도 루프가 잡는다). 테스트 대체 지점."""
-    s = get_settings()
     r = await _client().post("/agent-callback", json=payload, timeout=10)
     r.raise_for_status()
 

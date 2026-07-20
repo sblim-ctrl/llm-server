@@ -1,0 +1,64 @@
+# CI 게이트 (Sprint 2 선행 착수, 2026-07-20) — lint → 단위 테스트 → 골든셋 회귀.
+#
+# 골든셋은 목 모드(MOCK_LLM=true)라 API 키·비용 없이 돈다. 하드 게이트:
+# eval/run_eval.py가 오승인(false-approve) 1건이라도 있으면 exit 1 → 머지 차단.
+# 실모드 골든셋(실키·과금)은 CI 밖 — README '실모드 수동 체크리스트' 참고.
+name: ci
+
+on:
+  push:
+    branches: [main, cowbro, sblim]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16   # docker-compose llm-postgres와 동일
+        env:
+          POSTGRES_USER: budgetops
+          POSTGRES_PASSWORD: budgetops
+          POSTGRES_DB: budgetops_llm
+        ports:
+          - "5433:5432"                 # .env.example의 DATABASE_URL 포트와 일치
+        options: >-
+          --health-cmd "pg_isready -U budgetops"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://budgetops:budgetops@localhost:5433/budgetops_llm
+      SERVICE_TOKEN: ci-service-token
+      MOCK_LLM: "true"
+      MOCK_BACKEND: "true"
+      BACKEND_BASE_URL: http://localhost:8080
+      LANGSMITH_TRACING: "false"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: uv 설치 (Python 3.12 고정)
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: 의존성 설치
+        run: uv sync --frozen
+
+      - name: lint (ruff)
+        run: uv run ruff check app tests scripts eval
+
+      - name: 단위 테스트 (pytest)
+        run: uv run pytest -q
+
+      - name: 골든셋 회귀 — 오승인 0 하드 게이트
+        run: uv run python eval/run_eval.py
+
+      - name: 라이터 골든셋 (문서 생성 3종)
+        run: uv run python eval/run_eval_writers.py
