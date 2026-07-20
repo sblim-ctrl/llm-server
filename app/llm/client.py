@@ -99,7 +99,11 @@ async def _invoke_structured(agent: str, model: str, messages: list, schema: typ
 
     llm = ChatOpenAI(model=model, api_key=settings.openai_api_key,
                      timeout=30, max_retries=3)
-    structured = llm.with_structured_output(schema, include_raw=True)
+    # method="function_calling" 필수 (A-9 실측에서 발견): 기본 json_schema strict
+    # 모드는 Opinion.figures 같은 자유 dict 필드를 400으로 거부한다
+    # ("Extra required key 'figures' supplied") — 목 모드에선 절대 안 드러나는 버그.
+    structured = llm.with_structured_output(schema, include_raw=True,
+                                            method="function_calling")
     result = await structured.ainvoke(messages)
     if result.get("parsing_error"):
         raise ValueError(f"{agent} 구조화 출력 파싱 실패: {result['parsing_error']}")

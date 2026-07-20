@@ -93,6 +93,34 @@ uv run python scripts/seed_demo.py                       # 판례 학습 데모 
 
 실연동 시 `.env`만 바꾸면 됨 — 노드 코드는 불변 (`app/tools/backend_client.py`가 경계).
 
+## 실모드 수동 체크리스트 (A-9/B-8 — 비용 문제로 CI 밖)
+
+`.env`에 `OPENAI_API_KEY` 설정 후, **`.env`의 `MOCK_LLM=true`는 유지**하고
+검증 프로세스에만 `MOCK_LLM=false` 환경변수를 주입한다 (전체 pytest는 목 모드에
+의존 — .env를 통째로 바꾸면 테스트가 실과금을 시도한다).
+
+개발자 A 몫 (2026-07-20 1차 수행 — 전 항목 통과):
+
+- [x] 회칙 인덱싱(실임베딩) 후 receipt_text 경로 심사 → 3심사관 pass →
+      **approve, confidence 0.95, 건당 $0.008** (목표 <$0.05). rule 소견에
+      실제 조항 인용 확인
+- [x] llm_meta 실측: model/prompt_version/tokens/cost가 콜백·잡 결과에 기록
+- [x] Vision(A-6 완료 기준): 실제 영수증 이미지 → 합계 32,000원(품목 합산 아님)·
+      날짜·상호·품목 추출 / 노이즈 이미지 → parse_ok=false → escalate 경로
+- [x] Digest 실모드(C4): gpt-4o-mini 생성 → 수치 대조 검증 verified=true
+      (검증기가 환각 수치를 실제로 1회 차단 — Generator-Evaluator 실증)
+- [x] 실판례 루프: escalate 판례 저장 → 동일 청구 재심사에서 의미 검색으로
+      인용(warn) 확인 — 실임베딩에서만 가능한 검증
+- [ ] 마스킹 실전송 확인·LangSmith 트레이스 — **LANGSMITH_API_KEY 수급 대기**
+      (마스킹 자체는 단위 테스트로 검증됨, 와이어 확인만 잔여)
+- [ ] 개발자 B 몫(B-8): BudgetPlanner·rule_amendment 실모드, 군집 실키 확인,
+      jobs cost/tokens 실기록, C9 태깅 트레이스
+
+실측에서 나온 수정 3건(전부 이 리포에 반영됨): ① `with_structured_output`은
+`method="function_calling"` 필수 — 기본 strict 모드가 `Opinion.figures`(자유 dict)를
+400으로 거부 ② `RELEVANCE_MAX_DISTANCE` 0.5→0.65 (실거리 실측: 관련 0.42-0.51 /
+무관 0.71+) ③ digest_writer 프롬프트에 필수 표기 형식 명시 (검증기 정합).
+
 ## 구조
 
 ```

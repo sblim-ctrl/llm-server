@@ -23,8 +23,12 @@ from app.tools.search_rules import search_rules
 
 logger = logging.getLogger(__name__)
 
-# 이 거리보다 멀면 근거로 사용하지 않음 (실제 임베딩 연결 후 골든셋으로 보정 필요)
-RELEVANCE_MAX_DISTANCE = 0.5
+# 이 거리보다 멀면 근거로 사용하지 않음.
+# A-9 실키 실측(2026-07-20, text-embedding-3-small 코사인 거리)으로 보정:
+# 관련 조항 0.42-0.51 / 무관 조항 0.71+ / 완전 무관 0.81+ — 구값 0.5는 관련 조항
+# (교재→도서 조항 0.509)을 경계에서 놓쳤다. 0.65 = 관련은 여유 있게 수용,
+# 최근접 오답(0.713)은 차단. 임베딩 모델 교체 시 재실측 필수.
+RELEVANCE_MAX_DISTANCE = 0.65
 
 
 async def _retrieve_with_correction(

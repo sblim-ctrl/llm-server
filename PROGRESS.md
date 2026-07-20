@@ -112,7 +112,17 @@ DigestWriter(주간 브리핑)·PolicyDrafter 개정 모드(회칙 개정 제안
   테스트 160개·골든셋 30/30·통합 E2E(review+digest+proposal_budget) 통과.
 - **A-8 대시보드 탭 완료**: '예산 제안'(PATCH 수락/기각, 재결정 409 처리)·
   'AI 총무 브리핑'(주간 stat 4종+이상 징후) 탭 추가. /ui 서빙·탭 흐름 E2E 검증.
-- **다음**: cowbro→main 머지(팀장 리뷰 대기). 실키 오면 A-6 Vision·A-9 실모드 검증.
+- **A-6 완료**: chat_structured_vision(bytes→base64/URL, 하네스 공유) +
+  intake 실모드 배선(get_receipt_by_path seam, 실패=parse_ok=False→escalate 불변).
+- **A-9 실모드 검증 완료(2026-07-20, 실키 수급)**: README '실모드 수동 체크리스트'
+  참조. 심사 실 E2E approve/conf 0.95/건당 $0.008, Vision 실이미지 추출·판독불능
+  escalate, Digest 실생성 verified, 실판례 루프 인용 확인. **실측 수정 3건**:
+  ① with_structured_output method="function_calling" (기본 strict가 Opinion.figures
+  자유 dict를 400 거부 — 목에선 안 드러나는 버그) ② RELEVANCE_MAX_DISTANCE
+  0.5→0.65 (실거리: 관련 0.42-0.51/무관 0.71+) ③ digest_writer 프롬프트 필수 표기
+  형식(검증기가 실LLM 환각 수치 1회 실제 차단 후 정합). 잔여: LangSmith 트레이스·
+  마스킹 와이어 확인(LANGSMITH_API_KEY 대기), B-8(팀장 몫).
+- **다음**: cowbro→main 머지(팀장 리뷰 대기 — 사용자 지시 전 머지 금지).
 
 ## 0-1. 더 중요한 발견 — `기획/bravo_기술아키텍처설계서.docx` (풀스택 구현 설계서, 2026-07-15)
 
