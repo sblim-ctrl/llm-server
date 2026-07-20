@@ -333,7 +333,7 @@
   <section class="panel" id="panel-eval">
     <div class="card">
       <h2>골든셋 회귀 평가</h2>
-      <div class="desc">GET /v1/eval/golden — 30건 전체를 심사 그래프에 실행해 정확도·오승인율을 확인합니다 (§9.1 하드 게이트와 동일 기준).</div>
+      <div class="desc">GET /v1/eval/golden — 골든셋 전체(v1.1 기준 42건)를 심사 그래프에 실행해 정확도·오승인율을 확인합니다 (§9.1 하드 게이트와 동일 기준).</div>
       <button class="btn" id="ev-submit">평가 실행 (수 초 소요)</button>
       <div class="status-line" id="ev-status"></div>
 
@@ -677,7 +677,7 @@ $("dg-submit").addEventListener("click", async () => {
 $("ev-submit").addEventListener("click", async () => {
   const btn = $("ev-submit");
   btn.disabled = true;
-  $("ev-status").textContent = "30건 실행 중… (수 초 소요)";
+  $("ev-status").textContent = "골든셋 전체 실행 중… (수 초 소요)";
   $("ev-status").className = "status-line";
   $("ev-result").classList.add("empty");
   try {

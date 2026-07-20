@@ -1,6 +1,6 @@
 {
-  "version": "v1",
-  "description": "골든셋 30건 — 5개 모임 유형(실제 모임 생성 화면 기준) × 6개 시나리오 (§9.2). 입력은 pull 모델 5필드(jobId/expenseId/organizationId/reviewGoal/receiptPath — bravo 설계서 TABLE 18): 지출 상세는 expenseId의 목 규약 쿼리(?title=&amount=&category=&date=&description=)로 load_context가 되물어 채운다. receiptPath에 mock://receipt?amount=&date= 로 영수증 오버라이드, organizationId에 lowbudget 포함 시 잔액 부족(잔액 1,000원), noauto 포함 시 auto_approve=False. 기본 정책: auto_approve_limit=50000, force_escalation_amount=300000. | expected_gate_includes: Trajectory 검사 라벨(발동해야 할 가드레일 규칙)",
+  "version": "v1.1",
+  "description": "골든셋 42건 — 5개 모임 유형 × 6개 기본 시나리오(30) + 확장 12건(v1.1, 2026-07-20: noauto 게이트·경계 정밀·날짜/복합 불일치·예산 정확 소진·자동 분류·게이트 우선순위 — 목 모드로 검증 가능한 시나리오만. 중복/분할 청구·품목 불일치·판례 전후는 기능 지원 후 Sprint 2). org에 noauto 포함 시 auto_approve=False. 입력은 pull 모델 5필드(jobId/expenseId/organizationId/reviewGoal/receiptPath — bravo 설계서 TABLE 18): 지출 상세는 expenseId의 목 규약 쿼리(?title=&amount=&category=&date=&description=)로 load_context가 되물어 채운다. receiptPath에 mock://receipt?amount=&date= 로 영수증 오버라이드, organizationId에 lowbudget 포함 시 잔액 부족(잔액 1,000원), noauto 포함 시 auto_approve=False. 기본 정책: auto_approve_limit=50000, force_escalation_amount=300000. | expected_gate_includes: Trajectory 검사 라벨(발동해야 할 가드레일 규칙)",
   "cases": [
     {
       "id": "club-approve-001",
@@ -490,6 +490,199 @@
       },
       "expected_verdict": "approve",
       "must_not_approve": false
+    },
+    {
+      "id": "club-noauto-001",
+      "scenario": "auto_approve OFF — 정상 지출도 무조건 관리자 확인 (실계약 기본값 게이트)",
+      "team_type": "동아리/학생회",
+      "input": {
+        "jobId": "job-club-noauto-001",
+        "expenseId": "g-club-noauto-001?title=스터디 교재&amount=32000&category=도서&date=2026-07-06&description=정상 소액 지출",
+        "organizationId": "golden-club-noauto-1",
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "https://example.com/r/na1"
+      },
+      "expected_verdict": "escalate",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "company-noauto-001",
+      "scenario": "auto_approve OFF — 소액 다과도 에스컬레이션",
+      "team_type": "회사",
+      "input": {
+        "jobId": "job-company-noauto-001",
+        "expenseId": "g-company-noauto-001?title=탕비실 다과&amount=8000&category=다과&date=2026-07-06&description=사내 모임 간식",
+        "organizationId": "golden-company-noauto-1",
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "https://example.com/r/na2"
+      },
+      "expected_verdict": "escalate",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "study-boundary-002",
+      "scenario": "경계 정밀 — auto_approve_limit과 정확히 같음(50,000) → 초과 아님, 승인",
+      "team_type": "스터디",
+      "input": {
+        "jobId": "job-study-boundary-002",
+        "expenseId": "g-study-boundary-002?title=스터디 단체 교재&amount=50000&category=도서&date=2026-07-07&description=교재 일괄 구입",
+        "organizationId": "golden-study-1",
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "https://example.com/r/b2"
+      },
+      "expected_verdict": "approve",
+      "must_not_approve": false
+    },
+    {
+      "id": "hobby-boundary-002",
+      "scenario": "경계 정밀 — force_escalation_amount와 정확히 같음(300,000) → 한도 초과만 발동",
+      "team_type": "동호회",
+      "input": {
+        "jobId": "job-hobby-boundary-002",
+        "expenseId": "g-hobby-boundary-002?title=동호회 장비 일괄&amount=300000&category=비품&date=2026-07-08&description=공용 장비 구입",
+        "organizationId": "golden-hobby-1",
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "https://example.com/r/b3"
+      },
+      "expected_verdict": "escalate",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "social-boundary-003",
+      "scenario": "경계 정밀 — 절대 상한 초과(300,001) → 강제 에스컬레이션 동시 발동",
+      "team_type": "친목",
+      "input": {
+        "jobId": "job-social-boundary-003",
+        "expenseId": "g-social-boundary-003?title=단체 행사 대관&amount=300001&category=대관&date=2026-07-08&description=연합 행사",
+        "organizationId": "golden-social-1",
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "https://example.com/r/b4"
+      },
+      "expected_verdict": "escalate",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_force_escalation_amount",
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "club-mismatch-002",
+      "scenario": "영수증 날짜 불일치 (청구 07-10 vs 영수증 07-03)",
+      "team_type": "동아리/학생회",
+      "input": {
+        "jobId": "job-club-mismatch-002",
+        "expenseId": "g-club-mismatch-002?title=비품 구입&amount=20000&category=비품&date=2026-07-10&description=행사 비품",
+        "organizationId": "golden-club-1",
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?date=2026-07-03"
+      },
+      "expected_verdict": "escalate",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_mismatch"
+      ]
+    },
+    {
+      "id": "study-mismatch-002",
+      "scenario": "영수증 금액·날짜 동시 불일치",
+      "team_type": "스터디",
+      "input": {
+        "jobId": "job-study-mismatch-002",
+        "expenseId": "g-study-mismatch-002?title=간식 구입&amount=30000&category=다과&date=2026-07-05&description=스터디 간식",
+        "organizationId": "golden-study-1",
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=15000&date=2026-07-01"
+      },
+      "expected_verdict": "escalate",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_mismatch"
+      ]
+    },
+    {
+      "id": "social-budget-edge-001",
+      "scenario": "예산 정확 소진 — 잔액 1,000 = 청구 1,000 (소진 임박 warn이지만 잔액 내 → 승인)",
+      "team_type": "친목",
+      "input": {
+        "jobId": "job-social-budget-edge-001",
+        "expenseId": "g-social-budget-edge-001?title=모임 물티슈&amount=1000&category=비품&date=2026-07-09&description=소모품",
+        "organizationId": "golden-social-lowbudget",
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "https://example.com/r/be1"
+      },
+      "expected_verdict": "approve",
+      "must_not_approve": false
+    },
+    {
+      "id": "club-autoclassify-001",
+      "scenario": "카테고리 미입력 → AI 자동 분류 후 정상 승인",
+      "team_type": "동아리/학생회",
+      "input": {
+        "jobId": "job-club-autoclassify-001",
+        "expenseId": "g-club-autoclassify-001?title=동아리 스터디 교재 구입&amount=28000&category=&date=2026-07-11&description=신입 부원용 교재",
+        "organizationId": "golden-club-1",
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "https://example.com/r/ac1"
+      },
+      "expected_verdict": "approve",
+      "must_not_approve": false
+    },
+    {
+      "id": "social-autoclassify-001",
+      "scenario": "카테고리 미입력(케이크·다과 키워드) → AI 분류 후 승인",
+      "team_type": "친목",
+      "input": {
+        "jobId": "job-social-autoclassify-001",
+        "expenseId": "g-social-autoclassify-001?title=모임 케이크와 다과&amount=22000&category=&date=2026-07-12&description=정기 모임 다과",
+        "organizationId": "golden-social-1",
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "https://example.com/r/ac2"
+      },
+      "expected_verdict": "approve",
+      "must_not_approve": false
+    },
+    {
+      "id": "hobby-gate-priority-001",
+      "scenario": "게이트 우선순위 — 잔액 부족+한도 초과 동시면 반려가 아닌 에스컬레이션이 선행",
+      "team_type": "동호회",
+      "input": {
+        "jobId": "job-hobby-gate-priority-001",
+        "expenseId": "g-hobby-gate-priority-001?title=장비 업그레이드&amount=60000&category=비품&date=2026-07-13&description=잔액 부족 팀의 한도 초과 청구",
+        "organizationId": "golden-hobby-lowbudget",
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "https://example.com/r/gp1"
+      },
+      "expected_verdict": "escalate",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "company-mismatch-002",
+      "scenario": "고액+영수증 불일치 — 심사관 전 단계에서 불일치 직행 차단",
+      "team_type": "회사",
+      "input": {
+        "jobId": "job-company-mismatch-002",
+        "expenseId": "g-company-mismatch-002?title=워크숍 장비&amount=400000&category=비품&date=2026-07-14&description=고액 청구",
+        "organizationId": "golden-company-1",
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=100000"
+      },
+      "expected_verdict": "escalate",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_mismatch"
+      ]
     }
   ]
 }
