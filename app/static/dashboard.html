@@ -321,6 +321,8 @@
         </div>
         <p style="margin:10px 0 0;font-size:13px" id="dg-summary"></p>
         <ul class="recs" id="dg-highlights"></ul>
+        <div class="r" style="margin-top:10px"><b>총무 코멘트 (AI 권고)</b>
+          <span id="dg-advice" style="font-size:13px"></span></div>
         <span class="raw-toggle" data-target="dg-raw">원본 JSON 보기 ▾</span>
         <pre class="raw" id="dg-raw"></pre>
       </div>
@@ -660,6 +662,7 @@ $("dg-submit").addEventListener("click", async () => {
     $("dg-spent").textContent = r.figures.weekly_spent.toLocaleString() + "원";
     $("dg-summary").textContent = r.summary;
     $("dg-highlights").innerHTML = r.highlights.map(x => `<li>${x}</li>`).join("");
+    $("dg-advice").textContent = r.advice || "(없음)";
     $("dg-raw").textContent = JSON.stringify(final, null, 2);
     $("dg-result").classList.remove("empty");
   } catch (e) {

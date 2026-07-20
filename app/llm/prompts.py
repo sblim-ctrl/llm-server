@@ -22,6 +22,7 @@ _ENV_PREFIX = "PROMPT_VERSION_"   # A/B 실험용 오버라이드: PROMPT_VERSIO
 DEFAULT_VERSIONS = {
     "rule_auditor": "v3",
     "adjudicator": "v2",
+    "digest_writer": "v2",   # 총무 코멘트(advice) 섹션 — 실모드 확인 2026-07-20
 }
 
 
