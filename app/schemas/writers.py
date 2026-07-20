@@ -64,6 +64,17 @@ class BudgetReport(BaseModel):
     verified: bool                       # 수치 대조 통과 여부
 
 
+# ── DigestWriter — AI 총무 주간 브리핑 (§4.4-c, A-4) ─────
+
+class DigestRequest(BaseModel):
+    """주간 윈도우는 요청이 지정 — 목 데이터가 6월 고정이라 '오늘 기준 최근 7일'은
+    비결정적(A-4 명세). week_of가 속한 월~일이 브리핑 대상 주가 된다.
+    (DigestFigures 등 결과 모델은 BurnForecast 순환 import 때문에
+    app/graphs/writers/digest.py에 정의.)"""
+    team_id: str
+    week_of: str = Field(description="주간 윈도우 기준일 YYYY-MM-DD")
+
+
 # ── BriefingWriter — 인수인계 브리핑 (REQ-043) ───────────
 
 class BriefingRequest(BaseModel):

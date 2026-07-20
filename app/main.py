@@ -7,7 +7,8 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 
 from app.api import (
-    analyze, briefings, context, drafts, eval as eval_api, health, jobs, precedents, reports,
+    analyze, briefings, context, digests, drafts, eval as eval_api, health, jobs,
+    precedents, reports,
 )
 from app.db.pool import apply_schema, close_pool, open_pool
 from app.mcp_server import mcp_app, mcp_session_manager
@@ -48,6 +49,7 @@ app.include_router(precedents.router)
 app.include_router(drafts.router)
 app.include_router(reports.router)
 app.include_router(briefings.router)
+app.include_router(digests.router)
 app.include_router(eval_api.router)
 
 

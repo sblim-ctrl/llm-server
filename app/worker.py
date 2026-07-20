@@ -17,11 +17,12 @@ from app.graphs.indexing.graph import indexing_graph
 from app.graphs.review.graph import build_review_graph
 from app.observability import langsmith_config, setup_langsmith
 from app.graphs.writers.briefing import briefing_graph
+from app.graphs.writers.digest import digest_graph
 from app.graphs.writers.report import report_graph
 from app.schemas.analyze import AnalyzeRequest, ContextRefreshRequest
 from app.schemas.callback import CallbackPayload
 from app.schemas.common import Reasons
-from app.schemas.writers import BriefingRequest, ReportRequest
+from app.schemas.writers import BriefingRequest, DigestRequest, ReportRequest
 from app.tools.backend_client import send_callback
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -34,20 +35,22 @@ _review_graph = None  # main()에서 checkpointer와 함께 컴파일됨
 INDEXABLE_CHANGE_TYPES = {"rule", "category"}
 
 
-async def run_context_refresh_job(job: dict[str, Any]) -> dict[str, Any]:
+async def run_context_refresh_job(job: dict[str, Any]) -> tuple[dict[str, Any], None]:
     req = ContextRefreshRequest.model_validate(job["payload"])
     if req.change_type not in INDEXABLE_CHANGE_TYPES:
-        return {"status": "skipped", "reason": f"non-indexable change_type: {req.change_type}"}
+        return {"status": "skipped",
+                "reason": f"non-indexable change_type: {req.change_type}"}, None
 
     final_state = await indexing_graph.ainvoke({
         "team_id": req.team_id,
         "doc_type": req.change_type,
         "version": req.version,
     })
-    return {"status": "indexed", "chunks_indexed": final_state.get("chunks_indexed", 0)}
+    # 인덱싱 그래프는 llm_meta가 없음 — 계측 대상 아님 → final_state 대신 None
+    return {"status": "indexed", "chunks_indexed": final_state.get("chunks_indexed", 0)}, None
 
 
-async def run_review_job(job: dict[str, Any]) -> dict[str, Any]:
+async def run_review_job(job: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
     req = AnalyzeRequest.model_validate(job["payload"])
     job_id = str(job["id"])
     # thread_id=job_id → 잡 1건 = 체크포인트 스레드 1개 (§4.2)
@@ -70,7 +73,7 @@ async def run_review_job(job: dict[str, Any]) -> dict[str, Any]:
         final_state = await _review_graph.ainvoke(None, config=config)
 
     reasons = final_state.get("reasons")
-    return {
+    result = {
         "verdict": final_state.get("verdict"),
         "confidence": final_state.get("confidence"),
         "reasons": reasons.model_dump() if reasons else None,
@@ -79,28 +82,42 @@ async def run_review_job(job: dict[str, Any]) -> dict[str, Any]:
         "category": final_state["claim"].category,
         "category_source": final_state.get("category_source"),
     }
+    return result, final_state
 
 
-async def run_report_job(job: dict[str, Any]) -> dict[str, Any]:
+async def run_report_job(job: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
     req = ReportRequest.model_validate(job["payload"])
     final = await report_graph.ainvoke({"request": req})
-    return final["report"].model_dump(mode="json")
+    return final["report"].model_dump(mode="json"), final
 
 
-async def run_briefing_job(job: dict[str, Any]) -> dict[str, Any]:
+async def run_briefing_job(job: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
     req = BriefingRequest.model_validate(job["payload"])
     final = await briefing_graph.ainvoke({"request": req})
-    return final["briefing"].model_dump(mode="json")
+    return final["briefing"].model_dump(mode="json"), final
 
 
-# 잡 타입 → 핸들러 레지스트리 (C6 계약, A-2). 신규 잡 3종(digest·proposal_budget·
-# proposal_rule_amendment)은 각 핸들러 작성자가 자기 worker.py 머지 슬롯에서 등록한다.
-# 핸들러 시그니처: async (job: dict) -> result dict — C9 태깅은 각 핸들러 내부에서.
+async def run_digest_job(job: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    """A-4 — AI 총무 주간 브리핑. C9 태깅: run_name=digest:{job_id}·tags=[team_id]."""
+    req = DigestRequest.model_validate(job["payload"])
+    final = await digest_graph.ainvoke(
+        {"request": req},
+        config=langsmith_config("digest", str(job["id"]), req.team_id),
+    )
+    return final["digest"].model_dump(mode="json"), final
+
+
+# 잡 타입 → 핸들러 레지스트리 (C6 계약, A-2). proposal 2종(proposal_budget·
+# proposal_rule_amendment)은 작성자(개발자 B)가 자기 worker.py 머지 슬롯에서 등록한다.
+# 핸들러 계약(팀 합의 7/20): async (job: dict) -> (result dict, final_state | None)
+# — final_state는 B-7 잡 비용 계측(_meta_totals)이 llm_meta 합산에 사용, 그래프
+# 상태가 없거나 계측 무의미하면 None. C9 태깅은 각 핸들러 내부에서.
 JOB_HANDLERS: dict[str, Any] = {
     "review": run_review_job,
     "context_refresh": run_context_refresh_job,
     "report": run_report_job,
     "briefing": run_briefing_job,
+    "digest": run_digest_job,
 }
 
 
@@ -110,9 +127,13 @@ async def handle_job(job: dict[str, Any]) -> None:
     try:
         handler = JOB_HANDLERS.get(job["type"])
         if handler is None:
-            result = {"status": "unknown_job_type"}
+            result: dict[str, Any] = {"status": "unknown_job_type"}
+            final_state: dict[str, Any] | None = None
         else:
-            result = await handler(job)
+            result, final_state = await handler(job)
+        # final_state는 개발자 B의 B-7 finish_job 계측(_meta_totals)이 main 병합 후
+        # 소비 — 여기서는 계약만 맞춰 둔다 (3파일 해소 시 계측 코드 흡수 예정)
+        _ = final_state
         await finish_job(job_id, "succeeded", result)
         logger.info("job %s succeeded: %s", job_id, result.get("verdict"))
     except Exception:

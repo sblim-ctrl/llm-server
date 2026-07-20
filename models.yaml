@@ -10,6 +10,7 @@ agents:
   policy_drafter: gpt-4o
   report_writer: gpt-4o-mini
   briefing_writer: gpt-4o
+  digest_writer: gpt-4o-mini    # 주간 브리핑 — 수치는 코드, LLM은 문구만 (C7, A 몫 1줄)
 
 embeddings: text-embedding-3-small   # 1536차원
 
