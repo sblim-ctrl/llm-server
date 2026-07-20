@@ -105,10 +105,14 @@ DigestWriter(주간 브리핑)·PolicyDrafter 개정 모드(회칙 개정 제안
   BurnForecast 재사용(C8, B-2는 팀장 커밋 08f72d2 체리픽). E2E 검증 완료
   (202→succeeded→verified=true, weekly_spent 108,000원·식비 급증 발화).
   핸들러 계약 (result, final_state|None) 확장 선반영 (7/20 팀 합의 ①).
-- **다음**: 팀장 sblim→main 병합(FF) 후 A가 3파일 해소(worker.py=레지스트리에
-  proposal 2종 흡수+B-7 계측, pool.py=external_job_id+B 추가분, test_prompts=
-  AGENTS union). fail-safe 콜백은 합집합(camelCase echo + review 한정 가드 — 합의 ②).
-  이후 A-8 대시보드 탭, 실키 오면 A-6 Vision·A-9.
+- **main 병합·3파일 해소 완료 (983fc21)**: 레지스트리 베이스에 proposal 2종 이식
+  +B-7 전부 흡수(_meta_totals·무체크포인트 방어·reclaim), fail-safe 콜백 합집합
+  (camelCase echo + review 한정 가드). test_worker_recovery는 레지스트리 디스패치에
+  맞게 JOB_HANDLERS setitem 패치·pull 모델 payload로 정합(팀장 리뷰 시 확인 요망).
+  테스트 160개·골든셋 30/30·통합 E2E(review+digest+proposal_budget) 통과.
+- **A-8 대시보드 탭 완료**: '예산 제안'(PATCH 수락/기각, 재결정 409 처리)·
+  'AI 총무 브리핑'(주간 stat 4종+이상 징후) 탭 추가. /ui 서빙·탭 흐름 E2E 검증.
+- **다음**: cowbro→main 머지(팀장 리뷰 대기). 실키 오면 A-6 Vision·A-9 실모드 검증.
 
 ## 0-1. 더 중요한 발견 — `기획/bravo_기술아키텍처설계서.docx` (풀스택 구현 설계서, 2026-07-15)
 

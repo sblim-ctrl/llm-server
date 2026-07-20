@@ -170,6 +170,8 @@
     <button data-tab="review" class="active">지출 심사</button>
     <button data-tab="draft">회칙·예산 초안</button>
     <button data-tab="report">정산 리포트</button>
+    <button data-tab="proposal">예산 제안</button>
+    <button data-tab="digest">AI 총무 브리핑</button>
     <button data-tab="eval">골든셋 평가</button>
   </nav>
 
@@ -270,7 +272,62 @@
     </div>
   </section>
 
-  <!-- ④ 골든셋 평가 -->
+  <!-- ④ 예산 제안 (A-8) -->
+  <section class="panel" id="panel-proposal">
+    <div class="card">
+      <h2>예산 조정 제안 (BudgetPlanner)</h2>
+      <div class="desc">POST /v1/proposals/budget(잡) → 폴링. 수치 검증(verified)을 통과한 제안만 proposals에 저장되며, 수락/기각이 PATCH로 기록됩니다 (§9 수락률 지표의 기록 경로).</div>
+      <div class="row">
+        <div class="field"><label>팀 ID</label><input id="pp-team" value="demo-team-1"></div>
+        <div class="field"><label>기간(YYYY-MM, 비우면 당월)</label><input id="pp-period" value="2026-06"></div>
+      </div>
+      <button class="btn" id="pp-submit">제안 생성</button>
+      <div class="status-line" id="pp-status"></div>
+
+      <div class="result empty" id="pp-result">
+        <div id="pp-verified"></div>
+        <p style="margin:10px 0 0;font-size:13px" id="pp-rationale"></p>
+        <ul class="recs" id="pp-adjustments"></ul>
+        <div class="row" style="margin-top:12px;align-items:center">
+          <button class="btn" id="pp-accept">수락</button>
+          <button class="btn" id="pp-dismiss">기각</button>
+          <span class="status-line" id="pp-decision" style="margin:0"></span>
+        </div>
+        <span class="raw-toggle" data-target="pp-raw">원본 JSON 보기 ▾</span>
+        <pre class="raw" id="pp-raw"></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ⑤ AI 총무 브리핑 (A-8) -->
+  <section class="panel" id="panel-digest">
+    <div class="card">
+      <h2>AI 총무 주간 브리핑 (DigestWriter)</h2>
+      <div class="desc">POST /v1/digests(잡) → 폴링. 주간 자동 처리 현황·예산 소진 전망·이상 징후를 브리핑합니다. 기본 기준일은 목 데이터가 있는 주(2026-06-22 ~ 06-28)입니다.</div>
+      <div class="row">
+        <div class="field"><label>팀 ID</label><input id="dg-team" value="demo-team-1"></div>
+        <div class="field"><label>기준일 week_of (속한 월~일이 대상 주)</label><input id="dg-week" type="date" value="2026-06-26"></div>
+      </div>
+      <button class="btn" id="dg-submit">브리핑 생성</button>
+      <div class="status-line" id="dg-status"></div>
+
+      <div class="result empty" id="dg-result">
+        <div id="dg-verified"></div>
+        <div class="summary-strip" style="margin-top:10px">
+          <div class="stat"><div class="label">자동 승인</div><div class="value" id="dg-approved">-</div></div>
+          <div class="stat"><div class="label">반려</div><div class="value" id="dg-rejected">-</div></div>
+          <div class="stat"><div class="label">에스컬레이션</div><div class="value" id="dg-escalated">-</div></div>
+          <div class="stat"><div class="label">주간 지출</div><div class="value" id="dg-spent">-</div></div>
+        </div>
+        <p style="margin:10px 0 0;font-size:13px" id="dg-summary"></p>
+        <ul class="recs" id="dg-highlights"></ul>
+        <span class="raw-toggle" data-target="dg-raw">원본 JSON 보기 ▾</span>
+        <pre class="raw" id="dg-raw"></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ⑥ 골든셋 평가 -->
   <section class="panel" id="panel-eval">
     <div class="card">
       <h2>골든셋 회귀 평가</h2>
@@ -509,7 +566,111 @@ $("rp-submit").addEventListener("click", async () => {
   }
 });
 
-// ── ④ 골든셋 평가 ────────────────────────────────────────
+// ── ④ 예산 제안 (A-8) ────────────────────────────────────
+let ppProposalId = null;
+
+$("pp-submit").addEventListener("click", async () => {
+  const btn = $("pp-submit");
+  btn.disabled = true;
+  ppProposalId = null;
+  $("pp-status").textContent = "요청 전송 중…";
+  $("pp-status").className = "status-line";
+  $("pp-decision").textContent = "";
+  $("pp-result").classList.add("empty");
+  try {
+    const payload = { team_id: $("pp-team").value, period: $("pp-period").value || null };
+    const res = await fetch("/v1/proposals/budget", { method: "POST", headers: authHeaders(), body: JSON.stringify(payload) });
+    if (!res.ok) throw new Error(`제안 요청 실패 (${res.status}): ${await res.text()}`);
+    const { job_id } = await res.json();
+    $("pp-status").textContent = `job_id=${job_id} — 워커 처리 대기 중…`;
+
+    const final = await pollJob(job_id, {
+      onTick: (d) => { $("pp-status").textContent = `job_id=${job_id} — status=${d.status}`; },
+    });
+    if (final.status !== "succeeded") throw new Error(`잡 실패: status=${final.status}`);
+
+    const r = final.result;                       // {proposal_id, payload:{figures, adjustments, rationale, verified}}
+    ppProposalId = r.proposal_id;
+    $("pp-status").textContent = "완료";
+    $("pp-verified").innerHTML = r.payload.verified
+      ? `<span class="badge approve">수치 검증 통과 · 저장됨</span>`
+      : `<span class="badge reject">수치 검증 실패 — 저장 안 됨</span>`;
+    $("pp-rationale").textContent = r.payload.rationale;
+    $("pp-adjustments").innerHTML = r.payload.adjustments.map(x => `<li>${x}</li>`).join("");
+    // 수락/기각은 저장된 제안(proposal_id 존재)에만 가능
+    $("pp-accept").disabled = $("pp-dismiss").disabled = !ppProposalId;
+    $("pp-raw").textContent = JSON.stringify(final, null, 2);
+    $("pp-result").classList.remove("empty");
+  } catch (e) {
+    $("pp-status").textContent = "오류: " + e.message;
+    $("pp-status").className = "status-line err";
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+async function decideProposal(status) {
+  if (!ppProposalId) return;
+  $("pp-decision").textContent = "기록 중…";
+  $("pp-decision").className = "status-line";
+  try {
+    const res = await fetch(`/v1/proposals/${ppProposalId}`, {
+      method: "PATCH", headers: authHeaders(),
+      body: JSON.stringify({ status, decided_by: "dashboard-admin" }),
+    });
+    if (res.status === 409) { $("pp-decision").textContent = "이미 결정된 제안입니다 (409)"; return; }
+    if (!res.ok) throw new Error(`(${res.status}) ${await res.text()}`);
+    $("pp-decision").textContent = status === "accepted" ? "수락 기록됨 — §9 수락률 지표 반영" : "기각 기록됨";
+    $("pp-accept").disabled = $("pp-dismiss").disabled = true;
+  } catch (e) {
+    $("pp-decision").textContent = "오류: " + e.message;
+    $("pp-decision").className = "status-line err";
+  }
+}
+$("pp-accept").addEventListener("click", () => decideProposal("accepted"));
+$("pp-dismiss").addEventListener("click", () => decideProposal("dismissed"));
+
+// ── ⑤ AI 총무 브리핑 (A-8) ───────────────────────────────
+$("dg-submit").addEventListener("click", async () => {
+  const btn = $("dg-submit");
+  btn.disabled = true;
+  $("dg-status").textContent = "요청 전송 중…";
+  $("dg-status").className = "status-line";
+  $("dg-result").classList.add("empty");
+  try {
+    const payload = { team_id: $("dg-team").value, week_of: $("dg-week").value };
+    const res = await fetch("/v1/digests", { method: "POST", headers: authHeaders(), body: JSON.stringify(payload) });
+    if (!res.ok) throw new Error(`브리핑 요청 실패 (${res.status}): ${await res.text()}`);
+    const { job_id } = await res.json();
+    $("dg-status").textContent = `job_id=${job_id} — 워커 처리 대기 중…`;
+
+    const final = await pollJob(job_id, {
+      onTick: (d) => { $("dg-status").textContent = `job_id=${job_id} — status=${d.status}`; },
+    });
+    if (final.status !== "succeeded") throw new Error(`잡 실패: status=${final.status}`);
+
+    const r = final.result;                       // DigestDoc {figures, summary, highlights, verified}
+    $("dg-status").textContent = `완료 (${r.figures.week_start} ~ ${r.figures.week_end})`;
+    $("dg-verified").innerHTML = r.verified
+      ? `<span class="badge approve">수치 검증 통과</span>`
+      : `<span class="badge reject">수치 검증 실패 — 요약 신뢰 불가</span>`;
+    $("dg-approved").textContent = r.figures.auto_approved;
+    $("dg-rejected").textContent = r.figures.auto_rejected;
+    $("dg-escalated").textContent = r.figures.escalated;
+    $("dg-spent").textContent = r.figures.weekly_spent.toLocaleString() + "원";
+    $("dg-summary").textContent = r.summary;
+    $("dg-highlights").innerHTML = r.highlights.map(x => `<li>${x}</li>`).join("");
+    $("dg-raw").textContent = JSON.stringify(final, null, 2);
+    $("dg-result").classList.remove("empty");
+  } catch (e) {
+    $("dg-status").textContent = "오류: " + e.message;
+    $("dg-status").className = "status-line err";
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── ⑥ 골든셋 평가 ────────────────────────────────────────
 $("ev-submit").addEventListener("click", async () => {
   const btn = $("ev-submit");
   btn.disabled = true;
