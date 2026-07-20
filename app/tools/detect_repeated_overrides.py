@@ -58,8 +58,14 @@ def _group_clusters(rows: list[dict], edges: list[tuple[str, str]], threshold: i
 
 
 async def detect_repeated_overrides(team_id: str, threshold: int = 3) -> list[dict[str, Any]]:
-    """관리자 개입 판례를 임베딩 유사도로 군집 — count >= threshold만 반환."""
-    async with get_pool().connection() as conn:
+    """관리자 개입 판례를 임베딩 유사도로 군집 — count >= threshold만 반환.
+
+    노드 쿼리와 간선 쿼리를 REPEATABLE READ 트랜잭션으로 묶는다 — 기본
+    READ COMMITTED에서 두 쿼리 사이에 판례가 새로 커밋되면 간선이 노드
+    쿼리에 없는 id를 참조해 _group_clusters에서 KeyError가 날 수 있다.
+    """
+    async with get_pool().connection() as conn, conn.transaction():
+        await conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
         rows = await (
             await conn.execute(
                 """SELECT id, expense_summary, decision
