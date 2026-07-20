@@ -356,9 +356,17 @@ Python 3.12 고정, uv로 패키지 관리, docker-compose 3컨테이너.
 
 0. ~~재부팅 후 골든셋 E2E 재실행~~ — **완료(2026-07-16)**: 골든셋 30/30·오승인 0,
    스트레스 테스트 통과. §0-2 참고.
-1. **실 OpenAI 키 전환** (키 받으면 최우선): `.env`에 `OPENAI_API_KEY=` 채우고 `MOCK_LLM=false`.
-   그 다음 ① 골든셋 재실행(LLM 판정 품질 첫 실측) ② rule_auditor 거리 임계값 조정
-   ③ 프롬프트 튜닝 ④ 참고 코퍼스 검색 품질 확인 ⑤ Intake Vision OCR 구현(`parse_receipt` 툴).
+1. **실 OpenAI 키 전환 — 완료(2026-07-20)**. ①골든셋 실측 ②임계값 조정(0.65)
+   ⑤Vision까지 완료. **골든셋 실모드 1차 실측 결과(§0-3 참조): 19/30=63.3%,
+   오승인 0건(하드 게이트 유지!), 건당 $0.005.** 실패 11건 전부 approve/reject→
+   escalate(안전 방향 편향). 원인: 목 회칙 텍스트가 골든 시나리오 카테고리
+   (홍보·비품·대관 등)를 안 다뤄 rule_auditor가 '조항 없음→애매(warn)'→
+   rule_ambiguous escalate. **다음 튜닝 트랙(사용자 몫)**: ⓐ '회칙이 안 다루는
+   카테고리를 애매로 볼지 허용으로 볼지' 정책 결정(팀 논의 필요 — 안전 vs 자동화율
+   트레이드오프) ⓑ 목 회칙 텍스트를 유형별 카테고리 커버로 확장 ⓒ rule_auditor
+   프롬프트 v2 + compare_prompts A/B 실측. CSV: eval/results/golden_realmode_*.csv
+   (실측 하니스는 일회성 스크립트 — receipt_text 변환·인덱싱·정리 포함, 정식
+   실모드 하니스는 Sprint 2).
 2. **백엔드 계약 반영**: 필드명·Swagger 받으면 `app/schemas/`와 `backend_client.py`의
    URL·필드명만 교체 (노드 코드 불변이 설계 의도). camelCase면 Pydantic alias 사용.
 3. **LangSmith 연동**: 트레이싱 + CI 게이트 (`.env`에 LANGSMITH_* 이미 자리 있음).
