@@ -378,7 +378,8 @@ Python 3.12 고정, uv로 패키지 관리, docker-compose 3컨테이너.
    변환·실인덱싱·전후 정리 포함, 정식 실모드 하니스는 Sprint 2).
 2. **백엔드 계약 반영**: 필드명·Swagger 받으면 `app/schemas/`와 `backend_client.py`의
    URL·필드명만 교체 (노드 코드 불변이 설계 의도). camelCase면 Pydantic alias 사용.
-3. **LangSmith 연동**: 트레이싱 + CI 게이트 (`.env`에 LANGSMITH_* 이미 자리 있음).
+3. **LangSmith 연동 — 완료 (개발자 B, B-4, 커밋 5c8d4ff `app/observability.py`)**: 트레이싱 배선·
+   C9 태깅 형식 정의 완료. CI 게이트 연동은 Sprint 2.
 4. **골든셋 확장 — 완료 (2026-07-15)**: 라이터 3종 시나리오 골든셋 17건 추가, 17/17 통과.
    실키 전환 후 LLM 생성 문구 기반 케이스(현재는 목 휴리스틱 기준) 재검토 필요.
 5. **동시요청·멱등성 스트레스 테스트 — 완료 (2026-07-15)**: 같은 expense_id의
