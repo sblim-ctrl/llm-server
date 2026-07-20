@@ -361,12 +361,17 @@ Python 3.12 고정, uv로 패키지 관리, docker-compose 3컨테이너.
    오승인 0건(하드 게이트 유지!), 건당 $0.005.** 실패 11건 전부 approve/reject→
    escalate(안전 방향 편향). 원인: 목 회칙 텍스트가 골든 시나리오 카테고리
    (홍보·비품·대관 등)를 안 다뤄 rule_auditor가 '조항 없음→애매(warn)'→
-   rule_ambiguous escalate. **다음 튜닝 트랙(사용자 몫)**: ⓐ '회칙이 안 다루는
-   카테고리를 애매로 볼지 허용으로 볼지' 정책 결정(팀 논의 필요 — 안전 vs 자동화율
-   트레이드오프) ⓑ 목 회칙 텍스트를 유형별 카테고리 커버로 확장 ⓒ rule_auditor
-   프롬프트 v2 + compare_prompts A/B 실측. CSV: eval/results/golden_realmode_*.csv
-   (실측 하니스는 일회성 스크립트 — receipt_text 변환·인덱싱·정리 포함, 정식
-   실모드 하니스는 Sprint 2).
+   rule_ambiguous escalate. **튜닝 3회전 완료(2026-07-20, 전부 오승인 0)**:
+   1차 63.3%(v1·회칙4조) → 2차 80.0%(회칙 11조 확장 + 하니스 목 판례 사전 정리)
+   → **3차 93.3%(프롬프트 v2)**. v2 변경점: rule_auditor — pass/warn/fail 결정
+   규칙 명확화('인정 조항 있으면 세부 미명시여도 pass', 예산은 역할 밖) /
+   adjudicator — 잔액 부족 reject_candidate는 수치 명확 시 확신 반려(0.85+) +
+   반려 few_shot 추가. **v2는 파일로만 커밋, 기본값은 아직 v1** — n=1 실측이라
+   재현 1회 후 승격 권장 (`PROMPT_VERSION_RULE_AUDITOR=v2
+   PROMPT_VERSION_ADJUDICATOR=v2`로 오버라이드). 잔여 2건(study/company-reject —
+   rule_ambiguous, 안전 방향): 다음 회전에서 검색·few_shot 보강.
+   CSV: eval/results/golden_realmode_*.csv (하니스는 일회성 스크립트 — receipt_text
+   변환·실인덱싱·전후 정리 포함, 정식 실모드 하니스는 Sprint 2).
 2. **백엔드 계약 반영**: 필드명·Swagger 받으면 `app/schemas/`와 `backend_client.py`의
    URL·필드명만 교체 (노드 코드 불변이 설계 의도). camelCase면 Pydantic alias 사용.
 3. **LangSmith 연동**: 트레이싱 + CI 게이트 (`.env`에 LANGSMITH_* 이미 자리 있음).
