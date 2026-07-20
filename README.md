@@ -111,8 +111,10 @@ uv run python scripts/seed_demo.py                       # 판례 학습 데모 
       (검증기가 환각 수치를 실제로 1회 차단 — Generator-Evaluator 실증)
 - [x] 실판례 루프: escalate 판례 저장 → 동일 청구 재심사에서 의미 검색으로
       인용(warn) 확인 — 실임베딩에서만 가능한 검증
-- [ ] 마스킹 실전송 확인·LangSmith 트레이스 — **LANGSMITH_API_KEY 수급 대기**
-      (마스킹 자체는 단위 테스트로 검증됨, 와이어 확인만 잔여)
+- [x] 마스킹 실전송·LangSmith 트레이스(2026-07-20, 키 수급 후): 실명 포함 청구
+      심사 → LangSmith API로 트레이스 역조회 — C9 형식(run_name=review:{job_id},
+      tags=[team_id]) 확인, **LLM 전송 프롬프트에 실명 부재·역할 치환 확인**
+      (검증도 .env는 LANGSMITH_TRACING=false 유지, 프로세스 주입 방식)
 - [ ] 개발자 B 몫(B-8): BudgetPlanner·rule_amendment 실모드, 군집 실키 확인,
       jobs cost/tokens 실기록, C9 태깅 트레이스
 
