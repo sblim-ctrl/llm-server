@@ -11,6 +11,7 @@ MOCK_LLM=true(기본)면 OpenAI 호출 없이 결정적 응답을 돌려준다.
   적재(llm_meta reducer)해 콜백·판례·jobs 집계로 흐른다. usage 추출은
   with_structured_output(include_raw=True) 필수 (기본 모드는 AIMessage를 버림).
 """
+import base64
 import hashlib
 import logging
 import time
@@ -86,12 +87,20 @@ async def chat_structured(agent: str, system: str, user: str, schema: type[T],
                            latency_ms=int((time.perf_counter() - started) * 1000))
         return mock_response, meta
 
+    return await _invoke_structured(agent, model, [("system", system), ("user", user)],
+                                    schema, prompt_version, started)
+
+
+async def _invoke_structured(agent: str, model: str, messages: list, schema: type[T],
+                             prompt_version: str, started: float) -> tuple[T, LLMCallMeta]:
+    """실모드 공통 경로 — 구조화 출력 + usage 추출 + 메타 (chat·vision 공유, A-3/A-6)."""
+    settings = get_settings()
     from langchain_openai import ChatOpenAI  # 지연 임포트 — 목 모드에선 불필요
 
     llm = ChatOpenAI(model=model, api_key=settings.openai_api_key,
                      timeout=30, max_retries=3)
     structured = llm.with_structured_output(schema, include_raw=True)
-    result = await structured.ainvoke([("system", system), ("user", user)])
+    result = await structured.ainvoke(messages)
     if result.get("parsing_error"):
         raise ValueError(f"{agent} 구조화 출력 파싱 실패: {result['parsing_error']}")
 
@@ -105,6 +114,50 @@ async def chat_structured(agent: str, system: str, user: str, schema: type[T],
         latency_ms=int((time.perf_counter() - started) * 1000),
     )
     return result["parsed"], meta
+
+
+def vision_image_url(image: bytes | str, media_type: str = "image/jpeg") -> str:
+    """Vision content block용 이미지 참조 — 순수 함수 (단위 테스트 대상, A-6).
+
+    bytes(백엔드 프록시 fetch — v1.2 '영수증 조회 경로' 방향)는 base64 data URL로,
+    str은 http(s) URL 그대로.
+    """
+    if isinstance(image, bytes):
+        return f"data:{media_type};base64,{base64.b64encode(image).decode('ascii')}"
+    return image
+
+
+async def chat_structured_vision(agent: str, system: str, image: bytes | str,
+                                 schema: type[T], mock_response: T | None = None,
+                                 prompt_version: str = "",
+                                 media_type: str = "image/jpeg",
+                                 instruction: str = "이 영수증 이미지에서 데이터를 추출하세요.",
+                                 ) -> tuple[T, LLMCallMeta]:
+    """Vision 구조화 호출 (A-6, 실명세 'LLM 2단계' 중 1차 읽기 전용).
+
+    image: 백엔드 프록시로 받은 bytes 또는 http(s) URL. Retry·타임아웃·메타는
+    chat_structured와 동일 하네스(_invoke_structured) 재사용.
+    """
+    settings = get_settings()
+    model = model_for(agent)
+    started = time.perf_counter()
+
+    if settings.mock_llm or not settings.openai_api_key:
+        if mock_response is None:
+            raise RuntimeError(f"MOCK_LLM인데 {agent}의 mock_response가 없음")
+        logger.info("MOCK vision call: agent=%s model=%s", agent, model)
+        meta = LLMCallMeta(model=model, prompt_version=prompt_version, mock=True,
+                           latency_ms=int((time.perf_counter() - started) * 1000))
+        return mock_response, meta
+
+    from langchain_core.messages import HumanMessage  # 지연 임포트
+
+    content = [
+        {"type": "text", "text": instruction},
+        {"type": "image_url", "image_url": {"url": vision_image_url(image, media_type)}},
+    ]
+    messages = [("system", system), HumanMessage(content=content)]
+    return await _invoke_structured(agent, model, messages, schema, prompt_version, started)
 
 
 def _mock_embedding(text: str, dim: int = _EMBEDDING_DIM) -> list[float]:
