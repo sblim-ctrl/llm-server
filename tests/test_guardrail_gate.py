@@ -68,6 +68,39 @@ def test_auto_approve_disabled_beats_reject_candidate():
     assert result.decision == "escalate"
 
 
+def test_lone_rule_ambiguous_with_budget_fail_becomes_reject_candidate():
+    """정책(2026-07-20 실측): 회칙 애매 '단독' + 예산 부족 명확 → 반려 후보.
+
+    회칙이 애매해도 잔액이 없으면 지출 불가 결론은 같다 — 반려는 안전 방향(§8)이고
+    adjudicate가 백스톱. 실모드 골든셋에서 lowbudget 반려 케이스가 rule_ambiguous로
+    선점 에스컬레이션되던 문제의 해소."""
+    opinions = _ok_opinions()
+    opinions["rule"] = Opinion(auditor="rule", verdict="warn", summary="해석 애매")
+    opinions["budget"] = Opinion(auditor="budget", verdict="fail", summary="잔액 부족")
+    result = evaluate_guardrails(opinions, [], POLICY, amount=5_000)
+    assert result.decision == "reject_candidate"
+    assert "budget_insufficient" in result.triggered_rules
+    assert "rule_ambiguous" in result.triggered_rules
+
+
+def test_rule_ambiguous_with_other_triggers_still_escalates():
+    """회칙 애매 + 다른 규칙(판례 의심 등) 동반이면 기존대로 escalate — 정책은 '단독'일 때만."""
+    opinions = _ok_opinions()
+    opinions["rule"] = Opinion(auditor="rule", verdict="warn", summary="해석 애매")
+    opinions["budget"] = Opinion(auditor="budget", verdict="fail", summary="잔액 부족")
+    opinions["precedent"] = Opinion(auditor="precedent", verdict="warn", summary="유사 반려 판례")
+    result = evaluate_guardrails(opinions, [], POLICY, amount=5_000)
+    assert result.decision == "escalate"
+
+
+def test_lone_rule_ambiguous_without_budget_fail_still_escalates():
+    """예산이 멀쩡하면 회칙 애매는 기존대로 escalate — 정책은 예산 부족 명확 시에만."""
+    opinions = _ok_opinions()
+    opinions["rule"] = Opinion(auditor="rule", verdict="warn", summary="해석 애매")
+    result = evaluate_guardrails(opinions, [], POLICY, amount=5_000)
+    assert result.decision == "escalate"
+
+
 def test_rule_violation_escalates_regardless_of_amount():
     opinions = _ok_opinions()
     opinions["rule"] = Opinion(auditor="rule", verdict="fail", summary="금지 항목")

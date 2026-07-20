@@ -15,6 +15,14 @@ from pydantic import BaseModel
 _PROMPTS_DIR = Path(__file__).resolve().parents[2] / "prompts"
 _ENV_PREFIX = "PROMPT_VERSION_"   # A/B 실험용 오버라이드: PROMPT_VERSION_ADJUDICATOR=v2
 
+# 에이전트별 기본 버전 — 실측 A/B로 우세가 재현된 버전만 승격한다 (미등재=v1).
+# rule_auditor·adjudicator v2 승격 근거(2026-07-20 실모드 골든셋, 오승인 전 회차 0):
+# v1 80.0% vs v2 93.3%·90.0%(재현) — 상세는 PROGRESS §6-1.
+DEFAULT_VERSIONS = {
+    "rule_auditor": "v2",
+    "adjudicator": "v2",
+}
+
 
 class PromptSpec(BaseModel):
     version: str
@@ -40,10 +48,12 @@ def _load(agent: str, version: str) -> PromptSpec:
 
 
 def load_prompt(agent: str, version: str | None = None) -> PromptSpec:
-    """version 미지정 시 `PROMPT_VERSION_{AGENT}` 환경변수 → 'v1' 순으로 해석.
+    """version 미지정 시 `PROMPT_VERSION_{AGENT}` 환경변수 → DEFAULT_VERSIONS → 'v1'.
 
     환경변수 해석을 캐시 밖에서 하므로, A/B 비교 러너(eval/compare_prompts.py)가
     같은 프로세스 안에서 버전을 바꿔가며 실행해도 즉시 반영된다.
     """
-    version = version or os.environ.get(f"{_ENV_PREFIX}{agent.upper()}", "v1")
+    version = (version
+               or os.environ.get(f"{_ENV_PREFIX}{agent.upper()}")
+               or DEFAULT_VERSIONS.get(agent, "v1"))
     return _load(agent, version)

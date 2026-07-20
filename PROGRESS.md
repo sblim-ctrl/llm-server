@@ -366,10 +366,12 @@ Python 3.12 고정, uv로 패키지 관리, docker-compose 3컨테이너.
    → **3차 93.3%(프롬프트 v2)**. v2 변경점: rule_auditor — pass/warn/fail 결정
    규칙 명확화('인정 조항 있으면 세부 미명시여도 pass', 예산은 역할 밖) /
    adjudicator — 잔액 부족 reject_candidate는 수치 명확 시 확신 반려(0.85+) +
-   반려 few_shot 추가. **v2는 파일로만 커밋, 기본값은 아직 v1** — n=1 실측이라
-   재현 1회 후 승격 권장 (`PROMPT_VERSION_RULE_AUDITOR=v2
-   PROMPT_VERSION_ADJUDICATOR=v2`로 오버라이드). 잔여 2건(study/company-reject —
-   rule_ambiguous, 안전 방향): 다음 회전에서 검색·few_shot 보강.
+   반려 few_shot 추가. **v2 재현 확인(90.0%) 후 기본값 승격 완료**
+   (prompts.py DEFAULT_VERSIONS — env 오버라이드는 계속 우선). 추가로 가드레일
+   정책 신설: '회칙 애매 단독 + 예산 부족 명확 → 반려 후보'(반려는 안전 방향,
+   adjudicate 백스톱 — 순수 함수 테스트 3건). **5차 종합 실측 96.7%(29/30),
+   5회전 내내 오승인 0.** 추이: 63.3→80.0→93.3→90.0(재현)→96.7. 잔여 1건은
+   LLM 편차(도서 승인 건을 위반으로 — 안전 방향).
    CSV: eval/results/golden_realmode_*.csv (하니스는 일회성 스크립트 — receipt_text
    변환·실인덱싱·전후 정리 포함, 정식 실모드 하니스는 Sprint 2).
 2. **백엔드 계약 반영**: 필드명·Swagger 받으면 `app/schemas/`와 `backend_client.py`의

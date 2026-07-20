@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.llm.prompts import load_prompt
+from app.llm.prompts import DEFAULT_VERSIONS, load_prompt
 
 AGENTS = [
     "adjudicator",
@@ -21,7 +21,9 @@ AGENTS = [
 def test_loads_and_has_required_fields(agent):
     spec = load_prompt(agent)
     assert spec.system.strip()
-    assert spec.version == f"{agent}/v1"  # YAML 내부 version: 필드가 진실 원천 (C3)
+    # YAML 내부 version: 필드가 진실 원천 (C3). 기본 버전은 승격 테이블 기준
+    expected = DEFAULT_VERSIONS.get(agent, "v1")
+    assert spec.version == f"{agent}/{expected}"
 
 
 def test_few_shot_appended_when_present():

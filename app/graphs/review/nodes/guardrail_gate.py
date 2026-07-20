@@ -59,12 +59,23 @@ def evaluate_guardrails(
     if amount > policy.auto_approve_limit:
         triggered.append("over_auto_approve_limit")
 
+    budget_op = opinions.get("budget")
+    budget_fail = budget_op is not None and budget_op.verdict == "fail"
+
+    # 4.5 정책(2026-07-20 실모드 실측 근거): 걸린 게 '회칙 해석 애매' 하나뿐이고
+    # 예산 부족이 수치로 명확하면 에스컬레이션 대신 반려 후보로 넘긴다 — 회칙이
+    # 애매해도 잔액이 없으면 지출 불가라는 결론은 같고, 반려는 자동 승인이 아니라
+    # 안전 방향이다(§8 유지). 최종 판단은 adjudicate가 백스톱(저신뢰면 escalate).
+    # 다른 규칙(불일치·판례 의심·한도 초과 등)이 함께 걸리면 기존대로 escalate.
+    if triggered == ["rule_ambiguous"] and budget_fail:
+        return GateResult(decision="reject_candidate",
+                          triggered_rules=["budget_insufficient", "rule_ambiguous"])
+
     if triggered:
         return GateResult(decision="escalate", triggered_rules=triggered)
 
     # 5. 예산 잔액 부족 → AI_REJECTED 후보 (2단계 LLM 합성으로)
-    budget_op = opinions.get("budget")
-    if budget_op is not None and budget_op.verdict == "fail":
+    if budget_fail:
         return GateResult(decision="reject_candidate", triggered_rules=["budget_insufficient"])
 
     return GateResult(decision="proceed")
