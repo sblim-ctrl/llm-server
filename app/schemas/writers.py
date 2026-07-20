@@ -1,7 +1,8 @@
 """문서 생성 에이전트 계약 — PolicyDrafter(/v1/policy-draft) · ReportWriter(/v1/reports/summary)."""
+from datetime import date
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 TeamType = Literal["동아리/학생회", "스터디", "친목", "동호회", "회사"]
 
@@ -73,6 +74,14 @@ class DigestRequest(BaseModel):
     app/graphs/writers/digest.py에 정의.)"""
     team_id: str
     week_of: str = Field(description="주간 윈도우 기준일 YYYY-MM-DD")
+
+    @field_validator("week_of")
+    @classmethod
+    def _valid_date(cls, v: str) -> str:
+        # 실존 날짜 검증 — 잘못된 값은 API에서 422로 거절 (워커가 3회 재시도 끝에
+        # dead가 되는 것 방지). B-3 period 형식 검증과 대칭.
+        date.fromisoformat(v)
+        return v
 
 
 # ── BriefingWriter — 인수인계 브리핑 (REQ-043) ───────────

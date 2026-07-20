@@ -20,6 +20,19 @@ def test_week_bounds_monday_to_sunday():
     assert week_bounds("2026-06-22") == ("2026-06-22", "2026-06-28")   # 월요일 그대로
 
 
+def test_request_rejects_invalid_date():
+    """잘못된 week_of는 API 422로 거절 — 워커 3회 재시도→dead 낭비 방지."""
+    import pytest
+    from pydantic import ValidationError
+
+    from app.schemas.writers import DigestRequest
+    with pytest.raises(ValidationError):
+        DigestRequest(team_id="t", week_of="2026-99-99")
+    with pytest.raises(ValidationError):
+        DigestRequest(team_id="t", week_of="다음주")
+    assert DigestRequest(team_id="t", week_of="2026-06-26").week_of == "2026-06-26"
+
+
 PRECEDENTS = [
     {"decision": "approve", "decided_by": "AGENT"},
     {"decision": "approve", "decided_by": "AGENT"},
