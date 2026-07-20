@@ -71,6 +71,33 @@ def test_category_share_thresholds():
     assert f.under_categories == ["다과"]  # share == 0.05 포함, 지출 0원 비품 제외
 
 
+def test_as_of_equals_period_end_past_month_scenario():
+    # 지난달 예산 제안 시 _period_bounds가 as_of=period_end로 클램프한다(budget_planner
+    # 실사용 경로) — 남은 일수 0을 forecast가 정상 처리하는지 확인.
+    f = forecast(
+        total_budget=100_000,
+        spent=58_000,
+        expenses=[],
+        as_of="2026-06-30",
+        period_end="2026-06-30",
+    )
+    assert f.elapsed_days == 29
+    assert f.projected_period_end_spent == f.spent  # 남은 일수 0 → 추가 소진분 없음
+
+
+def test_depletion_date_equals_period_end_boundary():
+    # d <= end_d 등호 경계 — 소진 예상일이 기간 마지막 날과 정확히 일치.
+    # `<=`를 `<`로 뒤집는 회귀 시 이 케이스가 None으로 잘못 바뀐다.
+    f = forecast(
+        total_budget=290,
+        spent=190,
+        expenses=[],
+        as_of="2026-06-20",
+        period_end="2026-06-30",
+    )
+    assert f.depletion_date == "2026-06-30"
+
+
 def test_empty_expenses_no_categories():
     f = forecast(
         total_budget=300_000,

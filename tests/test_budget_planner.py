@@ -2,6 +2,10 @@
 
 from datetime import date
 
+import pytest
+from pydantic import ValidationError
+
+import app.graphs.writers.budget_planner as bp
 from app.graphs.writers.budget_planner import (
     ProposalText,
     _mock_proposal_text,
@@ -9,6 +13,7 @@ from app.graphs.writers.budget_planner import (
     generate_proposal,
     verify_proposal_pure,
 )
+from app.schemas.proposals import ProposalBudgetRequest
 from app.tools.burn_rate_forecast import forecast
 
 EXPENSES = [
@@ -73,3 +78,55 @@ async def test_generate_proposal_mock_meta():
     meta = out["llm_meta"]["budget_planner"]
     assert meta.mock is True
     assert meta.model == "gpt-4o-mini"  # models.yaml budget_planner 라우팅
+
+
+def test_period_format_validation():
+    # 유효값은 통과, 형식이 다르면 즉시 422 거부 (조기 검증 — 리뷰 발견)
+    ProposalBudgetRequest(team_id="t", period="2026-06")
+    ProposalBudgetRequest(team_id="t", period=None)
+    for bad in ("2026-6", "June", "2026-13", "2026/06"):
+        with pytest.raises(ValidationError):
+            ProposalBudgetRequest(team_id="t", period=bad)
+
+
+async def test_save_skips_persistence_when_not_verified(monkeypatch):
+    """검증 실패 시 save_proposal이 호출되지 않아야 한다 — 환각 수치 차단의 마지막 방어선."""
+    calls = []
+
+    async def fake_save_proposal(team_id, proposal_type, payload):
+        calls.append((team_id, proposal_type, payload))
+        return "should-not-be-reached"
+
+    monkeypatch.setattr(bp, "save_proposal", fake_save_proposal)
+    f = _forecast()
+    state = {
+        "request": ProposalBudgetRequest(team_id="t"),
+        "proposal_text": _mock_proposal_text(f),
+        "forecast": f,
+        "verified": False,
+    }
+    out = await bp.save(state)
+    assert out["proposal_id"] is None
+    assert calls == []
+
+
+async def test_save_persists_when_verified(monkeypatch):
+    calls = []
+
+    async def fake_save_proposal(team_id, proposal_type, payload):
+        calls.append((team_id, proposal_type, payload))
+        return "pid-123"
+
+    monkeypatch.setattr(bp, "save_proposal", fake_save_proposal)
+    f = _forecast()
+    state = {
+        "request": ProposalBudgetRequest(team_id="t"),
+        "proposal_text": _mock_proposal_text(f),
+        "forecast": f,
+        "verified": True,
+    }
+    out = await bp.save(state)
+    assert out["proposal_id"] == "pid-123"
+    assert len(calls) == 1
+    assert calls[0][0] == "t"
+    assert calls[0][1] == "budget"

@@ -94,3 +94,42 @@ async def test_draft_amendment_mock_meta():
     assert meta.mock is True
     assert meta.model == "gpt-4o"  # models.yaml rule_amendment 라우팅
     assert meta.prompt_version == "rule_amendment/v1"
+
+
+async def test_save_skips_persistence_when_not_verified(monkeypatch):
+    """검증 실패 시 save_proposal이 호출되지 않아야 한다 — 환각 문안 차단의 마지막 방어선."""
+    calls = []
+
+    async def fake_save_proposal(team_id, proposal_type, payload):
+        calls.append((team_id, proposal_type, payload))
+        return "should-not-be-reached"
+
+    monkeypatch.setattr(ra, "save_proposal", fake_save_proposal)
+    out = await ra.save({"verified": False})
+    assert out == {"proposal_ids": []}
+    assert calls == []
+
+
+async def test_save_persists_per_cluster_when_verified(monkeypatch):
+    calls = []
+
+    async def fake_save_proposal(team_id, proposal_type, payload):
+        calls.append((team_id, proposal_type, payload))
+        return f"pid-{len(calls)}"
+
+    monkeypatch.setattr(ra, "save_proposal", fake_save_proposal)
+    c = _cluster()
+    d = _mock_amendment(c)
+    out = await ra.save(
+        {
+            "request": RuleAmendmentRequest(team_id="t"),
+            "clusters": [c],
+            "drafts": [d],
+            "verified": True,
+        }
+    )
+    assert out["proposal_ids"] == ["pid-1"]
+    assert len(calls) == 1
+    assert calls[0][0] == "t"
+    assert calls[0][1] == "rule_amendment"
+    assert calls[0][2]["precedent_ids"] == c["precedent_ids"]  # 근거 판례 id 배열

@@ -125,6 +125,57 @@ async def test_retry_without_checkpoint_restarts_from_initial_state(monkeypatch)
     assert seen[-1] is None  # 체크포인트 있음 → 재개(input=None)
 
 
+class FakeConn:
+    def __init__(self):
+        self.executed = []
+
+    async def execute(self, sql, params=None):
+        self.executed.append((sql, params))
+
+
+class FakeConnCtx:
+    def __init__(self, conn):
+        self.conn = conn
+
+    async def __aenter__(self):
+        return self.conn
+
+    async def __aexit__(self, *exc):
+        return False
+
+
+class FakePool:
+    def __init__(self, conn):
+        self.conn = conn
+
+    def connection(self):
+        return FakeConnCtx(self.conn)
+
+
+async def test_retryable_failure_requeues_without_dead_or_callback(monkeypatch):
+    """attempts < max_attempts 실패 → dead 처리·콜백 없이 재큐잉 UPDATE만 실행."""
+    fin, cb = Recorder(), Recorder(ret=True)
+    monkeypatch.setattr(worker, "finish_job", fin)
+    monkeypatch.setattr(worker, "send_callback", cb)
+
+    async def boom(job):
+        raise RuntimeError("transient fail")
+
+    monkeypatch.setattr(worker, "run_review_job", boom)
+    conn = FakeConn()
+    monkeypatch.setattr(worker, "get_pool", lambda: FakePool(conn))
+
+    job = _job("review", attempts=1, max_attempts=3)
+    await worker.handle_job(job)
+
+    assert fin.calls == []  # dead 처리 안 함
+    assert cb.calls == []  # 콜백 미발송
+    assert len(conn.executed) == 1
+    sql, params = conn.executed[0]
+    assert "queued" in sql
+    assert params == (job["id"],)
+
+
 async def test_poll_loop_reclaims_each_cycle(monkeypatch):
     """poll_loop이 매 사이클 reclaim_stale_jobs를 설정된 timeout으로 호출하는지."""
     import app.db.pool as pool
