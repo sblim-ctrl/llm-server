@@ -27,7 +27,7 @@ from app.schemas.callback import CallbackPayload
 from app.schemas.common import Reasons
 from app.schemas.proposals import ProposalBudgetRequest, RuleAmendmentRequest
 from app.schemas.writers import BriefingRequest, DigestRequest, ReportRequest
-from app.tools.backend_client import send_callback
+from app.tools.backend_client import close_backend_client, send_callback
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 logger = logging.getLogger("worker")
@@ -253,6 +253,7 @@ async def main() -> None:
         try:
             await poll_loop()
         finally:
+            await close_backend_client()  # 공유 httpx 클라이언트 정리
             await close_pool()
 
 

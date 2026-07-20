@@ -22,6 +22,7 @@ from app.api import (
 )
 from app.db.pool import apply_schema, close_pool, open_pool
 from app.mcp_server import mcp_app, mcp_session_manager
+from app.tools.backend_client import close_backend_client
 from app.observability import setup_langsmith
 from app.middleware.auth import AuthMiddleware
 from app.middleware.request_log import RequestLogMiddleware
@@ -38,6 +39,7 @@ async def lifespan(app: FastAPI):
     await apply_schema()
     async with mcp_session_manager():  # MCP Streamable HTTP 세션 (§5.2)
         yield
+    await close_backend_client()  # 공유 httpx 클라이언트 정리
     await close_pool()  # graceful shutdown (§10.2)
 
 

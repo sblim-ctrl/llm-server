@@ -3,6 +3,7 @@
 연동 방식이 확정되지 않았으므로 MOCK_BACKEND=true(기본)로 개발한다.
 실제 엔드포인트 경로·인증이 확정되면 이 파일의 URL만 바꾸면 된다 — 노드 코드는 불변.
 """
+
 import asyncio
 import logging
 from typing import Any
@@ -14,9 +15,36 @@ from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
+_http_client: httpx.AsyncClient | None = None
+
 
 def _headers() -> dict[str, str]:
     return {"Authorization": f"Bearer {get_settings().service_token}"}
+
+
+def _client() -> httpx.AsyncClient:
+    """공유 AsyncClient — 호출마다 재생성하지 않는다 (연결 풀·keep-alive·TLS 재사용).
+
+    구현 전에는 백엔드 호출 1건마다 클라이언트를 새로 만들어 매번 커넥션/TLS
+    핸드셰이크를 치렀다 — 심사 1건이 백엔드를 5-6회 치므로 실배포 지연에 직결
+    (Sprint 2 백로그 'httpx lifespan 공유' 이행). 종료 시 close_backend_client()
+    호출 — api는 main.py lifespan, 워커는 main() finally에서.
+    """
+    global _http_client
+    if _http_client is None or _http_client.is_closed:
+        s = get_settings()
+        _http_client = httpx.AsyncClient(
+            base_url=s.backend_base_url, headers=_headers(), timeout=15
+        )
+    return _http_client
+
+
+async def close_backend_client() -> None:
+    """공유 클라이언트 정리 — 앱/워커 graceful shutdown 시 호출."""
+    global _http_client
+    if _http_client is not None and not _http_client.is_closed:
+        await _http_client.aclose()
+    _http_client = None
 
 
 async def get_budget_status(team_id: str, category: str | None = None) -> dict[str, Any]:
@@ -32,11 +60,12 @@ async def get_budget_status(team_id: str, category: str | None = None) -> dict[s
             return {"total_budget": 20_000, "spent": 19_000}
         # 기본 고정값: 총예산 30만, 승인 지출 11.8만
         return {"total_budget": 300_000, "spent": 118_000}
-    async with httpx.AsyncClient(base_url=s.backend_base_url, headers=_headers()) as client:
-        r = await client.get(f"/internal/agent/teams/{team_id}/budget",
-                             params={"category": category} if category else None)
-        r.raise_for_status()
-        return r.json()
+    r = await _client().get(
+        f"/internal/agent/teams/{team_id}/budget",
+        params={"category": category} if category else None,
+    )
+    r.raise_for_status()
+    return r.json()
 
 
 async def get_expense_history(team_id: str, **filters: Any) -> list[dict[str, Any]]:
@@ -50,26 +79,97 @@ async def get_expense_history(team_id: str, **filters: Any) -> list[dict[str, An
             return []
         if "balanced" in team_id:
             return [
-                {"title": "분기 회식", "amount": 90000, "category": "식비", "date": "2026-06-06", "status": "APPROVED"},
-                {"title": "세미나실 대관", "amount": 75000, "category": "대관", "date": "2026-06-13", "status": "APPROVED"},
-                {"title": "공용 교재", "amount": 75000, "category": "도서", "date": "2026-06-20", "status": "APPROVED"},
-                {"title": "모임 다과", "amount": 60000, "category": "다과", "date": "2026-06-27", "status": "APPROVED"},
+                {
+                    "title": "분기 회식",
+                    "amount": 90000,
+                    "category": "식비",
+                    "date": "2026-06-06",
+                    "status": "APPROVED",
+                },
+                {
+                    "title": "세미나실 대관",
+                    "amount": 75000,
+                    "category": "대관",
+                    "date": "2026-06-13",
+                    "status": "APPROVED",
+                },
+                {
+                    "title": "공용 교재",
+                    "amount": 75000,
+                    "category": "도서",
+                    "date": "2026-06-20",
+                    "status": "APPROVED",
+                },
+                {
+                    "title": "모임 다과",
+                    "amount": 60000,
+                    "category": "다과",
+                    "date": "2026-06-27",
+                    "status": "APPROVED",
+                },
             ]
         # 결정적 샘플 이력 (리포트 개발용) — 계약 확정 시 실 API로 교체
         return [
-            {"title": "정기 회식", "amount": 84000, "category": "식비", "date": "2026-06-05", "status": "APPROVED"},
-            {"title": "스터디룸 대관", "amount": 40000, "category": "대관", "date": "2026-06-08", "status": "APPROVED"},
-            {"title": "교재 3권", "amount": 54000, "category": "도서", "date": "2026-06-12", "status": "APPROVED"},
-            {"title": "간식", "amount": 18000, "category": "다과", "date": "2026-06-14", "status": "APPROVED"},
-            {"title": "번개 모임 식사", "amount": 62000, "category": "식비", "date": "2026-06-19", "status": "APPROVED"},
-            {"title": "온라인 강의", "amount": 33000, "category": "교육", "date": "2026-06-21", "status": "APPROVED"},
-            {"title": "프린트·제본", "amount": 12000, "category": "비품", "date": "2026-06-25", "status": "APPROVED"},
-            {"title": "월말 회식", "amount": 96000, "category": "식비", "date": "2026-06-28", "status": "APPROVED"},
+            {
+                "title": "정기 회식",
+                "amount": 84000,
+                "category": "식비",
+                "date": "2026-06-05",
+                "status": "APPROVED",
+            },
+            {
+                "title": "스터디룸 대관",
+                "amount": 40000,
+                "category": "대관",
+                "date": "2026-06-08",
+                "status": "APPROVED",
+            },
+            {
+                "title": "교재 3권",
+                "amount": 54000,
+                "category": "도서",
+                "date": "2026-06-12",
+                "status": "APPROVED",
+            },
+            {
+                "title": "간식",
+                "amount": 18000,
+                "category": "다과",
+                "date": "2026-06-14",
+                "status": "APPROVED",
+            },
+            {
+                "title": "번개 모임 식사",
+                "amount": 62000,
+                "category": "식비",
+                "date": "2026-06-19",
+                "status": "APPROVED",
+            },
+            {
+                "title": "온라인 강의",
+                "amount": 33000,
+                "category": "교육",
+                "date": "2026-06-21",
+                "status": "APPROVED",
+            },
+            {
+                "title": "프린트·제본",
+                "amount": 12000,
+                "category": "비품",
+                "date": "2026-06-25",
+                "status": "APPROVED",
+            },
+            {
+                "title": "월말 회식",
+                "amount": 96000,
+                "category": "식비",
+                "date": "2026-06-28",
+                "status": "APPROVED",
+            },
         ]
-    async with httpx.AsyncClient(base_url=s.backend_base_url, headers=_headers()) as client:
-        r = await client.get(f"/internal/agent/teams/{team_id}/expenses", params=filters)
-        r.raise_for_status()
-        return r.json()
+    r = await _client().get(f"/internal/agent/teams/{team_id}/expenses", params=filters)
+    r.raise_for_status()
+    return r.json()
 
 
 async def approve_expense(expense_id: str, idempotency_key: str, reason: str) -> dict[str, Any]:
@@ -78,16 +178,15 @@ async def approve_expense(expense_id: str, idempotency_key: str, reason: str) ->
     if s.mock_backend:
         logger.info("MOCK approve: expense=%s key=%s", expense_id, idempotency_key)
         return {"status": "AI_APPROVED", "mock": True}
-    async with httpx.AsyncClient(base_url=s.backend_base_url, headers=_headers()) as client:
-        r = await client.post(
-            f"/internal/agent/expenses/{expense_id}/approve",
-            headers={"Idempotency-Key": idempotency_key},
-            json={"reason": reason},
-        )
-        if r.status_code == 409:  # 이미 처리됨 — 이중 차감 없음 (§8)
-            return {"status": "duplicate", "idempotent": True}
-        r.raise_for_status()
-        return r.json()
+    r = await _client().post(
+        f"/internal/agent/expenses/{expense_id}/approve",
+        headers={"Idempotency-Key": idempotency_key},
+        json={"reason": reason},
+    )
+    if r.status_code == 409:  # 이미 처리됨 — 이중 차감 없음 (§8)
+        return {"status": "duplicate", "idempotent": True}
+    r.raise_for_status()
+    return r.json()
 
 
 async def reject_expense(expense_id: str, idempotency_key: str, reason: str) -> dict[str, Any]:
@@ -96,16 +195,15 @@ async def reject_expense(expense_id: str, idempotency_key: str, reason: str) -> 
     if s.mock_backend:
         logger.info("MOCK reject: expense=%s key=%s", expense_id, idempotency_key)
         return {"status": "AI_REJECTED", "mock": True}
-    async with httpx.AsyncClient(base_url=s.backend_base_url, headers=_headers()) as client:
-        r = await client.post(
-            f"/internal/agent/expenses/{expense_id}/reject",
-            headers={"Idempotency-Key": idempotency_key},
-            json={"reason": reason},
-        )
-        if r.status_code == 409:
-            return {"status": "duplicate", "idempotent": True}
-        r.raise_for_status()
-        return r.json()
+    r = await _client().post(
+        f"/internal/agent/expenses/{expense_id}/reject",
+        headers={"Idempotency-Key": idempotency_key},
+        json={"reason": reason},
+    )
+    if r.status_code == 409:
+        return {"status": "duplicate", "idempotent": True}
+    r.raise_for_status()
+    return r.json()
 
 
 async def get_expense_detail(organization_id: str, expense_id: str) -> dict[str, Any]:
@@ -123,8 +221,13 @@ async def get_expense_detail(organization_id: str, expense_id: str) -> dict[str,
     """
     s = get_settings()
     if s.mock_backend:
-        detail = {"title": "모의 지출", "amount": 30_000, "category": "",
-                  "date": "2026-07-01", "description": ""}
+        detail = {
+            "title": "모의 지출",
+            "amount": 30_000,
+            "category": "",
+            "date": "2026-07-01",
+            "description": "",
+        }
         if "?" in expense_id:
             params = parse_qs(urlsplit(expense_id).query)
             for key in ("title", "category", "date", "description"):
@@ -133,11 +236,11 @@ async def get_expense_detail(organization_id: str, expense_id: str) -> dict[str,
             if "amount" in params:
                 detail["amount"] = int(params["amount"][0])
         return detail
-    async with httpx.AsyncClient(base_url=s.backend_base_url, headers=_headers()) as client:
-        r = await client.get(
-            f"/internal/agent/organizations/{organization_id}/expenses/{expense_id}")
-        r.raise_for_status()
-        return r.json()
+    r = await _client().get(
+        f"/internal/agent/organizations/{organization_id}/expenses/{expense_id}"
+    )
+    r.raise_for_status()
+    return r.json()
 
 
 async def get_team_settings(organization_id: str) -> dict[str, Any]:
@@ -157,11 +260,9 @@ async def get_team_settings(organization_id: str) -> dict[str, Any]:
             "auto_approve_limit": 50_000,
             "escalation_threshold": 0.8,
         }
-    async with httpx.AsyncClient(base_url=s.backend_base_url, headers=_headers()) as client:
-        r = await client.get(
-            f"/internal/agent/organizations/{organization_id}/team-settings")
-        r.raise_for_status()
-        return r.json()
+    r = await _client().get(f"/internal/agent/organizations/{organization_id}/team-settings")
+    r.raise_for_status()
+    return r.json()
 
 
 async def get_receipt_by_path(receipt_path: str) -> bytes | None:
@@ -176,10 +277,9 @@ async def get_receipt_by_path(receipt_path: str) -> bytes | None:
     s = get_settings()
     if s.mock_backend:
         return None
-    async with httpx.AsyncClient(base_url=s.backend_base_url, headers=_headers()) as client:
-        r = await client.get(receipt_path)
-        r.raise_for_status()
-        return r.content
+    r = await _client().get(receipt_path)
+    r.raise_for_status()
+    return r.content
 
 
 async def get_team_profile(team_id: str) -> dict[str, Any]:
@@ -191,16 +291,20 @@ async def get_team_profile(team_id: str) -> dict[str, Any]:
     s = get_settings()
     if s.mock_backend:
         tid = team_id.lower()
-        for hint, team_type in [("club", "동아리/학생회"), ("study", "스터디"),
-                                ("social", "친목"), ("hobby", "동호회"),
-                                ("company", "회사"), ("corp", "회사")]:
+        for hint, team_type in [
+            ("club", "동아리/학생회"),
+            ("study", "스터디"),
+            ("social", "친목"),
+            ("hobby", "동호회"),
+            ("company", "회사"),
+            ("corp", "회사"),
+        ]:
             if hint in tid:
                 return {"team_type": team_type}
         return {"team_type": "동아리/학생회"}  # 기본값
-    async with httpx.AsyncClient(base_url=s.backend_base_url, headers=_headers()) as client:
-        r = await client.get(f"/internal/agent/teams/{team_id}/profile")
-        r.raise_for_status()
-        return r.json()
+    r = await _client().get(f"/internal/agent/teams/{team_id}/profile")
+    r.raise_for_status()
+    return r.json()
 
 
 async def get_team_members(team_id: str) -> list[dict[str, Any]]:
@@ -215,10 +319,9 @@ async def get_team_members(team_id: str) -> list[dict[str, Any]]:
             {"name": "이영희", "role": "회원"},
             {"name": "박민준", "role": "회원"},
         ]
-    async with httpx.AsyncClient(base_url=s.backend_base_url, headers=_headers()) as client:
-        r = await client.get(f"/internal/agent/teams/{team_id}/members")
-        r.raise_for_status()
-        return r.json()
+    r = await _client().get(f"/internal/agent/teams/{team_id}/members")
+    r.raise_for_status()
+    return r.json()
 
 
 async def get_policy_document(team_id: str, doc_type: str, version: int) -> str:
@@ -239,13 +342,12 @@ async def get_policy_document(team_id: str, doc_type: str, version: int) -> str:
                 f"(mock rule text, team={team_id}, version={version})"
             )
         return f"(mock {doc_type} text, team={team_id}, version={version})"
-    async with httpx.AsyncClient(base_url=s.backend_base_url, headers=_headers()) as client:
-        r = await client.get(
-            f"/internal/agent/teams/{team_id}/policy-document",
-            params={"doc_type": doc_type, "version": version},
-        )
-        r.raise_for_status()
-        return r.json()["text"]
+    r = await _client().get(
+        f"/internal/agent/teams/{team_id}/policy-document",
+        params={"doc_type": doc_type, "version": version},
+    )
+    r.raise_for_status()
+    return r.json()["text"]
 
 
 CALLBACK_MAX_ATTEMPTS = 3
@@ -255,9 +357,8 @@ CALLBACK_BACKOFF_BASE_SEC = 1.0  # 1s → 2s → (4s는 없음: 3회째 실패 �
 async def _post_callback(payload: dict[str, Any]) -> None:
     """콜백 1회 전송 — 실패는 예외로 전파 (재시도 루프가 잡는다). 테스트 대체 지점."""
     s = get_settings()
-    async with httpx.AsyncClient(base_url=s.backend_base_url, headers=_headers()) as client:
-        r = await client.post("/agent-callback", json=payload, timeout=10)
-        r.raise_for_status()
+    r = await _client().post("/agent-callback", json=payload, timeout=10)
+    r.raise_for_status()
 
 
 async def send_callback(payload: dict[str, Any]) -> bool:
@@ -270,8 +371,9 @@ async def send_callback(payload: dict[str, Any]) -> bool:
     """
     s = get_settings()
     if s.mock_backend:
-        logger.info("MOCK callback: verdict=%s expense=%s",
-                    payload.get("verdict"), payload.get("expenseId"))
+        logger.info(
+            "MOCK callback: verdict=%s expense=%s", payload.get("verdict"), payload.get("expenseId")
+        )
         return True
     for attempt in range(1, CALLBACK_MAX_ATTEMPTS + 1):
         try:
@@ -281,10 +383,18 @@ async def send_callback(payload: dict[str, Any]) -> bool:
             if attempt == CALLBACK_MAX_ATTEMPTS:
                 logger.error(
                     "callback failed after %d attempts (job=%s) — 백엔드 폴링 fallback에 위임",
-                    CALLBACK_MAX_ATTEMPTS, payload.get("jobId"), exc_info=True)
+                    CALLBACK_MAX_ATTEMPTS,
+                    payload.get("jobId"),
+                    exc_info=True,
+                )
                 return False
             delay = CALLBACK_BACKOFF_BASE_SEC * (2 ** (attempt - 1))
-            logger.warning("callback attempt %d/%d failed (job=%s) — %.0fs 후 재시도",
-                           attempt, CALLBACK_MAX_ATTEMPTS, payload.get("jobId"), delay)
+            logger.warning(
+                "callback attempt %d/%d failed (job=%s) — %.0fs 후 재시도",
+                attempt,
+                CALLBACK_MAX_ATTEMPTS,
+                payload.get("jobId"),
+                delay,
+            )
             await asyncio.sleep(delay)
     return False  # 도달 불가 — 타입 체커용

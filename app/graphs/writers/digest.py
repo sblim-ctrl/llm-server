@@ -14,6 +14,8 @@
 B-2 규칙 준수: daily_burn·소진일은 budget.spent(총액) 기준, 카테고리 비중은
 expenses 기준 — 두 수치를 한 문장에 섞지 않는다.
 """
+
+import asyncio
 import calendar
 import logging
 from datetime import date, timedelta
@@ -32,9 +34,9 @@ from app.tools.burn_rate_forecast import BurnForecast, forecast
 
 logger = logging.getLogger(__name__)
 
-ANOMALY_SPIKE_FACTOR = 2.0     # 카테고리 주간 지출이 직전 4주 주평균의 2배 초과
+ANOMALY_SPIKE_FACTOR = 2.0  # 카테고리 주간 지출이 직전 4주 주평균의 2배 초과
 ANOMALY_PRIOR_WEEKS = 4
-ANOMALY_ESCALATE_RUN = 3       # 에스컬레이션 연속 발생 임계
+ANOMALY_ESCALATE_RUN = 3  # 에스컬레이션 연속 발생 임계
 
 
 class DigestFigures(BaseModel):
@@ -44,18 +46,20 @@ class DigestFigures(BaseModel):
     writers.py → burn_rate_forecast → report.py → writers.py 순환 import 방지.
     budget_planner.py의 ProposalText 배치와 같은 이유.)
     """
-    week_start: str                # 월요일
-    week_end: str                  # 일요일
-    auto_approved: int             # AGENT 승인 (주간 판례 기준)
-    auto_rejected: int             # AGENT 반려
-    escalated: int                 # 관리자 확인으로 넘어간 건
-    weekly_spent: int              # 주간 APPROVED 지출 합 (원)
-    forecast: BurnForecast         # B-2 재사용 (C8) — 총액 기준 소진 전망
-    anomalies: list[str]           # 결정적 규칙으로 탐지한 이상 징후 문장
+
+    week_start: str  # 월요일
+    week_end: str  # 일요일
+    auto_approved: int  # AGENT 승인 (주간 판례 기준)
+    auto_rejected: int  # AGENT 반려
+    escalated: int  # 관리자 확인으로 넘어간 건
+    weekly_spent: int  # 주간 APPROVED 지출 합 (원)
+    forecast: BurnForecast  # B-2 재사용 (C8) — 총액 기준 소진 전망
+    anomalies: list[str]  # 결정적 규칙으로 탐지한 이상 징후 문장
 
 
 class DigestText(BaseModel):
     """LLM 산출은 문구만 — 수치 figures는 코드가 붙인다 (digest_writer/v1.yaml)."""
+
     summary: str
     highlights: list[str]
 
@@ -69,12 +73,12 @@ class DigestDoc(BaseModel):
 
 class DigestState(TypedDict, total=False):
     request: DigestRequest
-    precedents: list[dict]         # 주간 판례 (자동 처리 현황 재료)
-    budget: dict                   # {total_budget, spent}
-    expenses: list[dict]           # APPROVED 전체 이력 (주간·직전 4주 분리는 집계에서)
+    precedents: list[dict]  # 주간 판례 (자동 처리 현황 재료)
+    budget: dict  # {total_budget, spent}
+    expenses: list[dict]  # APPROVED 전체 이력 (주간·직전 4주 분리는 집계에서)
     figures: DigestFigures
     digest: DigestDoc
-    llm_meta: dict[str, LLMCallMeta]   # 작성 노드 하나뿐 — reducer 불요 (B-7 합산용)
+    llm_meta: dict[str, LLMCallMeta]  # 작성 노드 하나뿐 — reducer 불요 (B-7 합산용)
 
 
 def week_bounds(week_of: str) -> tuple[str, str]:
@@ -84,33 +88,43 @@ def week_bounds(week_of: str) -> tuple[str, str]:
     return monday.isoformat(), (monday + timedelta(days=6)).isoformat()
 
 
-async def fetch(state: DigestState) -> dict:
-    req = state["request"]
-    week_start, week_end = week_bounds(req.week_of)
-
+async def _fetch_week_precedents(team_id: str, week_start: str, week_end: str) -> list[dict]:
     # 주간 판례 — briefing.py fetch_precedents 패턴 + created_at 주간 필터 (A-4 명세)
     async with get_pool().connection() as conn:
-        rows = await (await conn.execute(
-            """SELECT decision, decided_by, created_at
+        rows = await (
+            await conn.execute(
+                """SELECT decision, decided_by, created_at
                FROM precedents
                WHERE team_id = %s AND active
                  AND created_at >= %s::date AND created_at < %s::date + 1
                ORDER BY created_at""",
-            (req.team_id, week_start, week_end),
-        )).fetchall()
+                (team_id, week_start, week_end),
+            )
+        ).fetchall()
+    return [dict(r) for r in rows]
 
-    budget = await get_budget_status(req.team_id)
-    expenses = await get_expense_history(req.team_id)
+
+async def fetch(state: DigestState) -> dict:
+    req = state["request"]
+    week_start, week_end = week_bounds(req.week_of)
+
+    # DB·백엔드 3개 조회는 상호 독립 — 동시 실행 (성능)
+    precedents, budget, expenses = await asyncio.gather(
+        _fetch_week_precedents(req.team_id, week_start, week_end),
+        get_budget_status(req.team_id),
+        get_expense_history(req.team_id),
+    )
     approved = [e for e in expenses if e.get("status") == "APPROVED"]
-    return {"precedents": [dict(r) for r in rows], "budget": budget, "expenses": approved}
+    return {"precedents": precedents, "budget": budget, "expenses": approved}
 
 
 def _in_window(d: str, start: str, end: str) -> bool:
     return start <= d <= end
 
 
-def detect_anomalies_pure(precedents: list[dict], expenses: list[dict],
-                          week_start: str, week_end: str) -> list[str]:
+def detect_anomalies_pure(
+    precedents: list[dict], expenses: list[dict], week_start: str, week_end: str
+) -> list[str]:
     """이상 징후 — 결정적 규칙 2종 (순수 함수, 단위 테스트 대상).
 
     ① 카테고리 주간 지출이 직전 4주 주평균의 2배 초과 (직전 지출이 있는 카테고리만 —
@@ -129,16 +143,17 @@ def detect_anomalies_pure(precedents: list[dict], expenses: list[dict],
             this_week[cat] = this_week.get(cat, 0) + amount
         elif _in_window(d, prior_start, week_start) and d != week_start:
             prior[cat] = prior.get(cat, 0) + amount
-    for cat in sorted(this_week):                      # 정렬 — 결정적 순서
+    for cat in sorted(this_week):  # 정렬 — 결정적 순서
         if cat in prior and prior[cat] > 0:
             weekly_avg = prior[cat] / ANOMALY_PRIOR_WEEKS
             if this_week[cat] > ANOMALY_SPIKE_FACTOR * weekly_avg:
                 anomalies.append(
                     f"{cat} 주간 지출이 직전 {ANOMALY_PRIOR_WEEKS}주 주평균의 "
-                    f"{ANOMALY_SPIKE_FACTOR:g}배를 초과했습니다")
+                    f"{ANOMALY_SPIKE_FACTOR:g}배를 초과했습니다"
+                )
 
     run = 0
-    for p in precedents:                               # created_at 순 (fetch가 정렬)
+    for p in precedents:  # created_at 순 (fetch가 정렬)
         run = run + 1 if p["decision"] == "escalate" else 0
         if run == ANOMALY_ESCALATE_RUN:
             anomalies.append(f"에스컬레이션이 {ANOMALY_ESCALATE_RUN}건 연속 발생했습니다")
@@ -147,8 +162,9 @@ def detect_anomalies_pure(precedents: list[dict], expenses: list[dict],
     return anomalies
 
 
-def aggregate_digest_pure(precedents: list[dict], expenses: list[dict],
-                          budget: dict, week_of: str) -> DigestFigures:
+def aggregate_digest_pure(
+    precedents: list[dict], expenses: list[dict], budget: dict, week_of: str
+) -> DigestFigures:
     """결정적 집계 — 순수 함수 (단위 테스트 대상). forecast 계산 포함.
 
     as_of/period_end: week_of가 속한 달을 기간으로 보고(월 단위 — B-2 가정과 동일),
@@ -156,32 +172,45 @@ def aggregate_digest_pure(precedents: list[dict], expenses: list[dict],
     """
     week_start, week_end = week_bounds(week_of)
 
-    auto_approved = sum(1 for p in precedents
-                        if p["decided_by"] == "AGENT" and p["decision"] == "approve")
-    auto_rejected = sum(1 for p in precedents
-                        if p["decided_by"] == "AGENT" and p["decision"] == "reject")
+    auto_approved = sum(
+        1 for p in precedents if p["decided_by"] == "AGENT" and p["decision"] == "approve"
+    )
+    auto_rejected = sum(
+        1 for p in precedents if p["decided_by"] == "AGENT" and p["decision"] == "reject"
+    )
     escalated = sum(1 for p in precedents if p["decision"] == "escalate")
 
-    weekly_spent = sum(e["amount"] for e in expenses
-                       if _in_window(e["date"], week_start, week_end))
+    weekly_spent = sum(e["amount"] for e in expenses if _in_window(e["date"], week_start, week_end))
 
     base = date.fromisoformat(week_of)
     period_end = base.replace(day=calendar.monthrange(base.year, base.month)[1])
     as_of = min(date.fromisoformat(week_end), period_end)
-    fc = forecast(budget["total_budget"], budget["spent"], expenses,
-                  as_of=as_of.isoformat(), period_end=period_end.isoformat())
+    fc = forecast(
+        budget["total_budget"],
+        budget["spent"],
+        expenses,
+        as_of=as_of.isoformat(),
+        period_end=period_end.isoformat(),
+    )
 
     return DigestFigures(
-        week_start=week_start, week_end=week_end,
-        auto_approved=auto_approved, auto_rejected=auto_rejected, escalated=escalated,
-        weekly_spent=weekly_spent, forecast=fc,
-        anomalies=detect_anomalies_pure(precedents, expenses, week_start, week_end))
+        week_start=week_start,
+        week_end=week_end,
+        auto_approved=auto_approved,
+        auto_rejected=auto_rejected,
+        escalated=escalated,
+        weekly_spent=weekly_spent,
+        forecast=fc,
+        anomalies=detect_anomalies_pure(precedents, expenses, week_start, week_end),
+    )
 
 
 async def aggregate(state: DigestState) -> dict:
-    return {"figures": aggregate_digest_pure(
-        state["precedents"], state["expenses"], state["budget"],
-        state["request"].week_of)}
+    return {
+        "figures": aggregate_digest_pure(
+            state["precedents"], state["expenses"], state["budget"], state["request"].week_of
+        )
+    }
 
 
 def _mock_digest_text(f: DigestFigures) -> DigestText:
@@ -191,16 +220,18 @@ def _mock_digest_text(f: DigestFigures) -> DigestText:
         f"{f.week_start}~{f.week_end} 주간 브리핑입니다. 자동 승인 {f.auto_approved}건, "
         f"반려 {f.auto_rejected}건, 관리자 확인 {f.escalated}건을 처리했습니다. "
         f"주간 지출은 {f.weekly_spent:,}원입니다. 현재 속도 유지 시 기간 말 예상 지출은 "
-        f"{fc.projected_period_end_spent:,}원입니다.")
+        f"{fc.projected_period_end_spent:,}원입니다."
+    )
     if fc.depletion_date:
         summary += f" 잔액은 {fc.depletion_date}에 소진될 것으로 예상됩니다."
-    summary += (" 이상 징후: " + " / ".join(f.anomalies)
-                if f.anomalies else " 이번 주 특이사항은 없습니다.")
+    summary += (
+        " 이상 징후: " + " / ".join(f.anomalies) if f.anomalies else " 이번 주 특이사항은 없습니다."
+    )
 
-    highlights = [f"자동 승인 {f.auto_approved}건 · 반려 {f.auto_rejected}건 · "
-                  f"에스컬레이션 {f.escalated}건",
-                  f"주간 지출 {f.weekly_spent:,}원 · 기간 말 예상 "
-                  f"{fc.projected_period_end_spent:,}원"]
+    highlights = [
+        f"자동 승인 {f.auto_approved}건 · 반려 {f.auto_rejected}건 · 에스컬레이션 {f.escalated}건",
+        f"주간 지출 {f.weekly_spent:,}원 · 기간 말 예상 {fc.projected_period_end_spent:,}원",
+    ]
     highlights += f.anomalies or ["이상 징후 없음"]
     return DigestText(summary=summary, highlights=highlights)
 
@@ -211,13 +242,14 @@ async def generate_digest(state: DigestState) -> dict:
     result, meta = await chat_structured(
         agent="digest_writer",
         system=spec.system_with_few_shot(),
-        user=f.model_dump_json(),          # figures만 전달 — 수치 출처 강제
+        user=f.model_dump_json(),  # figures만 전달 — 수치 출처 강제
         schema=DigestText,
         mock_response=_mock_digest_text(f),
         prompt_version=spec.version,
     )
-    digest = DigestDoc(figures=f, summary=result.summary,
-                       highlights=result.highlights, verified=False)
+    digest = DigestDoc(
+        figures=f, summary=result.summary, highlights=result.highlights, verified=False
+    )
     return {"digest": digest, "llm_meta": {"digest_writer": meta}}
 
 
@@ -228,9 +260,13 @@ def verify_digest_pure(doc: DigestDoc, f: DigestFigures) -> bool:
     (카테고리명·'에스컬레이션')가 본문에 남아 있는지만 본다.
     """
     body = doc.summary + " " + " ".join(doc.highlights)
-    checks = [f"승인 {f.auto_approved}건", f"반려 {f.auto_rejected}건",
-              f"{f.escalated}건", f"{f.weekly_spent:,}원",
-              f"{f.forecast.projected_period_end_spent:,}원"]
+    checks = [
+        f"승인 {f.auto_approved}건",
+        f"반려 {f.auto_rejected}건",
+        f"{f.escalated}건",
+        f"{f.weekly_spent:,}원",
+        f"{f.forecast.projected_period_end_spent:,}원",
+    ]
     if f.forecast.depletion_date:
         checks.append(f.forecast.depletion_date)
     # 이상 징후 표지: "X 주간 지출이…" → 카테고리명 X, 에스컬레이션 연속 → '에스컬레이션'
