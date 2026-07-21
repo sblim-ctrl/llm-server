@@ -10,11 +10,12 @@ AGENTS = [
     "classifier",
     "digest_writer",
     "intake",
+    "judge",
     "policy_drafter",
     "precedent_auditor",
     "rule_amendment",
     "rule_auditor",
-]  # 9종 union — B-5 크로스 수정(C3) + A-7 digest_writer
+]  # 10종 union — B-5 크로스 수정(C3) + A-7 digest_writer + judge(LLM-as-Judge)
 
 
 @pytest.mark.parametrize("agent", AGENTS)

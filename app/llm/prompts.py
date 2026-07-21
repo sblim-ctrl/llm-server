@@ -21,8 +21,10 @@ _ENV_PREFIX = "PROMPT_VERSION_"   # A/B 실험용 오버라이드: PROMPT_VERSIO
 # adjudicator v1 80.0% → v2 93.3%~ (잔액 부족 확신 반려)
 DEFAULT_VERSIONS = {
     "rule_auditor": "v3",
-    "adjudicator": "v2",
+    "adjudicator": "v2",     # v3는 롤백 — LLM-as-Judge 결함이 실은 judge 오판이었고
+                             #  adjudicator v2 요청자용 사유는 원래 수치 비노출(정상)
     "digest_writer": "v2",   # 총무 코멘트(advice) 섹션 — 실모드 확인 2026-07-20
+    "judge": "v2",           # judge 캘리브레이션 — 정성 표현 오판(false positive) 제거
 }
 
 
