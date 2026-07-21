@@ -71,7 +71,9 @@ curl http://localhost:8000/v1/jobs/{job_id} -H "Authorization: Bearer dev-servic
 ```powershell
 uv run pytest -q                                       # 단위 테스트 전체 (가드레일 100% 커버 등)
 uv run python eval/run_eval.py                          # 골든셋 회귀 (목 모드) — 정확도·오승인율·Trajectory
-$env:MOCK_LLM="false"; uv run python eval/run_eval_real.py  # 골든셋 실모드 실측 (실키·과금 ~$0.2, 절차는 파일 docstring)
+$env:MOCK_LLM="false"; uv run python eval/run_eval_real.py  # 골든셋 실모드 실측 (실키·과금 ~$0.3, 판정 P/R·자동처리율 포함)
+uv run python eval/upload_langsmith_dataset.py             # 골든셋 → LangSmith Dataset (멱등)
+$env:MOCK_LLM="false"; $env:LANGSMITH_TRACING="true"; uv run python eval/run_eval_langsmith.py  # LangSmith Experiment (웹 기록·프롬프트 A/B)
 uv run python scripts/smoke_review.py                   # 심사 그래프 E2E 스모크 (DB 불필요)
 uv run python scripts/smoke_mcp.py                       # MCP 서버 접속 확인 (API 필요)
 uv run python scripts/seed_reference_corpus.py           # PolicyDrafter RAG 참고 문서 인덱싱 (DB 필요, 재실행 가능)
