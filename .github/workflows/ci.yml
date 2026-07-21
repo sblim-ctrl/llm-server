@@ -54,6 +54,9 @@ jobs:
       - name: lint (ruff)
         run: uv run ruff check app tests scripts eval
 
+      - name: OpenAPI 스펙 최신성 (drift 검사)
+        run: uv run python scripts/dump_openapi.py --check
+
       - name: 단위 테스트 (pytest)
         run: uv run pytest -q
 

@@ -97,6 +97,19 @@ uv run python scripts/seed_demo.py                       # 판례 학습 데모 
 
 실연동 시 `.env`만 바꾸면 됨 — 노드 코드는 불변 (`app/tools/backend_client.py`가 경계).
 
+## API 계약 (OpenAPI)
+
+풀스택 팀 공유용 — 우리 API의 엔드포인트·요청/응답 스키마 전체가
+[`docs/openapi.json`](docs/openapi.json)에 고정돼 있다(코드 실행 없이 확인 가능).
+API를 바꾸면 스펙도 갱신해야 하며, CI가 불일치를 잡는다:
+
+```powershell
+uv run python scripts/dump_openapi.py           # API 변경 후 스펙 갱신·커밋
+uv run python scripts/dump_openapi.py --check    # 최신성 검사 (CI가 자동 수행)
+```
+
+서버 기동 시 대화형 문서도 제공된다: `/docs`(Swagger UI) · `/redoc`.
+
 ## 실모드 수동 체크리스트 (A-9/B-8 — 비용 문제로 CI 밖)
 
 `.env`에 `OPENAI_API_KEY` 설정 후, **`.env`의 `MOCK_LLM=true`는 유지**하고
