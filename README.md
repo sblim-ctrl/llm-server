@@ -75,6 +75,7 @@ uv run python scripts/smoke_review.py                   # 심사 그래프 E2E �
 uv run python scripts/smoke_mcp.py                       # MCP 서버 접속 확인 (API 필요)
 uv run python scripts/seed_reference_corpus.py           # PolicyDrafter RAG 참고 문서 인덱싱 (DB 필요, 재실행 가능)
 uv run python scripts/seed_demo.py                       # 판례 학습 데모 데이터 4주 시뮬레이션 (DB 필요, 재실행 가능)
+uv run python scripts/verify_realmode_proposals.py       # B-8 실모드 검증 하네스 (실키·DB 필요, CI 밖 — 아래 참고)
 ```
 
 `eval/run_eval.py` 실행 시 `eval/results/golden_run.csv`(엑셀 호환)가 매번 갱신된다.
@@ -116,8 +117,14 @@ uv run python scripts/seed_demo.py                       # 판례 학습 데모 
       심사 → LangSmith API로 트레이스 역조회 — C9 형식(run_name=review:{job_id},
       tags=[team_id]) 확인, **LLM 전송 프롬프트에 실명 부재·역할 치환 확인**
       (검증도 .env는 LANGSMITH_TRACING=false 유지, 프로세스 주입 방식)
-- [ ] 개발자 B 몫(B-8): BudgetPlanner·rule_amendment 실모드, 군집 실키 확인,
-      jobs cost/tokens 실기록, C9 태깅 트레이스
+- [x] 개발자 B 몫(B-8, 2026-07-22 실행 — 전 항목 통과): `scripts/verify_realmode_proposals.py`
+      실행(exit 0) — ① BudgetPlanner 실모드(cost $0.00019, tokens 781/119, proposal_id 발급)
+      ② rule_amendment 실모드(cost $0.00252, tokens 616/98, 제안 1건) +
+      `detect_repeated_overrides` 의미 유사 군집 실키 확인(count=4 — 실 임베딩 거리
+      0.236~0.355 vs 목 해시 거리 0.669~1.151, **목으론 불가함을 실측으로 증명**)
+      ③ jobs 테이블 cost/tokens 실기록 확인 ④ LangSmith API 역조회로
+      `proposal_budget:{job_id}`·`proposal_rule_amendment:{job_id}` 둘 다
+      `tags=[b8-verify]` 확인. 총 실측 비용 $0.002710
 
 실측에서 나온 수정 3건(전부 이 리포에 반영됨): ① `with_structured_output`은
 `method="function_calling"` 필수 — 기본 strict 모드가 `Opinion.figures`(자유 dict)를
