@@ -341,8 +341,14 @@
         <div class="summary-strip">
           <div class="stat" id="ev-stat-acc"><div class="label">정확도</div><div class="value">-</div></div>
           <div class="stat" id="ev-stat-fa"><div class="label">오승인 (하드 게이트)</div><div class="value">-</div></div>
+          <div class="stat"><div class="label">자동 처리율</div><div class="value" id="ev-automation">-</div></div>
+          <div class="stat" id="ev-stat-esc"><div class="label">에스컬레이션 Recall</div><div class="value">-</div></div>
           <div class="stat"><div class="label">전체 케이스</div><div class="value" id="ev-total">-</div></div>
         </div>
+        <table class="wrap-x" style="margin-top:10px">
+          <thead><tr><th>판정</th><th class="num">건수</th><th class="num">Precision</th><th class="num">Recall</th><th class="num">F1</th></tr></thead>
+          <tbody id="ev-prf"></tbody>
+        </table>
         <div id="ev-cases"></div>
         <span class="raw-toggle" data-target="ev-raw">원본 JSON 보기 ▾</span>
         <pre class="raw" id="ev-raw"></pre>
@@ -693,6 +699,21 @@ $("ev-submit").addEventListener("click", async () => {
     faStat.className = "stat " + (s.false_approve_count === 0 ? "ok" : "bad");
     faStat.querySelector(".value").textContent = s.false_approve_count + "건";
     $("ev-total").textContent = s.total + "건";
+
+    // §4 Sprint 2 판정 지표 — 자동 처리율·에스컬레이션 Recall·판정별 P/R/F1
+    const m = s.metrics || {};
+    const pct = (v) => (v == null) ? "N/A" : `${(v * 100).toFixed(0)}%`;
+    $("ev-automation").textContent = pct(m.automation_rate);
+    const escStat = $("ev-stat-esc");
+    escStat.className = "stat " + (m.escalation_recall === 1 ? "ok" : "");
+    escStat.querySelector(".value").textContent = pct(m.escalation_recall);
+    const LBL = { approve: "승인", reject: "반려", escalate: "보류" };
+    $("ev-prf").innerHTML = ["approve", "reject", "escalate"].map(k => {
+      const p = (m.per_class || {})[k] || {};
+      return `<tr><td>${LBL[k]}</td><td class="num">${p.support ?? "-"}</td>
+        <td class="num">${pct(p.precision)}</td><td class="num">${pct(p.recall)}</td>
+        <td class="num">${pct(p.f1)}</td></tr>`;
+    }).join("");
 
     $("ev-cases").innerHTML = s.results.map(r => `
       <div class="case-row">

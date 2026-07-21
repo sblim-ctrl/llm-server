@@ -133,6 +133,20 @@ async def main() -> int:
         acc = correct / n if n else 0.0
         print(f"\n정확도: {correct}/{n} = {acc:.1%} (실모드 목표 ≥ {ACCURACY_TARGET:.0%})")
         print(f"오승인(하드 게이트): {len(false_appr)}건 {false_appr or ''}")
+
+        # 판정 지표 (§4 Sprint 2) — rows에서 expected·actual만 추려 순수 계산
+        from app.eval_metrics import verdict_metrics
+        m = verdict_metrics([{"expected": r[1], "actual": r[2]} for r in rows])
+
+        def _pct(v: float | None) -> str:
+            return "N/A" if v is None else f"{v:.0%}"
+        print(f"자동 처리율: {m['automation_rate']:.0%} | "
+              f"에스컬레이션 R={_pct(m['escalation_recall'])} "
+              f"P={_pct(m['escalation_precision'])} (안전 핵심)")
+        for label in ("approve", "reject", "escalate"):
+            p = m["per_class"][label]
+            print(f"  {label:8s}(n={p['support']:2d}): "
+                  f"P={_pct(p['precision'])} R={_pct(p['recall'])} F1={_pct(p['f1'])}")
         print(f"총 비용 ${cost_total:.4f} (건당 평균 ${cost_total / n:.4f}) · "
               f"소요 {time.time() - started:.0f}s · CSV: {out}")
 

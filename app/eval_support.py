@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from app.eval_metrics import verdict_metrics
 from app.graphs.review.graph import review_graph
 from app.schemas.analyze import AnalyzeRequest
 
@@ -79,6 +80,8 @@ async def run_golden_set(golden_path: Path | None = None) -> dict[str, Any]:
         "trajectory_total": len(traj_cases),
         "trajectory_correct": traj_correct,
         "trajectory_accuracy": (traj_correct / len(traj_cases)) if traj_cases else None,
+        # §4 Sprint 2 — 판정 분포·에스컬레이션 P/R·자동 처리율 (순수 함수 계산)
+        "metrics": verdict_metrics(results),
         "passed": not false_approves and accuracy >= ACCURACY_THRESHOLD,
         "results": results,
     }
