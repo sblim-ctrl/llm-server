@@ -1,0 +1,70 @@
+# CI Merge Gate
+#
+# CLAUDE.md 정의: "머지 게이트: uv run pytest 전체 통과 + run_eval 오승인 0건·정확도 ≥90%".
+# writers 골든셋(run_eval_writers, 검증 불통과 0건·정확도 ≥90%)도 동일 철학으로 추가.
+# lint는 이 게이트 정의에 없으므로 포함하지 않는다.
+#
+# Triggers:
+#   - pull_request: main 대상
+#   - push: main
+
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+  merge-gate:
+    name: pytest + run_eval + run_eval_writers
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      llm-postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: budgetops
+          POSTGRES_PASSWORD: budgetops
+          POSTGRES_DB: budgetops_llm
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U budgetops"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://budgetops:budgetops@localhost:5432/budgetops_llm
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run pytest
+        run: uv run pytest -q
+
+      - name: Run golden-set eval gate (run_eval)
+        run: uv run python -m eval.run_eval
+
+      - name: Run writers golden-set eval gate (run_eval_writers)
+        run: uv run python -m eval.run_eval_writers

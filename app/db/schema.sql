@@ -79,6 +79,8 @@ CREATE TABLE IF NOT EXISTS proposals (
 );
 CREATE INDEX IF NOT EXISTS idx_proposals_team_status ON proposals (team_id, status);
 
--- HNSW 인덱스는 데이터가 쌓인 뒤 생성 (2주차):
--- CREATE INDEX ON context_chunks USING hnsw (embedding vector_cosine_ops);
--- CREATE INDEX ON precedents USING hnsw (embedding vector_cosine_ops);
+-- HNSW 인덱스 (pgvector) — 빈 테이블에도 생성 가능하여 이제 적용
+CREATE INDEX IF NOT EXISTS idx_context_chunks_embedding_hnsw
+    ON context_chunks USING hnsw (embedding vector_cosine_ops);
+CREATE INDEX IF NOT EXISTS idx_precedents_embedding_hnsw
+    ON precedents USING hnsw (embedding vector_cosine_ops);

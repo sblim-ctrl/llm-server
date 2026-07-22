@@ -27,6 +27,7 @@ dev = [
     "jupyter>=1.1",
     "pandas>=2.2",
     "matplotlib>=3.9",
+    "alembic>=1.18.5",
 ]
 
 [tool.pytest.ini_options]
