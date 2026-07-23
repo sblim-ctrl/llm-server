@@ -2,6 +2,8 @@
 # v1 대비 변경: summary 길이(4문장 이내)·카테고리 서술 순서(by_category 입력 순서
 # 그대로) 규칙 명문화 + 카테고리 1종 소형 입력 few_shot 1건(과소 데이터에서 문장
 # 부풀리기 방지). 수치 그라운딩·검증 규칙은 v1 그대로.
+# 실측(2026-07-23, MOCK_LLM=false writers golden 20건): report 4/4 pass·verified
+# 4/4 true(v1과 동률 이상, 회귀 없음) — DEFAULT_VERSIONS 승격.
 # A/B: PROMPT_VERSION_REPORT_WRITER=v2.
 version: report_writer/v2
 system: |
