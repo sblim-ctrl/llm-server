@@ -4,6 +4,11 @@
 # v2는 5유형 각 1건 + 범용(fallback) 후보 저신뢰 예시 1건. few_shot input은
 # classify_category.py의 user 메시지 형식을 그대로 미러링한다.
 # A/B: PROMPT_VERSION_CLASSIFIER=v2.
+# 실측(2026-07-24): 골든셋 60건은 category가 항상 지정돼 있어 classify_category가
+# 즉시 반환 — LLM classifier 자체가 호출 안 됨(골든셋 A/B 무효). category 없는
+# 대표 케이스 직접 호출 스모크(5유형+fallback 1건, MOCK_LLM=false)로 재검증:
+# v1 6/6 = v2 6/6 동률이나, v1 few_shot의 가짜 후보 라벨(실제 카탈로그와 불일치)
+# 결함을 v2가 수정했으므로 DEFAULT_VERSIONS 승격.
 version: classifier/v2
 system: |
   당신은 모임 지출의 예산 카테고리 분류기입니다. 모임 유형과 그 유형의

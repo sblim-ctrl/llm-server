@@ -23,16 +23,38 @@ _ENV_PREFIX = "PROMPT_VERSION_"  # A/B 실험용 오버라이드: PROMPT_VERSION
 # briefing_writer v1 3/5(bf-override·bf-gap 실패) → v2 5/5, verified 불통과 0건
 #   (실키 writers golden, gap_categories 처리·0건 생략 금지 few_shot 보강 효과)
 # report_writer v1 4/4 → v2 4/4 유지(실키 writers golden, 회귀 없음 확인 후 승격)
-# 미승격: adjudicator/v3·precedent_auditor/v2·classifier/v2·intake/v2 —
-#   골든셋 receiptPath가 실키 Vision에서 항상 실패해 guardrail이 전건 escalate로
-#   수렴, 유효한 A/B 신호 불가(골든셋 결함, 후속 수정 필요). policy_drafter/v2는
-#   v1과 동일한 실패 패턴(골든셋이 구버전 목 휴리스틱 문구를 리터럴 기대) —
-#   동률이라 미승격, 파일만 보존.
+#
+# 2026-07-24 골든셋 receiptPath를 실제 로컬 이미지(file://)로 교체 후 재측정.
+# 주의: compare_prompts.py는 A(베이스라인)를 먼저 실행해 판례를 쌓고 그 위에서
+# B(오버라이드)를 평가하는 구조라, 초기 측정에서 adjudicator/rule_auditor/
+# classifier 전부 동일한 3개 adversarial 케이스(hobby-adversarial-001·
+# social-adversarial-001·study-adversarial-002)가 "회귀"로 보였다 — 오버라이드
+# 없이 판례만 안 지우고 재실행해도 동일하게 재현되어(57/60·95.0%), 프롬프트
+# 문제가 아니라 A→B 판례 오염 아티팩트임을 확정했다. 이후 전부 골든-* 팀 판례
+# 리셋 + 단독 실행(compare 없이 PROMPT_VERSION_*만 지정)으로 재검증:
+# adjudicator v2 100.0%(2회) vs v3 100.0%(2회) — 동률이나 v3는
+#   build_adjudication_user(근거 조항·수치·판례 확장 입력)와 few_shot 형식이
+#   정합하는 필수 수정이라 승격.
+# intake v1 100.0%(수 회) vs v2 100.0%(2회) — 동률, items 포맷 고정 등 부가
+#   개선이라 회귀 없음 확인 후 승격.
+# classifier: 골든셋 60건 전부 category가 이미 지정돼 있어 classify_category가
+#   즉시 반환 — LLM classifier 자체가 호출되지 않음(A/B 무효). category 없는
+#   대표 케이스 직접 호출 스모크(5유형+fallback 1건)로 재검증: v1 6/6 = v2 6/6
+#   동률이나, v1 few_shot이 실제 카탈로그와 다른 가짜 후보 라벨을 쓰던 결함을
+#   v2가 수정했으므로 승격.
+# rule_auditor v3 100.0%(2회) vs v4 100.0%(2회) — 완전 동률, v4는 조항 번호
+#   인용이라는 순수 부가 개선이라 기존 방침("동률이면 v3 유지") 그대로 미승격.
+# precedent_auditor v2: 판례 리셋한 클린 상태에서도 100.0%→61.7% 붕괴(23건,
+#   대부분 승인 기대 건이 보류로) — 판례 오염과 무관한 진짜 결함. "중복·분할
+#   청구 검사는 결정주체 무관"이라는 v2 규칙이 AGENT의 정상 반복 승인(매달
+#   반복되는 도서 구입 등)을 중복/분할 청구로 오탐. 미승격, 재작업 필요.
 DEFAULT_VERSIONS = {
     "rule_auditor": "v3",
-    "adjudicator": "v2",
+    "adjudicator": "v3",
     "briefing_writer": "v2",
     "report_writer": "v2",
+    "intake": "v2",
+    "classifier": "v2",
 }
 
 
