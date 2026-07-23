@@ -6,6 +6,7 @@
 
 import asyncio
 import logging
+from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
@@ -14,6 +15,8 @@ import httpx
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
+
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 _http_client: httpx.AsyncClient | None = None
 
@@ -272,8 +275,19 @@ async def get_receipt_by_path(receipt_path: str) -> bytes | None:
     (bravo 설계서 4절 'Agent 전용 토큰'). 목 모드에서는 None을 반환하고
     intake_receipt가 청구 일치 영수증을 생성한다(mock://receipt?... 오버라이드는
     intake 쪽 규약 그대로).
-    TODO(실키 연결 후): 반환된 bytes를 Vision OCR(parse_receipt)에 전달.
+
+    file:// 스킴은 로컬 파일을 그대로 읽어 반환한다 — 골든셋 실키 검증용
+    (eval/golden/receipts/, scripts/generate_golden_receipts.py) 실제 이미지 fixture
+    경로. 외부 호스팅 없이 Vision이 실제 픽셀 데이터를 읽도록 하기 위함이며,
+    mock_backend 여부와 무관하게 적용된다(로컬 파일은 항상 실재하므로). 상대경로는
+    저장소 루트 기준(팀원 간 절대경로 불일치 방지) — 절대경로도 그대로 허용.
     """
+    if receipt_path.startswith("file://"):
+        rel = receipt_path[len("file://") :]
+        path = Path(rel)
+        if not path.is_absolute():
+            path = _PROJECT_ROOT / rel
+        return path.read_bytes()
     s = get_settings()
     if s.mock_backend:
         return None
