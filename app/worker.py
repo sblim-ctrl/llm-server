@@ -18,14 +18,17 @@ from app.graphs.indexing.graph import indexing_graph
 from app.graphs.review.graph import build_review_graph
 from app.observability import langsmith_config, setup_langsmith
 from app.graphs.writers.briefing import briefing_graph
-from app.graphs.writers.budget_planner import budget_planner_graph
+
+# [MVP 제외] budget_planner — MVP 이후 복원: from app.graphs.writers.budget_planner import budget_planner_graph
 from app.graphs.writers.digest import digest_graph
 from app.graphs.writers.report import report_graph
 from app.graphs.writers.rule_amendment import rule_amendment_graph
 from app.schemas.analyze import AnalyzeRequest, ContextRefreshRequest
 from app.schemas.callback import CallbackPayload
 from app.schemas.common import Reasons
-from app.schemas.proposals import ProposalBudgetRequest, RuleAmendmentRequest
+from app.schemas.proposals import (
+    RuleAmendmentRequest,
+)  # [MVP 제외] budget_planner — ProposalBudgetRequest 제거
 from app.schemas.writers import BriefingRequest, DigestRequest, ReportRequest
 from app.tools.backend_client import close_backend_client, send_callback
 
@@ -130,14 +133,15 @@ async def run_digest_job(job: dict[str, Any]) -> tuple[dict[str, Any], dict[str,
     return final["digest"].model_dump(mode="json"), final
 
 
-async def run_proposal_budget_job(job: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
-    """B-3 — 예산 조정 제안 (작성: 개발자 B, 레지스트리 이식은 병합 시 A). C9 태깅."""
-    req = ProposalBudgetRequest.model_validate(job["payload"])
-    final = await budget_planner_graph.ainvoke(
-        {"request": req},
-        config=langsmith_config("proposal_budget", str(job["id"]), req.team_id),
-    )
-    return {"proposal_id": final.get("proposal_id"), "payload": final.get("payload")}, final
+# [MVP 제외] budget_planner — MVP 이후 복원: 아래 함수 전체 주석 해제 + import 복원 필요
+# async def run_proposal_budget_job(job: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+#     """B-3 — 예산 조정 제안 (작성: 개발자 B, 레지스트리 이식은 병합 시 A). C9 태깅."""
+#     req = ProposalBudgetRequest.model_validate(job["payload"])
+#     final = await budget_planner_graph.ainvoke(
+#         {"request": req},
+#         config=langsmith_config("proposal_budget", str(job["id"]), req.team_id),
+#     )
+#     return {"proposal_id": final.get("proposal_id"), "payload": final.get("payload")}, final
 
 
 async def run_proposal_rule_amendment_job(
@@ -152,7 +156,7 @@ async def run_proposal_rule_amendment_job(
     return {"proposals": final.get("proposal_ids") or [], "reason": final.get("reason")}, final
 
 
-# 잡 타입 → 핸들러 레지스트리 (C6 계약, A-2) — 7종 전부 등록 완료.
+# 잡 타입 → 핸들러 레지스트리 (C6 계약, A-2) — 7종 중 6종 등록(budget_planner는 MVP 제외).
 # 핸들러 계약(팀 합의 7/20): async (job: dict) -> (result dict, final_state | None)
 # — final_state는 B-7 잡 비용 계측(_meta_totals)이 llm_meta 합산에 사용, 그래프
 # 상태가 없거나 계측 무의미하면 None. C9 태깅은 각 핸들러 내부에서.
@@ -162,7 +166,7 @@ JOB_HANDLERS: dict[str, Any] = {
     "report": run_report_job,
     "briefing": run_briefing_job,
     "digest": run_digest_job,
-    "proposal_budget": run_proposal_budget_job,
+    # [MVP 제외] budget_planner — MVP 이후 복원: "proposal_budget": run_proposal_budget_job,
     "proposal_rule_amendment": run_proposal_rule_amendment_job,
 }
 
