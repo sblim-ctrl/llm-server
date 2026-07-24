@@ -26,6 +26,8 @@ DEFAULT_VERSIONS = {
                              #  요청자용 수치 노출 없음 (v2 vs v3 실측 2026-07-22)
     "digest_writer": "v2",   # 총무 코멘트(advice) 섹션 — 실모드 확인 2026-07-20
     "judge": "v2",           # judge 캘리브레이션 — 정성 표현 오판(false positive) 제거
+                             #  v3 초안 존재(근거 충실성/환각 검증 차원) — 실모드 A/B로
+                             #  개선 재현 확인 후 승격 예정. PROMPT_VERSION_JUDGE=v3
 }
 
 
