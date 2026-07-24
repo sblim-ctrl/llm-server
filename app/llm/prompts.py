@@ -47,7 +47,14 @@ _ENV_PREFIX = "PROMPT_VERSION_"  # A/B 실험용 오버라이드: PROMPT_VERSION
 # precedent_auditor v2: 판례 리셋한 클린 상태에서도 100.0%→61.7% 붕괴(23건,
 #   대부분 승인 기대 건이 보류로) — 판례 오염과 무관한 진짜 결함. "중복·분할
 #   청구 검사는 결정주체 무관"이라는 v2 규칙이 AGENT의 정상 반복 승인(매달
-#   반복되는 도서 구입 등)을 중복/분할 청구로 오탐. 미승격, 재작업 필요.
+#   반복되는 도서 구입 등)을 중복/분할 청구로 오탐.
+# precedent_auditor v3(2026-07-24): fail·warn② 적용 전 "동일 사안 식별"
+#   기준(정기성 표현·카테고리면 판례가 여러 건이어도 별개 회차로 간주,
+#   title·description 내용이 같은 사건을 가리킬 때만 재청구로 판정)을 추가해
+#   v2 회귀 수정. 클린 리셋 후 v1 100.0%(1회) vs v3 100.0%(2회, TPM 429는
+#   내부 재시도로 흡수) — v2가 깨뜨렸던 정기 반복 지출 케이스
+#   (club-approve-003/004 등) 전부 재통과, v1 대비 오탐 없이 동률 유지하며
+#   의도한 중복 탐지 규칙까지 갖춰 승격.
 DEFAULT_VERSIONS = {
     "rule_auditor": "v3",
     "adjudicator": "v3",
@@ -55,6 +62,7 @@ DEFAULT_VERSIONS = {
     "report_writer": "v2",
     "intake": "v2",
     "classifier": "v2",
+    "precedent_auditor": "v3",
 }
 
 
