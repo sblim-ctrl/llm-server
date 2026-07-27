@@ -4,20 +4,28 @@
 - get_expense_detail 목 규약: expense_id의 ?쿼리로 지출 상세 오버라이드
 - load_context: claim pull 채움 / 직접 주입 시 조회 생략 / team_settings 실패 시
   auto_approve=False fail-safe
+- team_settings·budget 응답 필드 계약 (풀스택 DB 스키마 2026-07-27 수령분)
 """
+
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from app.graphs.review.nodes.load_context import load_context
 from app.schemas.analyze import AnalyzeRequest
 from app.schemas.common import ExpenseClaim
-from app.tools.backend_client import get_expense_detail, get_team_settings
+from app.tools.backend_client import get_budget_status, get_expense_detail, get_team_settings
 
 
 def test_analyze_request_accepts_camel_case():
-    req = AnalyzeRequest.model_validate({
-        "jobId": "be-1", "expenseId": "exp-1", "organizationId": "org-1",
-        "reviewGoal": "심사하라", "receiptPath": "/api/internal/receipts/1",
-    })
+    req = AnalyzeRequest.model_validate(
+        {
+            "jobId": "be-1",
+            "expenseId": "exp-1",
+            "organizationId": "org-1",
+            "reviewGoal": "심사하라",
+            "receiptPath": "/api/internal/receipts/1",
+        }
+    )
     assert req.job_id == "be-1"
     assert req.organization_id == "org-1"
     assert req.receipt_path == "/api/internal/receipts/1"
@@ -26,7 +34,7 @@ def test_analyze_request_accepts_camel_case():
 def test_analyze_request_accepts_snake_case_too():
     """populate_by_name — 내부 도구·테스트의 snake_case 호출 호환."""
     req = AnalyzeRequest(job_id="be-2", expense_id="exp-2", organization_id="org-2")
-    assert req.review_goal == ""          # 선택 필드 기본값
+    assert req.review_goal == ""  # 선택 필드 기본값
     assert req.receipt_path is None
 
 
@@ -34,21 +42,27 @@ def test_analyze_request_rejects_old_push_contract():
     """구 push 계약(claim 인라인)은 jobId 등 필수 필드가 없어 수락되지 않아야 한다."""
     import pytest
     from pydantic import ValidationError
+
     with pytest.raises(ValidationError):
-        AnalyzeRequest.model_validate({
-            "expense_id": "exp-1", "team_id": "team-1",
-            "claim": {"title": "교재", "amount": 32000, "date": "2026-07-01"},
-        })
+        AnalyzeRequest.model_validate(
+            {
+                "expense_id": "exp-1",
+                "team_id": "team-1",
+                "claim": {"title": "교재", "amount": 32000, "date": "2026-07-01"},
+            }
+        )
 
 
 async def test_expense_detail_mock_query_override():
     detail = await get_expense_detail(
-        "org-1", "exp-1?title=스터디 교재&amount=32000&category=도서"
-        "&date=2026-07-01&description=설명%3D테스트")
+        "org-1",
+        "exp-1?title=스터디 교재&amount=32000&category=도서"
+        "&date=2026-07-01&description=설명%3D테스트",
+    )
     assert detail["title"] == "스터디 교재"
     assert detail["amount"] == 32000
     assert detail["category"] == "도서"
-    assert detail["description"] == "설명=테스트"   # 최소 이스케이프(%3D) 복원
+    assert detail["description"] == "설명=테스트"  # 최소 이스케이프(%3D) 복원
 
 
 async def test_expense_detail_mock_default_without_query():
@@ -62,8 +76,10 @@ async def test_team_settings_mock_noauto_convention():
 
 
 async def test_load_context_pulls_claim():
-    state = {"team_id": "org-1", "expense_id":
-             "exp-1?title=회식&amount=45000&category=식비&date=2026-07-02"}
+    state = {
+        "team_id": "org-1",
+        "expense_id": "exp-1?title=회식&amount=45000&category=식비&date=2026-07-02",
+    }
     updates = await load_context(state)
     claim = updates["claim"]
     assert claim.title == "회식" and claim.amount == 45000
@@ -74,14 +90,82 @@ async def test_load_context_skips_pull_when_claim_given():
     """직접 그래프 호출(smoke·seed_demo·단위테스트) — 주입된 claim을 덮지 않는다."""
     given = ExpenseClaim(title="직접 주입", amount=1000, date="2026-07-01")
     updates = await load_context(
-        {"team_id": "org-1", "expense_id": "exp-1?title=다른값&amount=99999",
-         "claim": given})
+        {"team_id": "org-1", "expense_id": "exp-1?title=다른값&amount=99999", "claim": given}
+    )
     assert "claim" not in updates
 
 
 async def test_load_context_fail_safe_on_settings_error():
     """team_settings 조회 실패 → auto_approve=False (자동판정 권한 미확인이면 판정 금지)."""
-    with patch("app.graphs.review.nodes.load_context.get_team_settings",
-               side_effect=RuntimeError("backend down")):
+    with patch(
+        "app.graphs.review.nodes.load_context.get_team_settings",
+        side_effect=RuntimeError("backend down"),
+    ):
         updates = await load_context({"team_id": "org-1", "expense_id": "exp-1"})
     assert updates["policy_params"].auto_approve is False
+
+
+# ── team_settings·budget 응답 필드 계약 (풀스택 DB 스키마 2026-07-27) ──
+
+
+async def test_escalation_threshold_is_amount_not_confidence():
+    """team_settings.escalation_threshold는 금액 → force_escalation_amount.
+
+    θ(confidence_threshold)는 백엔드가 모르는 LLM 내부 파라미터라 기본값을 유지한다.
+    """
+    with patch(
+        "app.graphs.review.nodes.load_context.get_team_settings",
+        return_value={
+            "auto_approve": True,
+            "auto_approve_limit": 50_000,
+            "escalation_threshold": 300_000,
+        },
+    ):
+        updates = await load_context({"team_id": "org-1", "expense_id": "exp-1"})
+    policy = updates["policy_params"]
+    assert policy.force_escalation_amount == 300_000
+    assert policy.confidence_threshold == 0.8
+
+
+async def test_auto_approve_limit_null_means_no_auto_approval():
+    """auto_approve_limit은 NULL 허용(자동승인 미사용 팀) — 예외 없이 0으로 처리."""
+    with patch(
+        "app.graphs.review.nodes.load_context.get_team_settings",
+        return_value={
+            "auto_approve": False,
+            "auto_approve_limit": None,
+            "escalation_threshold": 300_000,
+        },
+    ):
+        updates = await load_context({"team_id": "org-1", "expense_id": "exp-1"})
+    assert updates["policy_params"].auto_approve_limit == 0
+
+
+async def _budget_with_response(body: dict) -> dict:
+    """mock_backend=False 경로로 get_budget_status를 호출하고 정규화 결과를 돌려준다."""
+    response = SimpleNamespace(raise_for_status=lambda: None, json=lambda: body)
+
+    class _Stub:
+        async def get(self, *args, **kwargs):
+            return response
+
+    with (
+        patch(
+            "app.tools.backend_client.get_settings",
+            return_value=SimpleNamespace(mock_backend=False),
+        ),
+        patch("app.tools.backend_client._client", return_value=_Stub()),
+    ):
+        return await get_budget_status("org-1")
+
+
+async def test_budget_status_normalizes_used_budget_key():
+    """백엔드 DB 컬럼 표기(used_budget)를 내부 계약(spent)으로 흡수."""
+    result = await _budget_with_response({"total_budget": 300_000, "used_budget": 118_000})
+    assert result == {"total_budget": 300_000, "spent": 118_000}
+
+
+async def test_budget_status_normalizes_camel_case_key():
+    """프론트 API-026 표기(totalBudget/usedBudget)로 와도 동일 결과."""
+    result = await _budget_with_response({"totalBudget": 300_000, "usedBudget": 118_000})
+    assert result == {"total_budget": 300_000, "spent": 118_000}

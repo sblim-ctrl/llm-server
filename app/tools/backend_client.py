@@ -55,6 +55,11 @@ async def get_budget_status(team_id: str, category: str | None = None) -> dict[s
 
     [팀 확인 2026-07-09] 예산 = 모임 전체 총액. 잔액 = total_budget − spent(승인 합계).
     category는 내역 조회용 선택 파라미터 (한도 검사 기준 아님).
+
+    응답 키 정규화: 내부 계약은 {total_budget, spent}로 고정하고 여기서만 흡수한다
+    (budget_auditor·budget_calculator는 불변). 백엔드 DB 컬럼은 `used_budget`,
+    프론트 API-026 응답은 `usedBudget`인데 내부 Agent API는 아직 미문서화라 어느
+    표기로 올지 확정 불가 — 양쪽 다 받는다 (풀스택_문서_반영사항_2026-07-27.md §3-1).
     """
     s = get_settings()
     if s.mock_backend:
@@ -68,7 +73,19 @@ async def get_budget_status(team_id: str, category: str | None = None) -> dict[s
         params={"category": category} if category else None,
     )
     r.raise_for_status()
-    return r.json()
+    body = r.json()
+    return {
+        "total_budget": int(_first(body, "total_budget", "totalBudget") or 0),
+        "spent": int(_first(body, "spent", "used_budget", "usedBudget") or 0),
+    }
+
+
+def _first(body: dict[str, Any], *keys: str) -> Any:
+    """여러 표기 후보 중 먼저 존재하는 키의 값 — 백엔드 표기 미확정 구간 흡수용."""
+    for key in keys:
+        if key in body:
+            return body[key]
+    return None
 
 
 async def get_expense_history(team_id: str, **filters: Any) -> list[dict[str, Any]]:
@@ -252,6 +269,10 @@ async def get_team_settings(organization_id: str) -> dict[str, Any]:
     실계약에서 auto_approve 기본값은 FALSE(꺼짐) — 꺼져 있으면 금액·판단과 무관하게
     무조건 ESCALATED. 값 자체는 백엔드 DB가 진실 원천이고 우리는 읽기만 한다.
 
+    escalation_threshold는 **금액**이다 — "이 금액 초과 시 무조건 관리자 검토"
+    (풀스택 DB 스키마 team_settings, 2026-07-27 수령분 확정). 우리 PolicyParams의
+    force_escalation_amount에 대응하며, confidence_threshold(θ)와는 무관하다.
+
     목 규약: organization_id에 "noauto" 포함 → auto_approve=False (게이트 검증용).
     그 외에는 True — 골든셋·데모의 자동판정 흐름을 보존하기 위한 목 전용 기본값이며
     실서비스 기본값(False)과 다르다는 점에 주의.
@@ -261,7 +282,7 @@ async def get_team_settings(organization_id: str) -> dict[str, Any]:
         return {
             "auto_approve": "noauto" not in organization_id.lower(),
             "auto_approve_limit": 50_000,
-            "escalation_threshold": 0.8,
+            "escalation_threshold": 300_000,
         }
     r = await _client().get(f"/internal/agent/organizations/{organization_id}/team-settings")
     r.raise_for_status()
