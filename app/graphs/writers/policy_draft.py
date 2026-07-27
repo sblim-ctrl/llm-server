@@ -26,7 +26,10 @@ from app.tools.search_references import search_references
 
 logger = logging.getLogger(__name__)
 
-MAX_EXTRA_RULES = 3
+# 추가 조항 상한 — 천장이지 목표가 아니다(프롬프트가 "빠짐없이, 단 중복·일반론 금지"로
+# 실제 개수를 조절). base_rules 4~5개와 합쳐 총 10~12개 = 모바일 카드 한 장 분량.
+# v1 프롬프트는 본문에 "0~3개"로 적혀 있어 실질 동작 불변, v2가 0~7개를 사용한다.
+MAX_EXTRA_RULES = 7
 
 
 class ExtraRules(BaseModel):
@@ -91,7 +94,8 @@ def _mock_extra_rules(description: str) -> list[str]:
 async def generate_draft(state: DraftState) -> dict:
     """초안 조립. 한도 수치는 코드 계산, 기본 조항은 템플릿 + 치환.
 
-    모임 소개가 있으면 LLM이 그 모임 특성에 맞는 추가 조항(최대 3개)을 제안한다.
+    모임 소개가 있으면 LLM이 그 모임 특성에 맞는 추가 조항(최대 MAX_EXTRA_RULES개)을
+    제안한다. 소개가 없으면 LLM을 호출하지 않아 기본 조항만 남는다.
     기본 조항은 LLM이 절대 건드리지 않음 — 필수 조항 보장은 코드 검증(verify_draft)의
     책임으로 유지하기 위해서다.
     """
