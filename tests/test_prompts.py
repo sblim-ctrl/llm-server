@@ -13,9 +13,10 @@ AGENTS = [
     "judge",
     "policy_drafter",
     "precedent_auditor",
+    "query_rewriter",
     "rule_amendment",
     "rule_auditor",
-]  # 10종 union — B-5 크로스 수정(C3) + A-7 digest_writer + judge(LLM-as-Judge)
+]  # 11종 union — B-5 크로스 수정(C3) + A-7 digest_writer + judge + query_rewriter(CRAG)
 
 
 @pytest.mark.parametrize("agent", AGENTS)

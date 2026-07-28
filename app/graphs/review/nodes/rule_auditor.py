@@ -2,7 +2,8 @@
 
 검색은 CRAG/Self-RAG 스타일 2단계 (강의 08-03 적용):
   ① 1차 검색(제목+설명) → 관련성 채점(distance 임계값)
-  ② 불충분 → 쿼리 재작성(카테고리·규정 어휘) 후 1회 재검색
+  ② 불충분 → 쿼리 재작성 후 1회 재검색 — 실모드는 gpt-4o-mini가 규정 어휘로
+     재작성(query_rewriter/v1, CRAG rewriter), 목 모드는 결정적 템플릿(골든셋 불변)
   ③ 그래도 근거 없음 → 추측 판정 금지, warn("해석 애매") → 가드레일이 에스컬레이션
 근거 없이 조항을 지어내는(환각 인용) 경로를 구조적으로 차단한다 — 인용 정확도 지표(§9.1) 대응.
 
@@ -15,10 +16,12 @@
 """
 import logging
 
+from pydantic import BaseModel
+
 from app.graphs.review.state import ReviewState
 from app.llm.client import chat_structured
 from app.llm.prompts import load_prompt
-from app.schemas.common import ExpenseClaim, Opinion
+from app.schemas.common import ExpenseClaim, LLMCallMeta, Opinion
 from app.tools.search_rules import search_rules
 
 logger = logging.getLogger(__name__)
@@ -31,37 +34,70 @@ logger = logging.getLogger(__name__)
 RELEVANCE_MAX_DISTANCE = 0.65
 
 
+class RewrittenQuery(BaseModel):
+    """query_rewriter 출력 — 회칙 검색용으로 재작성된 질의 한 줄."""
+    query: str
+
+
+def _fallback_query(claim: ExpenseClaim) -> str:
+    """결정적 재작성 템플릿 — 목 모드 응답이자 실모드 빈 출력 방어값."""
+    return f"{claim.category} 지출 한도 금지 규정"
+
+
+async def _rewrite_query(
+    claim: ExpenseClaim, members: list[dict],
+) -> tuple[str, LLMCallMeta]:
+    """CRAG 재작성기 (강의 08-03) — 1차 검색이 빗나간 청구를 규정 어휘 질의로 재작성.
+
+    실모드: gpt-4o-mini (드문 경로라 비용 미미). 목 모드: mock_response로 기존
+    결정적 템플릿을 그대로 반환 — 골든셋 결정성·기존 재검색 동작 불변.
+    """
+    spec = load_prompt("query_rewriter")
+    result, meta = await chat_structured(
+        agent="query_rewriter",
+        system=spec.system_with_few_shot(),
+        user=claim.model_dump_json(),
+        schema=RewrittenQuery,
+        mock_response=RewrittenQuery(query=_fallback_query(claim)),
+        mask_with=members,
+        prompt_version=spec.version,
+    )
+    return (result.query.strip() or _fallback_query(claim)), meta
+
+
 async def _retrieve_with_correction(
-    team_id: str, claim: ExpenseClaim, version: int,
-) -> tuple[list[dict], str]:
-    """CRAG 스타일 검색: 채점 → 재작성 재검색. (chunks, grade) 반환.
+    team_id: str, claim: ExpenseClaim, version: int, members: list[dict],
+) -> tuple[list[dict], str, LLMCallMeta | None]:
+    """CRAG 스타일 검색: 채점 → 재작성 재검색. (chunks, grade, rewrite_meta) 반환.
 
     grade: "primary"(1차 적중) | "rewritten"(재작성 적중)
            | "no_rules"(인덱스 자체 없음) | "insufficient"(근거 못 찾음)
+    rewrite_meta: 재작성 LLM 호출이 있었던 경우만 (비용·버전 계측용, 없으면 None)
     """
     primary_query = f"{claim.title} {claim.description}".strip()
     chunks = await search_rules(team_id, primary_query, version)
     if not chunks:
-        return [], "no_rules"
+        return [], "no_rules", None
 
     relevant = [c for c in chunks if c["distance"] <= RELEVANCE_MAX_DISTANCE]
     if relevant:
-        return relevant, "primary"
+        return relevant, "primary", None
 
-    # TODO(실키 연결 후): gpt-4o-mini로 질의 재작성 — 지금은 규정 어휘 기반 결정적 재작성
-    rewritten_query = f"{claim.category} 지출 한도 금지 규정"
+    rewritten_query, rewrite_meta = await _rewrite_query(claim, members)
     chunks = await search_rules(team_id, rewritten_query, version)
     relevant = [c for c in chunks if c["distance"] <= RELEVANCE_MAX_DISTANCE]
     if relevant:
-        return relevant, "rewritten"
-    return [], "insufficient"
+        return relevant, "rewritten", rewrite_meta
+    return [], "insufficient", rewrite_meta
 
 
 async def rule_auditor(state: ReviewState) -> dict:
     claim = state["claim"]
+    members = state.get("team_members") or []
     try:
-        chunks, grade = await _retrieve_with_correction(
-            state["team_id"], claim, state["rule_version"])
+        chunks, grade, rewrite_meta = await _retrieve_with_correction(
+            state["team_id"], claim, state["rule_version"], members)
+        rewrite_llm_meta = {"query_rewriter": rewrite_meta} if rewrite_meta else {}
 
         if grade == "no_rules":
             return {"opinions": {"rule": Opinion(
@@ -74,7 +110,7 @@ async def rule_auditor(state: ReviewState) -> dict:
             return {"opinions": {"rule": Opinion(
                 auditor="rule", verdict="warn",
                 summary="청구와 관련된 회칙 조항을 찾지 못함 — 해석 애매, 관리자 확인 권고",
-            )}}
+            )}, "llm_meta": rewrite_llm_meta}
 
         evidence_text = "\n".join(f"- {c['text']}" for c in chunks)
         spec = load_prompt("rule_auditor")
@@ -88,11 +124,12 @@ async def rule_auditor(state: ReviewState) -> dict:
                 summary=f"'{claim.category}' 카테고리 지출로 회칙상 금지 항목에 해당하지 않음 (mock)",
                 evidence=[c["text"] for c in chunks],
             ),
-            mask_with=state.get("team_members") or [],
+            mask_with=members,
             prompt_version=spec.version,
         )
         opinion.auditor = "rule"
-        return {"opinions": {"rule": opinion}, "llm_meta": {"rule_auditor": meta}}
+        return {"opinions": {"rule": opinion},
+                "llm_meta": {"rule_auditor": meta, **rewrite_llm_meta}}
     except Exception:
         logger.exception("rule_auditor failed")
         return {"opinions": {"rule": Opinion(
