@@ -66,3 +66,56 @@ async def test_user_category_is_respected():
     result = await classify_category(_state("장소/예약비"))
     assert result["category_source"] == "user"
     assert "claim" not in result  # claim 미변경
+
+
+# ── 사용자 카테고리 vs AI 분류 불일치 (2026-07-28 결정 — 가드레일 category_mismatch) ──
+
+from app.tools.category_catalog import keyword_category_or_none  # noqa: E402
+
+
+def test_keyword_or_none_returns_none_without_hit():
+    """확신(키워드 적중) 없으면 None — fallback을 돌려주면 전건 오탐이 된다."""
+    assert keyword_category_or_none("정체불명 지출", "친목") is None
+    assert keyword_category_or_none("펜션 예약 숙소", "친목") == "숙박/여행비"
+
+
+async def test_user_category_agreeing_with_ai_passes():
+    """사용자 선택과 AI 분류가 일치 → 불일치 아님."""
+    state = {"team_type": "친목",
+             "claim": ExpenseClaim(title="회식 저녁", amount=40_000, category="식비/모임비",
+                                   date="2026-07-10", description="정기 모임 식사")}
+    result = await classify_category(state)
+    assert result["category_source"] == "user"
+    assert result["category_mismatch"] is False
+    assert result["ai_suggested_category"] is None
+
+
+async def test_user_category_confident_disagreement_flags_mismatch():
+    """숙박 지출을 식비로 등록 → 확신 있는 불일치 → 가드레일 보류 대상 + AI 의견 전달."""
+    state = {"team_type": "친목",
+             "claim": ExpenseClaim(title="펜션 예약", amount=90_000, category="식비/모임비",
+                                   date="2026-07-10", description="여름 여행 숙소")}
+    result = await classify_category(state)
+    assert result["category_source"] == "user"       # 라벨은 사용자 것 유지
+    assert "claim" not in result                     # claim 미변경 (존중 원칙)
+    assert result["category_mismatch"] is True
+    assert result["ai_suggested_category"] == "숙박/여행비"
+
+
+async def test_user_category_without_keyword_hit_not_flagged():
+    """키워드 미적중(확신 없음) → 비교하지 않음 — 과잉 보류 방지."""
+    state = {"team_type": "친목",
+             "claim": ExpenseClaim(title="정체불명 지출", amount=10_000, category="식비/모임비",
+                                   date="2026-07-10", description="")}
+    result = await classify_category(state)
+    assert result["category_source"] == "user"
+    assert result["category_mismatch"] is False
+
+
+async def test_user_category_outside_catalog_vocabulary_skipped():
+    """후보 6개 밖의 카테고리(다른 어휘 체계) → 비교 불가, 건너뜀 — 골든셋 오탐 회귀 방지."""
+    state = {"team_type": "친목",
+             "claim": ExpenseClaim(title="펜션 예약", amount=90_000, category="도서",
+                                   date="2026-07-10", description="여름 여행 숙소")}
+    result = await classify_category(state)
+    assert result == {"category_source": "user"}

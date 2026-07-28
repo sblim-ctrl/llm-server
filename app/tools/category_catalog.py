@@ -26,14 +26,24 @@ def categories_for(team_type: str) -> list[str]:
     return [c["name"] for c in _entry(team_type)["categories"]]
 
 
-def classify_by_keywords(text: str, team_type: str) -> str:
-    """카탈로그 키워드 기반 결정적 분류 — 순수 함수 (단위 테스트 대상).
+def keyword_category_or_none(text: str, team_type: str) -> str | None:
+    """키워드가 실제로 적중한 경우에만 카테고리 반환 — 미적중이면 None.
 
-    yaml에 적힌 순서대로 먼저 매칭되는 카테고리 우선. 미매칭 시 유형별 fallback.
+    사용자 지정 카테고리와의 불일치 비교용(가드레일 category_mismatch): fallback을
+    돌려주면 키워드가 안 잡히는 모든 청구가 '불일치'로 오탐되므로, 확신(키워드
+    적중)이 있을 때만 비교 대상이 된다. 순수 함수 (단위 테스트 대상).
     """
     entry = _entry(team_type)
     lowered = text.lower()
     for cat in entry["categories"]:
         if any(k.lower() in lowered for k in cat.get("keywords", [])):
             return cat["name"]
-    return entry["fallback"]
+    return None
+
+
+def classify_by_keywords(text: str, team_type: str) -> str:
+    """카탈로그 키워드 기반 결정적 분류 — 순수 함수 (단위 테스트 대상).
+
+    yaml에 적힌 순서대로 먼저 매칭되는 카테고리 우선. 미매칭 시 유형별 fallback.
+    """
+    return keyword_category_or_none(text, team_type) or _entry(team_type)["fallback"]

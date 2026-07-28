@@ -40,6 +40,11 @@ class ReviewState(TypedDict, total=False):
     team_members: list[dict]    # PII 마스킹용 멤버 명단 — 조회 실패 시에도 [] 보장 (B2)
     # 분류 (classify_category가 씀) — "user"(직접 입력) | "ai"(자동 분류)
     category_source: str
+    # 사용자 지정 카테고리 vs AI 분류의 '확신 있는 불일치' (2026-07-28 결정) —
+    # 라벨은 사용자 것 유지, 가드레일이 category_mismatch로 보류시키고
+    # AI 의견은 콜백 suggestedCategory로 관리자에게 전달
+    category_mismatch: bool
+    ai_suggested_category: str | None
     # 진행 산출물
     receipt_data: ReceiptData | None
     mismatch: list[Mismatch]

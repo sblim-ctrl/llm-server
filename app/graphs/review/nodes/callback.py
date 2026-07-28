@@ -18,7 +18,10 @@ def build_callback_payload(state: ReviewState) -> CallbackPayload:
         expense_id=state["expense_id"],
         team_id=state["team_id"],
         verdict=state.get("verdict") or "escalate",
-        suggested_category=state["claim"].category or None,
+        # 카테고리 불일치 보류 시엔 AI 분류 의견을 전달(관리자 화면 "AI는 X로 봤어요"),
+        # 평상시엔 확정 카테고리 — API-045/046 suggestedCategory 의미와 정합
+        suggested_category=state.get("ai_suggested_category")
+                           or state["claim"].category or None,
         confidence=state.get("confidence"),
         opinions=list(state.get("opinions", {}).values()),
         mismatch=state.get("mismatch", []),
