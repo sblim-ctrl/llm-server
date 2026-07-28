@@ -19,6 +19,7 @@ from app.api import (
     precedents,
     proposals,
     reports,
+    reviews_stream,
 )
 from app.db.pool import apply_schema, close_pool, open_pool
 from app.mcp_server import mcp_app, mcp_session_manager
@@ -55,6 +56,7 @@ app.add_middleware(RequestLogMiddleware)
 
 app.include_router(health.router)
 app.include_router(analyze.router)
+app.include_router(reviews_stream.router)  # 실시간 심사 SSE (데모·관측 전용)
 app.include_router(jobs.router)
 app.include_router(context.router)
 app.include_router(precedents.router)
