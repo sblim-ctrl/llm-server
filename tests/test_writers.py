@@ -100,6 +100,46 @@ async def test_generate_draft_without_description_matches_old_behavior():
     assert len(draft.rules) == len(load_templates()["회사"]["base_rules"])
 
 
+# ── 마법사 2단계 구간표 · 1단계 회비 ──────────────────────
+
+
+async def _draft_for(**kwargs):
+    req = PolicyDraftRequest(**kwargs)
+    state = await load_template({"request": req})
+    return (await generate_draft({"request": req, "template": state["template"]}))["draft"]
+
+
+async def test_thresholds_match_wizard_step2_table():
+    """마법사 2단계 구간표(소액 5만 미만 / 중간 5~20만 / 고액 20만 이상)와 일치."""
+    draft = await _draft_for(
+        team_type="동아리/학생회", team_name="코딩 동아리", initial_budget=1_000_000
+    )
+    assert draft.policy_params.auto_approve_limit == 50_000
+    assert draft.policy_params.force_escalation_amount == 200_000
+
+
+async def test_dues_adds_one_rule_and_appears_in_notes():
+    base = len(load_templates()["스터디"]["base_rules"])
+    draft = await _draft_for(
+        team_type="스터디", team_name="알고리즘 스터디", initial_budget=600_000, dues=20_000
+    )
+    assert len(draft.rules) == base + 1
+    assert "20,000원" in draft.rules[-1]
+    assert "회비 20,000원" in draft.notes
+    assert verify_draft_pure(draft) is None
+
+
+async def test_no_dues_adds_no_rule():
+    """화면의 '없음' 체크 — None·0 둘 다 조항을 만들지 않는다."""
+    base = len(load_templates()["스터디"]["base_rules"])
+    for dues in (None, 0):
+        draft = await _draft_for(
+            team_type="스터디", team_name="알고리즘 스터디", initial_budget=600_000, dues=dues
+        )
+        assert len(draft.rules) == base
+        assert "회비" not in draft.notes
+
+
 # ── ReportWriter ─────────────────────────────────────────
 
 EXPENSES = [

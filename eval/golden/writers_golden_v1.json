@@ -10,7 +10,7 @@
         "verified": true,
         "rules_count": 5,
         "auto_approve_limit": 50000,
-        "force_escalation_amount": 300000,
+        "force_escalation_amount": 200000,
         "categories_count": 6,
         "rules_not_contain": ["{auto_approve_limit}", "{per_meal_limit}"]
       }
@@ -23,7 +23,7 @@
         "verified": true,
         "rules_count": 5,
         "auto_approve_limit": 30000,
-        "force_escalation_amount": 180000,
+        "force_escalation_amount": 120000,
         "categories_count": 6
       }
     },
@@ -35,7 +35,7 @@
         "verified": true,
         "rules_count": 4,
         "auto_approve_limit": 30000,
-        "force_escalation_amount": 180000,
+        "force_escalation_amount": 120000,
         "categories_count": 6
       }
     },
@@ -47,7 +47,7 @@
         "verified": true,
         "rules_count": 5,
         "auto_approve_limit": 20000,
-        "force_escalation_amount": 120000,
+        "force_escalation_amount": 80000,
         "categories_count": 6
       }
     },
@@ -59,7 +59,7 @@
         "verified": true,
         "rules_count": 5,
         "auto_approve_limit": 90000,
-        "force_escalation_amount": 540000,
+        "force_escalation_amount": 360000,
         "categories_count": 6
       }
     },
@@ -70,7 +70,7 @@
       "expect": {
         "verified": true,
         "auto_approve_limit": 10000,
-        "force_escalation_amount": 60000
+        "force_escalation_amount": 40000
       }
     },
     {
