@@ -52,6 +52,11 @@ class ReviewState(TypedDict, total=False):
     # LLM 호출 계측 — 병렬 노드가 자기 agent 키로만 쓰고 reducer가 병합 (B2)
     llm_meta: Annotated[dict[str, LLMCallMeta], merge_llm_meta]
     gate_result: GateResult | None
+    # HITL(사람 개입, 강의 06-02 — 데모·관측 경로 전용): hitl_enabled면 escalate
+    # 노드가 interrupt()로 멈추고, 관리자 결정이 admin_decision으로 기록된다.
+    # 워커 경로는 이 키가 없어 기존 동작 불변.
+    hitl_enabled: bool
+    admin_decision: dict | None
     # 최종
     verdict: Verdict | None
     confidence: float | None

@@ -20,7 +20,9 @@ async def persist_precedent(state: ReviewState) -> dict:
             team_id=state["team_id"],
             summary=summarize_claim(claim),
             decision=state.get("verdict") or "escalate",
-            decided_by="AGENT",
+            # HITL 재개 경로: 관리자 결정은 ADMIN 판례로 저장 — 다음 심사의
+            # 유사판례 검색·반복 개입 군집(detect_repeated_overrides)에 학습됨
+            decided_by="ADMIN" if state.get("admin_decision") else "AGENT",
             reason=reasons.admin if reasons else None,
             confidence=state.get("confidence"),
             rule_version=state.get("rule_version"),

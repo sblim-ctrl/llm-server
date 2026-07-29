@@ -22,6 +22,8 @@ def build_callback_payload(state: ReviewState) -> CallbackPayload:
         # 평상시엔 확정 카테고리 — API-045/046 suggestedCategory 의미와 정합
         suggested_category=state.get("ai_suggested_category")
                            or state["claim"].category or None,
+        # HITL 재개 경로: 관리자가 직접 결정한 건은 processedBy=ADMIN (API-045/046)
+        processed_by="ADMIN" if state.get("admin_decision") else "AI",
         confidence=state.get("confidence"),
         opinions=list(state.get("opinions", {}).values()),
         mismatch=state.get("mismatch", []),

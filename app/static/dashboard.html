@@ -225,6 +225,21 @@
       </style>
       <div class="tl" id="rv-timeline"></div>
 
+      <!-- HITL 관리자 결정 카드 — paused 이벤트 시 표시 (그래프는 체크포인트에 멈춰 대기) -->
+      <div id="rv-hitl" style="display:none;margin-top:10px;padding:12px;border:1px solid var(--warn);
+           border-radius:8px;background:var(--warn-bg)">
+        <div style="font-weight:600;margin-bottom:4px">⏸ 그래프 일시정지 — 관리자 결정 대기</div>
+        <div class="status-line" id="hitl-reason" style="margin-bottom:8px"></div>
+        <div class="row">
+          <div class="field grow"><label>결정 사유 (선택 — 판례에 기록됨)</label>
+            <input id="hitl-note" placeholder="예: 영수증 원본 확인 완료"></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn" id="hitl-approve">승인하고 재개</button>
+          <button class="btn" id="hitl-reject">반려하고 재개</button>
+        </div>
+      </div>
+
       <div class="result empty" id="rv-result">
         <div id="rv-badge"></div>
         <div id="rv-category-result" style="margin-top:8px"></div>
@@ -551,54 +566,68 @@ async function readSSE(res, onEvent) {
   }
 }
 
+let hitlJobId = null;   // paused 상태의 스레드 — 결정 버튼이 이 잡을 재개한다
+
+function handleStreamEvent(ev, d) {
+  const tl = $("rv-timeline");
+  if (ev === "start") {
+    tl.innerHTML = d.nodes.map(n => `
+      <div class="tl-row${TL_PARALLEL.has(n.id) ? " par" : ""}" id="tl-${n.id}">
+        <span class="ic">○</span><span class="lb">${n.label}</span><span class="ms"></span>
+      </div>`).join("");
+    $("rv-status").textContent = `jobId=${d.jobId} — 심사 그래프 실행 중…`;
+  } else if (ev === "node") {
+    const row = document.getElementById("tl-" + d.node);
+    if (!row) return;
+    row.classList.add("done");
+    row.querySelector(".ic").textContent = "✓";
+    row.querySelector(".ms").textContent = d.ms + "ms";
+    if (d.opinion) row.insertAdjacentHTML("beforeend",
+      `<div class="op-sum">${d.opinion.verdict} — ${d.opinion.summary}</div>`);
+  } else if (ev === "paused") {
+    // 그래프가 escalate 노드의 interrupt()에서 멈춤 — 관리자 결정 대기
+    hitlJobId = d.jobId;
+    const row = document.getElementById("tl-escalate");
+    if (row) { row.classList.add("done"); row.querySelector(".ic").textContent = "⏸"; }
+    $("hitl-reason").textContent =
+      `${d.reason}${d.claim ? ` · ${d.claim.title} ${Number(d.claim.amount).toLocaleString()}원` : ""}`;
+    $("rv-hitl").style.display = "block";
+    $("rv-status").textContent = "⏸ 관리자 결정 대기 중 — 그래프가 체크포인트에 멈춰 있습니다";
+  } else if (ev === "result") {
+    tl.querySelectorAll(".tl-row:not(.done)").forEach(r => {
+      r.classList.add("skip");
+      r.querySelector(".ic").textContent = "–";
+    });
+    renderReviewResult({
+      verdict: d.verdict, confidence: d.confidence,
+      category: d.category, category_source: d.categorySource,
+      opinions: Object.entries(d.opinions || {}).map(([k, v]) => ({ auditor: k, ...v })),
+      reasons: d.reasons,
+    }, d);
+    const who = d.adminDecision ? ` · 관리자 결정(${d.adminDecision.decision})` : "";
+    $("rv-status").textContent = `스트리밍 완료 — 그래프 ${d.totalMs}ms${who}`;
+  } else if (ev === "error") {
+    throw new Error(d.detail);
+  }
+}
+
 $("rv-stream").addEventListener("click", async () => {
   const btn = $("rv-stream");
   btn.disabled = true;
   const tl = $("rv-timeline");
   tl.innerHTML = ""; tl.classList.add("show");
   $("rv-result").classList.add("empty");
+  $("rv-hitl").style.display = "none";
+  hitlJobId = null;
   $("rv-status").textContent = "스트리밍 연결 중…";
   $("rv-status").className = "status-line";
-  const t0 = performance.now();
   try {
     const res = await fetch("/v1/reviews/stream", {
       method: "POST", headers: authHeaders(),
       body: JSON.stringify(buildReviewPayload("stream")),
     });
     if (!res.ok) throw new Error(`stream 실패 (${res.status}): ${await res.text()}`);
-    await readSSE(res, (ev, d) => {
-      if (ev === "start") {
-        tl.innerHTML = d.nodes.map(n => `
-          <div class="tl-row${TL_PARALLEL.has(n.id) ? " par" : ""}" id="tl-${n.id}">
-            <span class="ic">○</span><span class="lb">${n.label}</span><span class="ms"></span>
-          </div>`).join("");
-        $("rv-status").textContent = `jobId=${d.jobId} — 심사 그래프 실행 중…`;
-      } else if (ev === "node") {
-        const row = document.getElementById("tl-" + d.node);
-        if (!row) return;
-        row.classList.add("done");
-        row.querySelector(".ic").textContent = "✓";
-        row.querySelector(".ms").textContent = d.ms + "ms";
-        if (d.opinion) row.insertAdjacentHTML("beforeend",
-          `<div class="op-sum">${d.opinion.verdict} — ${d.opinion.summary}</div>`);
-      } else if (ev === "result") {
-        // 방문 안 된 노드(분기에서 안 탄 경로)는 '건너뜀' 표시
-        tl.querySelectorAll(".tl-row:not(.done)").forEach(r => {
-          r.classList.add("skip");
-          r.querySelector(".ic").textContent = "–";
-        });
-        renderReviewResult({
-          verdict: d.verdict, confidence: d.confidence,
-          category: d.category, category_source: d.categorySource,
-          opinions: Object.entries(d.opinions || {}).map(([k, v]) => ({ auditor: k, ...v })),
-          reasons: d.reasons,
-        }, d);
-        $("rv-status").textContent =
-          `스트리밍 완료 — 그래프 ${d.totalMs}ms / 왕복 포함 ${Math.round(performance.now() - t0)}ms`;
-      } else if (ev === "error") {
-        throw new Error(d.detail);
-      }
-    });
+    await readSSE(res, handleStreamEvent);
   } catch (e) {
     $("rv-status").textContent = "오류: " + e.message;
     $("rv-status").className = "status-line err";
@@ -606,6 +635,27 @@ $("rv-stream").addEventListener("click", async () => {
     btn.disabled = false;
   }
 });
+
+async function sendHitlDecision(decision) {
+  if (!hitlJobId) return;
+  const jobId = hitlJobId;
+  hitlJobId = null;
+  $("rv-hitl").style.display = "none";
+  $("rv-status").textContent = `관리자 결정(${decision}) 전송 — 그래프 재개 중…`;
+  try {
+    const res = await fetch(`/v1/reviews/${jobId}/decision`, {
+      method: "POST", headers: authHeaders(),
+      body: JSON.stringify({ decision, reason: $("hitl-note").value }),
+    });
+    if (!res.ok) throw new Error(`재개 실패 (${res.status}): ${await res.text()}`);
+    await readSSE(res, handleStreamEvent);   // 재개분 이벤트도 같은 타임라인에 이어짐
+  } catch (e) {
+    $("rv-status").textContent = "오류: " + e.message;
+    $("rv-status").className = "status-line err";
+  }
+}
+$("hitl-approve").addEventListener("click", () => sendHitlDecision("approve"));
+$("hitl-reject").addEventListener("click", () => sendHitlDecision("reject"));
 
 // ── ② 회칙·예산 초안 ─────────────────────────────────────
 $("pd-submit").addEventListener("click", async () => {
