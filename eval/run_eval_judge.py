@@ -67,7 +67,13 @@ async def main() -> int:
             if verdict not in ("approve", "reject") or reasons is None:
                 continue  # 사유가 생성된 승인·반려만 채점 (escalate 제외)
 
-            result, meta = await judge_reasons(verdict, reasons.requester, reasons.admin)
+            # judge v3(근거 충실성)부터는 심사관 소견을 대조 자료로 전달 —
+            # v1·v2는 소견을 채점하지 않으므로 입력을 기존과 동일하게 유지(A/B 순수성)
+            from app.llm.prompts import load_prompt
+            use_opinions = load_prompt("judge").version not in ("judge/v1", "judge/v2")
+            result, meta = await judge_reasons(
+                verdict, reasons.requester, reasons.admin,
+                opinions=(final.get("opinions") or {}) if use_opinions else None)
             cost += meta.cost_usd
             judged += 1
             score_sum += result.overall_score

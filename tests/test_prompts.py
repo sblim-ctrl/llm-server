@@ -36,7 +36,9 @@ def test_few_shot_appended_when_present():
 
 
 def test_empty_few_shot_returns_system_unchanged():
-    spec = load_prompt("policy_drafter")  # few_shot=[] 유지 중
+    # v1을 명시 — v2 승격(few_shot 3종)으로 기본 로드는 더 이상 빈 few_shot이 아님
+    spec = load_prompt("policy_drafter", "v1")
+    assert spec.few_shot == []
     assert spec.system_with_few_shot() == spec.system
 
 
