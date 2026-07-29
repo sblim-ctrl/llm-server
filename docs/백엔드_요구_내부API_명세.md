@@ -53,10 +53,13 @@ GET /internal/agent/organizations/{organizationId}/team-settings
   ```json
   { "auto_approve": false, "auto_approve_limit": 50000, "escalation_threshold": 300000 }
   ```
-- ⚠️ **확인 필요(FQ5 연동)**: `escalation_threshold`의 **의미와 단위**가 불명확하다.
-  우리 목 구현은 `0.8`(비율처럼 보이는 값)을 반환하는데, 실제 코드는
-  `force_escalation_amount`(기본 300,000**원** — 초과 시 무조건 사람 검토)로 쓰고 있다.
-  **금액인가, 비율인가?** 금액이면 명칭을 `escalationThreshold`로 통일하겠다.
+- ✅ **`escalation_threshold`는 금액으로 확정**(2026-07-27 DB 스키마 `team_settings` 근거) —
+  우리 `force_escalation_amount`와 1:1이다("이 금액 초과 시 무조건 관리자 검토"). 코드 반영 완료이며
+  확신도 임계값 θ(0~1 실수)와는 분리했다. 명칭은 `escalationThreshold`로 통일한다.
+  → 목 구현이 아직 `0.8`을 반환하는 것은 우리 쪽 잔여 정리 사항이며, 회신이 필요한 항목이 아니다.
+- ⚠️ **회신 필요**: 이 값의 **기본값**을 확정해 주세요. AI 마법사 2단계 화면이 200,000원 기준으로
+  그려져 있어 우리도 그에 맞출 예정인데, 현재 우리 코드 기본값은 300,000원이다
+  (`풀스택_회신요청.md` 15번 ④). 조회·수정 API에 이 필드가 없는 문제는 같은 문서 5번.
 - **실패 시 동작**: `auto_approve=False`로 fail-safe (안전 방향)
 
 ### ③ 예산 현황 조회

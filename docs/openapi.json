@@ -275,12 +275,25 @@
         "type": "object"
       },
       "PolicyDraftRequest": {
-        "description": "모임 생성 화면 입력 (실제 화면: 유형 5종 · 이름 · 초기예산 총액).",
+        "description": "모임 생성 화면 + AI 마법사 1단계 입력\n(모임 생성: 유형 5종 · 이름 · 초기예산 총액 · 소개 / 마법사 1단계: 회비).",
         "properties": {
           "description": {
             "default": "",
             "title": "Description",
             "type": "string"
+          },
+          "dues": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "1인당 회비. None·0 = 없음",
+            "title": "Dues"
           },
           "initial_budget": {
             "description": "원 단위 총액",
