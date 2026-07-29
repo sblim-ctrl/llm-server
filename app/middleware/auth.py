@@ -1,9 +1,12 @@
 """AuthMiddleware — 백엔드 ↔ LLM 서버 상호 인증 (서비스 토큰, §4.3).
 
-/healthz·/readyz·/docs·/ui는 제외. /ui는 페이지 껍데기만 공개고, 그 안의 API
+면제는 PUBLIC_PATHS 6종뿐이다. /ui는 페이지 껍데기만 공개고, 그 안의 API
 호출(fetch)은 서비스 토큰을 실어 보내 다른 엔드포인트와 동일하게 인증된다.
+마운트된 /mcp(읽기 툴 4종, §5.2)도 토큰이 필요하다 — 읽기 전용이라도 회칙·판례·
+예산이 조회되므로 면제하지 않는다(클라이언트는 Authorization 헤더를 실어야 한다).
 TODO: RateLimitMiddleware(팀별 속도 제한).
 """
+
 import hmac
 
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -18,10 +21,6 @@ PUBLIC_PATHS = {"/healthz", "/readyz", "/docs", "/openapi.json", "/redoc", "/ui"
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         if request.url.path in PUBLIC_PATHS:
-            return await call_next(request)
-        # MCP는 읽기 전용 툴만 노출(§5.2) — 개발·시연용이라 토큰 면제.
-        # TODO(운영 전): MCP 클라이언트 헤더 인증 추가
-        if request.url.path.startswith("/mcp"):
             return await call_next(request)
 
         auth = request.headers.get("Authorization", "")

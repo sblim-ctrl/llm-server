@@ -50,6 +50,10 @@ uv run --active python -m app.worker
 디버깅·시연에 사용할 수 있다. 승인/반려 같은 쓰기 툴은 노출하지 않는다(가드레일
 우회 방지). 접속 확인: `uv run --active python scripts/smoke_mcp.py`
 
+`/mcp`도 다른 엔드포인트와 동일하게 서비스 토큰이 필요하다. Claude Desktop·MCP
+Inspector로 붙을 때는 `Authorization: Bearer <SERVICE_TOKEN>` 헤더를 설정해야 하며,
+없으면 `401 invalid service token`이 돌아온다.
+
 ## 동작 확인
 
 ```powershell
