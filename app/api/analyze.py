@@ -13,8 +13,25 @@ from app.schemas.analyze import AnalyzeAccepted, AnalyzeRequest
 router = APIRouter(prefix="/v1", tags=["analyze"])
 
 
-@router.post("/analyze", response_model=AnalyzeAccepted, status_code=202)
+@router.post("/analyze", response_model=AnalyzeAccepted, status_code=202,
+             summary="지출 심사 요청 (백엔드 → Agent Server)")
 async def create_analyze_job(req: AnalyzeRequest) -> AnalyzeAccepted:
+    """지출 1건의 AI 심사를 요청한다. **즉시 202로 접수만 하고 심사는 비동기 실행**된다.
+
+    **pull 모델** — 요청에는 5필드만 담는다(지출 상세·예산·회칙은 Agent Server가
+    백엔드 내부 API로 되물어 조회. `docs/백엔드_요구_내부API_명세_2026-07-29.md` 참조).
+
+    - `jobId`: 백엔드가 발급. 콜백에서 그대로 echo되므로 `expenses.ai_job_id` 대조 가능
+    - `expenseId` / `organizationId`(= teams.id): 지출·모임 식별자
+    - `reviewGoal`: 심사 목표 자연어 지시문
+    - `receiptPath`: 영수증 조회 경로 (없으면 미첨부로 심사)
+
+    **결과 수신 2경로**: ① 심사 완료 시 `POST {백엔드}/agent-callback` 으로 전송(주경로,
+    3회 재시도) ② `GET /v1/jobs/{id}` 폴링(안전망 — 내부 job_id·백엔드 jobId 둘 다 조회 가능)
+
+    **멱등성**: 같은 지출의 활성 잡이 있으면 새로 만들지 않고 재사용한다(중복 심사·
+    이중 콜백 방지). 응답의 `job_id`가 같으면 기존 잡에 수렴한 것.
+    """
     job_id = await insert_job(
         team_id=req.organization_id,
         job_type="review",

@@ -119,6 +119,29 @@
         "title": "ContextRefreshRequest",
         "type": "object"
       },
+      "DecisionRequest": {
+        "description": "관리자 결정 — HITL 재개 입력.",
+        "properties": {
+          "decision": {
+            "enum": [
+              "approve",
+              "reject"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "reason": {
+            "default": "",
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision"
+        ],
+        "title": "DecisionRequest",
+        "type": "object"
+      },
       "DigestRequest": {
         "description": "주간 윈도우는 요청이 지정 — 목 데이터가 6월 고정이라 '오늘 기준 최근 7일'은\n비결정적(A-4 명세). week_of가 속한 월~일이 브리핑 대상 주가 된다.\n(DigestFigures 등 결과 모델은 BurnForecast 순환 import 때문에\napp/graphs/writers/digest.py에 정의.)",
         "properties": {
@@ -602,6 +625,7 @@
     },
     "/v1/analyze": {
       "post": {
+        "description": "지출 1건의 AI 심사를 요청한다. **즉시 202로 접수만 하고 심사는 비동기 실행**된다.\n\n**pull 모델** — 요청에는 5필드만 담는다(지출 상세·예산·회칙은 Agent Server가\n백엔드 내부 API로 되물어 조회. `docs/백엔드_요구_내부API_명세_2026-07-29.md` 참조).\n\n- `jobId`: 백엔드가 발급. 콜백에서 그대로 echo되므로 `expenses.ai_job_id` 대조 가능\n- `expenseId` / `organizationId`(= teams.id): 지출·모임 식별자\n- `reviewGoal`: 심사 목표 자연어 지시문\n- `receiptPath`: 영수증 조회 경로 (없으면 미첨부로 심사)\n\n**결과 수신 2경로**: ① 심사 완료 시 `POST {백엔드}/agent-callback` 으로 전송(주경로,\n3회 재시도) ② `GET /v1/jobs/{id}` 폴링(안전망 — 내부 job_id·백엔드 jobId 둘 다 조회 가능)\n\n**멱등성**: 같은 지출의 활성 잡이 있으면 새로 만들지 않고 재사용한다(중복 심사·\n이중 콜백 방지). 응답의 `job_id`가 같으면 기존 잡에 수렴한 것.",
         "operationId": "create_analyze_job_v1_analyze_post",
         "requestBody": {
           "content": {
@@ -635,7 +659,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Create Analyze Job",
+        "summary": "지출 심사 요청 (백엔드 → Agent Server)",
         "tags": [
           "analyze"
         ]
@@ -812,6 +836,7 @@
     },
     "/v1/jobs/{job_id}": {
       "get": {
+        "description": "심사·생성 잡의 진행 상태와 결과를 조회한다.\n\n콜백이 유실됐을 때의 **폴링 안전망**(§7.1). `job_id`는 우리 내부 id와 백엔드가\n발급한 jobId **둘 다** 받는다.\n\n`status`: `queued` → `running` → `succeeded` / `failed` / `dead`.\n`succeeded`면 `result`에 심사 결과(verdict·reasons·opinions 등)가 담긴다.",
         "operationId": "read_job_v1_jobs__job_id__get",
         "parameters": [
           {
@@ -846,7 +871,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Read Job",
+        "summary": "잡 상태·결과 조회 (콜백 안전망)",
         "tags": [
           "jobs"
         ]
@@ -1109,6 +1134,91 @@
         "tags": [
           "reports"
         ]
+      }
+    },
+    "/v1/reviews/stream": {
+      "post": {
+        "description": "심사 그래프를 직접 실행하며 노드 진행을 SSE로 중계 (HITL 데모·관측 전용).",
+        "operationId": "stream_review_v1_reviews_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalyzeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stream Review"
+      }
+    },
+    "/v1/reviews/{job_id}/decision": {
+      "post": {
+        "description": "관리자 결정으로 멈춘 심사를 재개 — 콜백·판례 저장(ADMIN)까지 SSE 중계.",
+        "operationId": "resume_review_v1_reviews__job_id__decision_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resume Review"
       }
     }
   }
