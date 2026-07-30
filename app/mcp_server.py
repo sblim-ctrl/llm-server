@@ -24,25 +24,25 @@ mcp.settings.streamable_http_path = "/"
 
 
 @mcp.tool()
-async def search_rules(team_id: str, query: str, version: int) -> list[dict]:
+async def search_rules(team_id: int, query: str, version: int) -> list[dict]:
     """팀 회칙 조항을 유사도 검색한다 (pgvector, 버전 고정). RuleAuditor와 동일 구현."""
     return await _search_rules(team_id, query, version)
 
 
 @mcp.tool()
-async def search_precedents(team_id: str, query: str) -> list[dict]:
+async def search_precedents(team_id: int, query: str) -> list[dict]:
     """과거 판정 판례를 유사도 검색한다 (익명화 저장본). PrecedentAuditor와 동일 구현."""
     return await _search_precedents(team_id, query)
 
 
 @mcp.tool()
-async def get_budget_status(team_id: str) -> dict:
+async def get_budget_status(team_id: int) -> dict:
     """총예산·승인 지출 합계를 조회한다 — 잔액 = 총예산 − 지출 (백엔드 읽기 API 경유)."""
     return await _get_budget_status(team_id)
 
 
 @mcp.tool()
-async def get_expense_history(team_id: str) -> list[dict]:
+async def get_expense_history(team_id: int) -> list[dict]:
     """팀 지출 이력을 조회한다 (백엔드 읽기 API 경유)."""
     return await _get_expense_history(team_id)
 

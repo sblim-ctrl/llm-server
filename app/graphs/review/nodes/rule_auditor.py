@@ -32,7 +32,7 @@ RELEVANCE_MAX_DISTANCE = 0.65
 
 
 async def _retrieve_with_correction(
-    team_id: str, claim: ExpenseClaim, version: int,
+    team_id: int, claim: ExpenseClaim, version: int,
 ) -> tuple[list[dict], str]:
     """CRAG 스타일 검색: 채점 → 재작성 재검색. (chunks, grade) 반환.
 

@@ -28,21 +28,19 @@ CONCURRENCY = 20
 JOB_TIMEOUT_SEC = 60
 
 
-def _payload(expense_id: str) -> dict:
+def _payload(expense_id: int) -> dict:
     # pull 모델 5필드 (bravo 설계서 TABLE 18). jobId는 매 제출마다 새로 발급된다고
     # 가정(백엔드 재제출 시나리오) — 그래도 같은 expense_id면 내부 잡은 1개여야 한다.
-    # 지출 상세는 expenseId의 목 규약 쿼리로 load_context가 되물어 채운다.
     return {
         "jobId": f"be-job-{uuid.uuid4().hex[:12]}",
-        "expenseId": (f"{expense_id}?title=스트레스 테스트 교재&amount=32000"
-                      f"&category=도서&date=2026-07-15&description=동시 제출 멱등성 검증용"),
-        "organizationId": "stress-club-1",
+        "expenseId": expense_id,
+        "organizationId": 1,
         "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
         "receiptPath": f"https://example.com/r/{expense_id}",
     }
 
 
-async def _submit(client: httpx.AsyncClient, expense_id: str) -> str:
+async def _submit(client: httpx.AsyncClient, expense_id: int) -> str:
     r = await client.post("/v1/analyze", json=_payload(expense_id))
     r.raise_for_status()
     return r.json()["job_id"]
@@ -66,7 +64,7 @@ async def main() -> int:
 
     async with httpx.AsyncClient(base_url=BASE_URL, headers=headers, timeout=30) as client:
         # ① 같은 expense_id 동시 제출 → 단일 잡
-        dup_expense = f"stress-dup-{uuid.uuid4().hex[:8]}"
+        dup_expense = uuid.uuid4().int % 9_000_000_000 + 1
         job_ids = await asyncio.gather(
             *[_submit(client, dup_expense) for _ in range(CONCURRENCY)])
         unique_ids = set(job_ids)
@@ -89,7 +87,7 @@ async def main() -> int:
 
         # ④ 대조군 — 서로 다른 expense_id는 각각 잡 생성
         ctrl_ids = await asyncio.gather(
-            *[_submit(client, f"stress-ctl-{uuid.uuid4().hex[:8]}") for _ in range(5)])
+            *[_submit(client, uuid.uuid4().int % 9_000_000_000 + 1) for _ in range(5)])
         print(f"[4] 개별 지출 5건 동시 제출 → 잡 {len(set(ctrl_ids))}개")
         if len(set(ctrl_ids)) != 5:
             failures.append(f"개별 지출 5건이 잡 {len(set(ctrl_ids))}개 생성 (기대 5개)")

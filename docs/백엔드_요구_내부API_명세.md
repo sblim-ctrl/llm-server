@@ -120,7 +120,7 @@ POST /agent-callback
 - **전송 payload** — 아래는 `CallbackPayload`를 실제 직렬화해 확인한 출력이다
   (⚠️ 최상위는 camelCase지만 **중첩 객체 안에 예외 1건**이 있다. 아래 주의 참조):
   ```json
-  { "jobId": "백엔드가 발급한 값 그대로 echo", "expenseId": "...", "teamId": "...",
+  { "jobId": "백엔드가 발급한 값 그대로 echo", "expenseId": 4821, "teamId": 17,
     "verdict": "approve | reject | escalate",
     "suggestedCategory": "교재/자료비", "processedBy": "AI | ADMIN",
     "confidence": 0.95,

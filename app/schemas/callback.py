@@ -13,14 +13,15 @@ from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
 from app.schemas.common import Mismatch, Opinion, Reasons, Verdict
+from app.schemas.ids import BigIntId
 
 
 class CallbackPayload(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
     job_id: str
-    expense_id: str
-    team_id: str
+    expense_id: BigIntId
+    team_id: BigIntId
     verdict: Verdict  # → API-046 finalVerdict
     suggested_category: str | None = None  # → API-046 suggestedCategory (classify_category 결과)
     processed_by: str = "AI"  # → API-046 processedBy (관리자 override 시 백엔드가 갱신)

@@ -20,22 +20,34 @@ def test_analyze_request_accepts_camel_case():
     req = AnalyzeRequest.model_validate(
         {
             "jobId": "be-1",
-            "expenseId": "exp-1",
-            "organizationId": "org-1",
+            "expenseId": 101,
+            "organizationId": 11,
             "reviewGoal": "심사하라",
             "receiptPath": "/api/internal/receipts/1",
         }
     )
     assert req.job_id == "be-1"
-    assert req.organization_id == "org-1"
+    assert req.expense_id == 101
+    assert req.organization_id == 11
     assert req.receipt_path == "/api/internal/receipts/1"
 
 
 def test_analyze_request_accepts_snake_case_too():
     """populate_by_name — 내부 도구·테스트의 snake_case 호출 호환."""
-    req = AnalyzeRequest(job_id="be-2", expense_id="exp-2", organization_id="org-2")
+    req = AnalyzeRequest(job_id="be-2", expense_id=102, organization_id=12)
     assert req.review_goal == ""  # 선택 필드 기본값
     assert req.receipt_path is None
+
+
+def test_analyze_request_rejects_string_entity_ids():
+    """백엔드 BIGINT 계약 — 숫자처럼 보이는 문자열도 허용하지 않는다."""
+    import pytest
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        AnalyzeRequest.model_validate(
+            {"jobId": "be-3", "expenseId": "103", "organizationId": "13"}
+        )
 
 
 def test_analyze_request_rejects_old_push_contract():
@@ -46,8 +58,8 @@ def test_analyze_request_rejects_old_push_contract():
     with pytest.raises(ValidationError):
         AnalyzeRequest.model_validate(
             {
-                "expense_id": "exp-1",
-                "team_id": "team-1",
+                "expense_id": 101,
+                "team_id": 11,
                 "claim": {"title": "교재", "amount": 32000, "date": "2026-07-01"},
             }
         )

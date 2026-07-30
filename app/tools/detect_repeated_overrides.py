@@ -57,7 +57,7 @@ def _group_clusters(rows: list[dict], edges: list[tuple[str, str]], threshold: i
     return clusters
 
 
-async def detect_repeated_overrides(team_id: str, threshold: int = 3) -> list[dict[str, Any]]:
+async def detect_repeated_overrides(team_id: int, threshold: int = 3) -> list[dict[str, Any]]:
     """관리자 개입 판례를 임베딩 유사도로 군집 — count >= threshold만 반환.
 
     노드 쿼리와 간선 쿼리를 REPEATABLE READ 트랜잭션으로 묶는다 — 기본

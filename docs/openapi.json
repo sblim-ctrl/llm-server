@@ -41,16 +41,20 @@
       "AnalyzeRequest": {
         "properties": {
           "expenseId": {
+            "description": "양의 백엔드 BIGINT 기본키",
+            "format": "int64",
             "title": "Expenseid",
-            "type": "string"
+            "type": "integer"
           },
           "jobId": {
             "title": "Jobid",
             "type": "string"
           },
           "organizationId": {
+            "description": "양의 백엔드 BIGINT 기본키",
+            "format": "int64",
             "title": "Organizationid",
-            "type": "string"
+            "type": "integer"
           },
           "receiptPath": {
             "anyOf": [
@@ -80,8 +84,10 @@
       "BriefingRequest": {
         "properties": {
           "team_id": {
+            "description": "양의 백엔드 BIGINT 기본키",
+            "format": "int64",
             "title": "Team Id",
-            "type": "string"
+            "type": "integer"
           }
         },
         "required": [
@@ -103,8 +109,10 @@
             "type": "string"
           },
           "team_id": {
+            "description": "양의 백엔드 BIGINT 기본키",
+            "format": "int64",
             "title": "Team Id",
-            "type": "string"
+            "type": "integer"
           },
           "version": {
             "title": "Version",
@@ -123,8 +131,10 @@
         "description": "주간 윈도우는 요청이 지정 — 목 데이터가 6월 고정이라 '오늘 기준 최근 7일'은\n비결정적(A-4 명세). week_of가 속한 월~일이 브리핑 대상 주가 된다.\n(DigestFigures 등 결과 모델은 BurnForecast 순환 import 때문에\napp/graphs/writers/digest.py에 정의.)",
         "properties": {
           "team_id": {
+            "description": "양의 백엔드 BIGINT 기본키",
+            "format": "int64",
             "title": "Team Id",
-            "type": "string"
+            "type": "integer"
           },
           "week_of": {
             "description": "주간 윈도우 기준일 YYYY-MM-DD",
@@ -373,8 +383,10 @@
             "type": "string"
           },
           "expense_id": {
+            "description": "양의 백엔드 BIGINT 기본키",
+            "format": "int64",
             "title": "Expense Id",
-            "type": "string"
+            "type": "integer"
           },
           "is_override": {
             "default": false,
@@ -397,8 +409,10 @@
             "title": "Rule Version"
           },
           "team_id": {
+            "description": "양의 백엔드 BIGINT 기본키",
+            "format": "int64",
             "title": "Team Id",
-            "type": "string"
+            "type": "integer"
           }
         },
         "required": [
@@ -455,8 +469,10 @@
             "type": "string"
           },
           "team_id": {
+            "description": "양의 백엔드 BIGINT 기본키",
+            "format": "int64",
             "title": "Team Id",
-            "type": "string"
+            "type": "integer"
           }
         },
         "required": [
@@ -469,8 +485,10 @@
       "RuleAmendmentRequest": {
         "properties": {
           "team_id": {
+            "description": "양의 백엔드 BIGINT 기본키",
+            "format": "int64",
             "title": "Team Id",
-            "type": "string"
+            "type": "integer"
           }
         },
         "required": [

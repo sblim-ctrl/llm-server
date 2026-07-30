@@ -8,11 +8,12 @@ from typing import Literal
 from pydantic import BaseModel
 
 from app.schemas.common import ExpenseClaim
+from app.schemas.ids import BigIntId
 
 
 class PrecedentCreate(BaseModel):
-    team_id: str
-    expense_id: str
+    team_id: BigIntId
+    expense_id: BigIntId
     claim: ExpenseClaim
     decision: Literal["approve", "reject"]
     reason: str

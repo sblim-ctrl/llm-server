@@ -52,10 +52,10 @@ async def apply_schema() -> None:
 # ── jobs 헬퍼 ─────────────────────────────────────────────
 
 async def insert_job(
-    team_id: str,
+    team_id: int,
     job_type: str,
     payload: dict[str, Any],
-    expense_id: str | None = None,
+    expense_id: int | None = None,
     max_attempts: int = 3,
     dedupe_active: bool = False,
     external_job_id: str | None = None,

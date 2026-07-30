@@ -27,10 +27,10 @@ def test_request_rejects_invalid_date():
 
     from app.schemas.writers import DigestRequest
     with pytest.raises(ValidationError):
-        DigestRequest(team_id="t", week_of="2026-99-99")
+        DigestRequest(team_id=1, week_of="2026-99-99")
     with pytest.raises(ValidationError):
-        DigestRequest(team_id="t", week_of="다음주")
-    assert DigestRequest(team_id="t", week_of="2026-06-26").week_of == "2026-06-26"
+        DigestRequest(team_id=1, week_of="다음주")
+    assert DigestRequest(team_id=1, week_of="2026-06-26").week_of == "2026-06-26"
 
 
 PRECEDENTS = [

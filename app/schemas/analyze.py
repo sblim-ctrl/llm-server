@@ -12,6 +12,8 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
+from app.schemas.ids import BigIntId
+
 JobStatus = Literal["queued", "running", "succeeded", "failed", "dead"]
 
 
@@ -22,8 +24,8 @@ class AnalyzeRequest(BaseModel):
     # 대조해 유효성을 검증한다(재제출로 무효화된 옛 jobId면 무시). 우리 내부 jobs.id와는
     # 별도로 external_job_id 컬럼에 매핑 저장한다.
     job_id: str
-    expense_id: str
-    organization_id: str            # 구 team_id — 내부 상태 키는 team_id를 유지한다
+    expense_id: BigIntId
+    organization_id: BigIntId       # 구 team_id — 내부 상태 키는 team_id를 유지한다
     review_goal: str = ""           # 심사 목표 자연어 지시문 (프롬프트 반영은 TODO — 프롬프트 트랙)
     receipt_path: str | None = None  # Spring 내부 영수증 조회 경로 (없으면 영수증 미첨부)
 
@@ -50,6 +52,6 @@ class JobStatusResponse(BaseModel):
 
 class ContextRefreshRequest(BaseModel):
     """REQ-041 컨텍스트 갱신 이벤트."""
-    team_id: str
+    team_id: BigIntId
     change_type: Literal["rule", "category", "params"]
     version: int

@@ -14,8 +14,8 @@ def _job(job_type, **over):
     job = {
         "id": "00000000-0000-0000-0000-000000000001",
         "type": job_type,
-        "team_id": "t",
-        "expense_id": "e-1",
+        "team_id": 11,
+        "expense_id": 101,
         "attempts": 3,
         "max_attempts": 3,
         "payload": {},
@@ -54,7 +54,7 @@ async def test_dead_non_review_job_sends_no_callback(monkeypatch):
         raise RuntimeError("graph fail")
 
     monkeypatch.setattr(worker, "report_graph", SimpleNamespace(ainvoke=boom))
-    await worker.handle_job(_job("report", payload={"team_id": "t", "period": "2026-06"}))
+    await worker.handle_job(_job("report", payload={"team_id": 11, "period": "2026-06"}))
     assert fin.calls and fin.calls[0][0][1] == "dead"
     assert cb.calls == []
 
@@ -100,8 +100,8 @@ async def test_retry_without_checkpoint_restarts_from_initial_state(monkeypatch)
     # pull 모델 5필드 payload (§0-2) — 지출 상세는 payload에 없고 load_context가 조회
     payload = {
         "jobId": "be-job-1",
-        "expenseId": "e-1?title=t&amount=1000&category=식비&date=2026-07-01",
-        "organizationId": "t",
+        "expenseId": 101,
+        "organizationId": 11,
         "receiptPath": "mock://receipt?amount=1000",
     }
     seen = []
