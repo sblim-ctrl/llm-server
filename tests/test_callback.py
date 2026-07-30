@@ -5,7 +5,7 @@ from app.schemas.common import ExpenseClaim
 
 def _state(category: str = "식비") -> dict:
     return {
-        "job_id": "job-1", "expense_id": "exp-1", "team_id": "team-1",
+        "job_id": "job-1", "expense_id": 101, "team_id": 11,
         "verdict": "approve", "confidence": 0.95,
         "opinions": {}, "mismatch": [], "reasons": None,
         "claim": ExpenseClaim(title="회식", amount=30000, category=category, date="2026-07-15"),
@@ -33,7 +33,7 @@ def test_by_alias_dump_is_camel_case():
 def test_by_name_construction_still_works():
     """populate_by_name=True — 내부 코드는 snake_case 키워드 인자로 그대로 생성 가능."""
     payload = build_callback_payload(_state())
-    assert payload.expense_id == "exp-1"
+    assert payload.expense_id == 101
 
 
 def test_external_job_id_is_echoed():

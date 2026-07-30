@@ -25,8 +25,8 @@ class ReviewState(TypedDict, total=False):
     # 입력 (pull 모델 — bravo 설계서 TABLE 18: 백엔드는 5필드만 보낸다)
     job_id: str                 # 내부 jobs.id — thread_id·체크포인트 키
     external_job_id: str        # 백엔드 발급 jobId — 콜백에서 그대로 echo (ai_job_id 대조)
-    expense_id: str
-    team_id: str                # 백엔드 organizationId — 내부 키 이름은 team_id 유지
+    expense_id: int
+    team_id: int                # 백엔드 organizationId — 내부 키 이름은 team_id 유지
     review_goal: str            # 심사 목표 지시문 — 보관만, 판정 미반영 (schemas/analyze.py 참조)
     receipt_path: str | None    # 영수증 조회 경로 — intake가 Agent 토큰으로 되물어 조회
     claim: ExpenseClaim         # load_context가 pull로 채움 (직접 호출 시엔 초기 상태로 주입 가능)

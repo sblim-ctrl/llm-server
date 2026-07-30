@@ -28,12 +28,12 @@ def setup_langsmith() -> bool:
     return True
 
 
-def langsmith_config(job_type: str, job_id: str, team_id: str,
+def langsmith_config(job_type: str, job_id: str, team_id: int,
                      prompt_version: str | None = None, **configurable) -> dict:
     """그래프 invoke용 config — C9 태깅 형식. configurable(thread_id 등)은 병합."""
     config: dict = {
         "run_name": f"{job_type}:{job_id}",
-        "tags": [team_id],
+        "tags": [str(team_id)],
         "metadata": {"prompt_version": prompt_version} if prompt_version else {},
     }
     if configurable:

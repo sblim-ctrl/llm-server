@@ -11,17 +11,18 @@ from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
 from app.schemas.common import Mismatch, Opinion, Reasons, Verdict
+from app.schemas.ids import BigIntId
 
 
 class CallbackPayload(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
     job_id: str
-    expense_id: str
-    team_id: str
-    verdict: Verdict                          # → API-045 finalVerdict
-    suggested_category: str | None = None      # → API-045 suggestedCategory (classify_category 결과)
-    # → API-045 processedBy. '최종 처리를 누가 했는가'를 뜻한다.
+    expense_id: BigIntId
+    team_id: BigIntId
+    verdict: Verdict  # → API-046 finalVerdict
+    suggested_category: str | None = None  # → API-046 suggestedCategory (classify_category 결과)
+    # → API-046 processedBy. '최종 처리를 누가 했는가'를 뜻한다.
     # escalate는 아직 최종 처리자가 없는 상태이므로 null을 보낸다 — 그 시점에 "AI"를
     # 보내면 관리자 확인 대기 건이 화면에 'AI가 처리함'으로 뜬다. 관리자가 승인·반려하면
     # 백엔드가 그때 "ADMIN"을 기입한다(우리는 그 시점을 알 수 없다).

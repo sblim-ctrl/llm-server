@@ -96,7 +96,7 @@ def week_bounds(week_of: str) -> tuple[str, str]:
     return monday.isoformat(), (monday + timedelta(days=6)).isoformat()
 
 
-async def _fetch_week_precedents(team_id: str, week_start: str, week_end: str) -> list[dict]:
+async def _fetch_week_precedents(team_id: int, week_start: str, week_end: str) -> list[dict]:
     # 주간 판례 — briefing.py fetch_precedents 패턴 + created_at 주간 필터 (A-4 명세)
     async with get_pool().connection() as conn:
         rows = await (

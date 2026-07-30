@@ -82,11 +82,11 @@ async def test_generate_proposal_mock_meta():
 
 def test_period_format_validation():
     # 유효값은 통과, 형식이 다르면 즉시 422 거부 (조기 검증 — 리뷰 발견)
-    ProposalBudgetRequest(team_id="t", period="2026-06")
-    ProposalBudgetRequest(team_id="t", period=None)
+    ProposalBudgetRequest(team_id=1, period="2026-06")
+    ProposalBudgetRequest(team_id=1, period=None)
     for bad in ("2026-6", "June", "2026-13", "2026/06"):
         with pytest.raises(ValidationError):
-            ProposalBudgetRequest(team_id="t", period=bad)
+            ProposalBudgetRequest(team_id=1, period=bad)
 
 
 async def test_save_skips_persistence_when_not_verified(monkeypatch):
@@ -100,7 +100,7 @@ async def test_save_skips_persistence_when_not_verified(monkeypatch):
     monkeypatch.setattr(bp, "save_proposal", fake_save_proposal)
     f = _forecast()
     state = {
-        "request": ProposalBudgetRequest(team_id="t"),
+        "request": ProposalBudgetRequest(team_id=1),
         "proposal_text": _mock_proposal_text(f),
         "forecast": f,
         "verified": False,
@@ -120,7 +120,7 @@ async def test_save_persists_when_verified(monkeypatch):
     monkeypatch.setattr(bp, "save_proposal", fake_save_proposal)
     f = _forecast()
     state = {
-        "request": ProposalBudgetRequest(team_id="t"),
+        "request": ProposalBudgetRequest(team_id=1),
         "proposal_text": _mock_proposal_text(f),
         "forecast": f,
         "verified": True,
@@ -128,5 +128,5 @@ async def test_save_persists_when_verified(monkeypatch):
     out = await bp.save(state)
     assert out["proposal_id"] == "pid-123"
     assert len(calls) == 1
-    assert calls[0][0] == "t"
+    assert calls[0][0] == 1
     assert calls[0][1] == "budget"

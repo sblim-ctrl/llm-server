@@ -14,7 +14,7 @@ from app.schemas.common import ExpenseClaim
 
 def _state(**extra) -> dict:
     return {
-        "job_id": "job-1", "expense_id": "exp-1", "team_id": "team-1",
+        "job_id": "job-1", "expense_id": 4821, "team_id": 11,
         "opinions": {}, "mismatch": [],
         "claim": ExpenseClaim(title="회식 2차", amount=66_000, category="식비",
                               date="2026-07-15"),

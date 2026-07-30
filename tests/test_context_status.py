@@ -16,7 +16,7 @@ def _rows(chunk_count=0, version=None, indexed_at=None):
 async def test_no_rules_reports_not_indexed():
     """회칙이 없는 것은 정상 상태다 — 예외가 아니라 indexed=false로 알린다."""
     with patch("app.api.context.get_context_status", new=AsyncMock(return_value=_rows())):
-        s = await read_context_status("team-1")
+        s = await read_context_status(11)
     assert s.indexed is False
     assert s.chunk_count == 0
     assert s.version is None and s.indexed_at is None
@@ -28,7 +28,7 @@ async def test_indexed_team_reports_counts():
     at = datetime(2026, 8, 3, 10, 30)
     with patch("app.api.context.get_context_status",
                new=AsyncMock(return_value=_rows(12, 2, at))):
-        s = await read_context_status("team-1")
+        s = await read_context_status(11)
     assert s.indexed is True
     assert s.chunk_count == 12
     assert s.version == 2
@@ -40,5 +40,5 @@ async def test_indexed_flag_follows_chunk_count():
     for count, expected in ((0, False), (1, True), (99, True)):
         with patch("app.api.context.get_context_status",
                    new=AsyncMock(return_value=_rows(count, 1))):
-            s = await read_context_status("team-1")
+            s = await read_context_status(11)
         assert s.indexed is expected, f"chunk_count={count}"

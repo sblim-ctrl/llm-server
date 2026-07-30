@@ -32,8 +32,8 @@ async def main() -> None:
     for i, (label, claim, receipt_url) in enumerate(SCENARIOS, 1):
         state = await review_graph.ainvoke({
             "job_id": f"smoke-{i}",
-            "expense_id": f"exp-smoke-{i}",
-            "team_id": "team-smoke",
+            "expense_id": i,
+            "team_id": 1,
             "claim": claim,
             "receipt_url": receipt_url,
         })

@@ -6,7 +6,7 @@ from typing import Any, Literal
 from app.db.pool import get_pool
 
 
-async def save_proposal(team_id: str, proposal_type: str, payload: dict[str, Any]) -> str:
+async def save_proposal(team_id: int, proposal_type: str, payload: dict[str, Any]) -> str:
     async with get_pool().connection() as conn:
         row = await (
             await conn.execute(
@@ -43,7 +43,7 @@ async def update_proposal_status(
     return "already_decided" if row else "not_found"
 
 
-async def list_proposals(team_id: str, proposal_type: str | None = None) -> list[dict[str, Any]]:
+async def list_proposals(team_id: int, proposal_type: str | None = None) -> list[dict[str, Any]]:
     sql = "SELECT * FROM proposals WHERE team_id = %s"
     params: list[Any] = [team_id]
     if proposal_type is not None:

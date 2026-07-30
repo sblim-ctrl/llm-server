@@ -52,10 +52,10 @@ async def apply_schema() -> None:
 # ── jobs 헬퍼 ─────────────────────────────────────────────
 
 async def insert_job(
-    team_id: str,
+    team_id: int,
     job_type: str,
     payload: dict[str, Any],
-    expense_id: str | None = None,
+    expense_id: int | None = None,
     max_attempts: int = 3,
     dedupe_active: bool = False,
     external_job_id: str | None = None,
@@ -141,7 +141,7 @@ async def get_job(job_id: str) -> dict[str, Any] | None:
         ).fetchone()
 
 
-async def get_context_status(team_id: str) -> dict[str, Any]:
+async def get_context_status(team_id: int) -> dict[str, Any]:
     """팀의 활성 회칙 인덱스 요약 — 조항 수·버전·인덱싱 시각.
 
     인덱싱 이력이 없으면 chunk_count 0에 나머지는 None으로 돌려준다(예외 아님).

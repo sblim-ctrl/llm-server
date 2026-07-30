@@ -5,6 +5,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.schemas.ids import BigIntId
+
 TeamType = Literal["동아리/학생회", "스터디", "친목", "동호회", "회사"]
 
 
@@ -56,7 +58,7 @@ class PolicyDraft(BaseModel):
 
 
 class ReportRequest(BaseModel):
-    team_id: str
+    team_id: BigIntId
     period: str = Field(description="YYYY-MM")
 
 
@@ -94,7 +96,7 @@ class DigestRequest(BaseModel):
     (DigestFigures 등 결과 모델은 BurnForecast 순환 import 때문에
     app/graphs/writers/digest.py에 정의.)"""
 
-    team_id: str
+    team_id: BigIntId
     week_of: str = Field(description="주간 윈도우 기준일 YYYY-MM-DD")
 
     @field_validator("week_of")
@@ -110,7 +112,7 @@ class DigestRequest(BaseModel):
 
 
 class BriefingRequest(BaseModel):
-    team_id: str
+    team_id: BigIntId
 
 
 class BriefingFigures(BaseModel):

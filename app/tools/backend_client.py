@@ -47,7 +47,7 @@ async def close_backend_client() -> None:
     _http_client = None
 
 
-async def get_budget_status(team_id: str, category: str | None = None) -> dict[str, Any]:
+async def get_budget_status(team_id: int, category: str | None = None) -> dict[str, Any]:
     """GET {BE}/internal/agent/teams/{id}/budget — 총예산·승인 지출 합계.
 
     [팀 확인 2026-07-09] 예산 = 모임 전체 총액. 잔액 = total_budget − spent(승인 합계).
@@ -55,8 +55,9 @@ async def get_budget_status(team_id: str, category: str | None = None) -> dict[s
     """
     s = get_settings()
     if s.mock_backend:
+        team_key = str(team_id)
         # 목 규약: team_id에 "lowbudget" 포함 → 잔액 부족 (반려 케이스 생성용, 잔액 1,000원)
-        if "lowbudget" in team_id:
+        if "lowbudget" in team_key:
             return {"total_budget": 20_000, "spent": 19_000}
         # 기본 고정값: 총예산 30만, 승인 지출 11.8만
         return {"total_budget": 300_000, "spent": 118_000}
@@ -68,16 +69,17 @@ async def get_budget_status(team_id: str, category: str | None = None) -> dict[s
     return r.json()
 
 
-async def get_expense_history(team_id: str, **filters: Any) -> list[dict[str, Any]]:
+async def get_expense_history(team_id: int, **filters: Any) -> list[dict[str, Any]]:
     """GET {BE}/internal/agent/teams/{id}/expenses — 중복 탐지·리포트 집계용."""
     s = get_settings()
     if s.mock_backend:
+        team_key = str(team_id)
         # 목 규약 (골든셋·데모와 공유하는 team_id 단서 — §7 '규약을 깨지 말 것'):
         #   "noexpense" 포함 → 지출 없음 (빈 기간 리포트 시나리오)
         #   "balanced"  포함 → 편중·저활용 없는 균형 지출 (추천이 top 건 안내만 나와야 함)
-        if "noexpense" in team_id:
+        if "noexpense" in team_key:
             return []
-        if "balanced" in team_id:
+        if "balanced" in team_key:
             return [
                 {
                     "title": "분기 회식",
@@ -172,7 +174,7 @@ async def get_expense_history(team_id: str, **filters: Any) -> list[dict[str, An
     return r.json()
 
 
-async def approve_expense(expense_id: str, idempotency_key: str, reason: str) -> dict[str, Any]:
+async def approve_expense(expense_id: int, idempotency_key: str, reason: str) -> dict[str, Any]:
     """POST {BE}/internal/agent/expenses/{id}/approve — 멱등성 키 필수 (REQ-023)."""
     s = get_settings()
     if s.mock_backend:
@@ -189,7 +191,7 @@ async def approve_expense(expense_id: str, idempotency_key: str, reason: str) ->
     return r.json()
 
 
-async def reject_expense(expense_id: str, idempotency_key: str, reason: str) -> dict[str, Any]:
+async def reject_expense(expense_id: int, idempotency_key: str, reason: str) -> dict[str, Any]:
     """POST {BE}/internal/agent/expenses/{id}/reject."""
     s = get_settings()
     if s.mock_backend:
@@ -206,7 +208,7 @@ async def reject_expense(expense_id: str, idempotency_key: str, reason: str) -> 
     return r.json()
 
 
-async def get_expense_detail(organization_id: str, expense_id: str) -> dict[str, Any]:
+async def get_expense_detail(organization_id: int, expense_id: int) -> dict[str, Any]:
     """지출 상세 조회 — pull 모델의 핵심 (bravo 설계서 TABLE 18).
 
     백엔드 심사 요청에는 jobId·expenseId·organizationId·심사목표·영수증 경로만 오고
@@ -221,6 +223,7 @@ async def get_expense_detail(organization_id: str, expense_id: str) -> dict[str,
     """
     s = get_settings()
     if s.mock_backend:
+        expense_key = str(expense_id)
         detail = {
             "title": "모의 지출",
             "amount": 30_000,
@@ -228,8 +231,8 @@ async def get_expense_detail(organization_id: str, expense_id: str) -> dict[str,
             "date": "2026-07-01",
             "description": "",
         }
-        if "?" in expense_id:
-            params = parse_qs(urlsplit(expense_id).query)
+        if "?" in expense_key:
+            params = parse_qs(urlsplit(expense_key).query)
             for key in ("title", "category", "date", "description"):
                 if key in params:
                     detail[key] = params[key][0]
@@ -243,7 +246,7 @@ async def get_expense_detail(organization_id: str, expense_id: str) -> dict[str,
     return r.json()
 
 
-async def get_team_settings(organization_id: str) -> dict[str, Any]:
+async def get_team_settings(organization_id: int) -> dict[str, Any]:
     """team_settings 조회 — auto_approve 최상위 게이트용 (bravo 설계서 4절).
 
     실계약에서 auto_approve 기본값은 FALSE(꺼짐) — 꺼져 있으면 금액·판단과 무관하게
@@ -255,8 +258,9 @@ async def get_team_settings(organization_id: str) -> dict[str, Any]:
     """
     s = get_settings()
     if s.mock_backend:
+        organization_key = str(organization_id)
         return {
-            "auto_approve": "noauto" not in organization_id.lower(),
+            "auto_approve": "noauto" not in organization_key.lower(),
             "auto_approve_limit": 50_000,
             "escalation_threshold": 0.8,
         }
@@ -282,7 +286,7 @@ async def get_receipt_by_path(receipt_path: str) -> bytes | None:
     return r.content
 
 
-async def get_team_profile(team_id: str) -> dict[str, Any]:
+async def get_team_profile(team_id: int) -> dict[str, Any]:
     """팀 프로필(모임 유형 등) 조회 — 유형별 카테고리 카탈로그 선택에 사용.
 
     목 규약: team_id에 포함된 단서로 유형 추론 (club/study/social/hobby/company).
@@ -290,7 +294,7 @@ async def get_team_profile(team_id: str) -> dict[str, Any]:
     """
     s = get_settings()
     if s.mock_backend:
-        tid = team_id.lower()
+        tid = str(team_id).lower()
         for hint, team_type in [
             ("club", "동아리/학생회"),
             ("study", "스터디"),
@@ -307,7 +311,7 @@ async def get_team_profile(team_id: str) -> dict[str, Any]:
     return r.json()
 
 
-async def get_team_members(team_id: str) -> list[dict[str, Any]]:
+async def get_team_members(team_id: int) -> list[dict[str, Any]]:
     """팀 멤버 명단(실명·역할) — PIIMasker 치환용 (§4.3).
 
     엔드포인트 경로는 풀스택 팀과 미확정. 목: 고정 명단.
@@ -324,7 +328,7 @@ async def get_team_members(team_id: str) -> list[dict[str, Any]]:
     return r.json()
 
 
-async def get_policy_document(team_id: str, doc_type: str, version: int) -> str:
+async def get_policy_document(team_id: int, doc_type: str, version: int) -> str:
     """회칙·카테고리 원문 조회 — 인덱싱 파이프라인 1단계 (REQ-041, §4.4-a).
 
     /v1/context/refresh 이벤트에는 원문이 없고 team_id·변경유형·버전만 오므로,
