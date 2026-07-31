@@ -643,7 +643,7 @@
     },
     "/v1/analyze": {
       "post": {
-        "description": "지출 1건의 AI 심사를 요청한다. **즉시 202로 접수만 하고 심사는 비동기 실행**된다.\n\n**pull 모델** — 요청에는 5필드만 담는다(지출 상세·예산·회칙은 Agent Server가\n백엔드 내부 API로 되물어 조회. `docs/백엔드_요구_내부API_명세_2026-07-29.md` 참조).\n\n- `jobId`: 백엔드가 발급. 콜백에서 그대로 echo되므로 `expenses.ai_job_id` 대조 가능\n- `expenseId` / `organizationId`(= teams.id): 지출·모임 식별자\n- `reviewGoal`: 심사 목표 자연어 지시문\n- `receiptPath`: 영수증 조회 경로 (없으면 미첨부로 심사)\n\n**결과 수신 2경로**: ① 심사 완료 시 `POST {백엔드}/agent-callback` 으로 전송(주경로,\n3회 재시도) ② `GET /v1/jobs/{id}` 폴링(안전망 — 내부 job_id·백엔드 jobId 둘 다 조회 가능)\n\n**멱등성**: 같은 지출의 활성 잡이 있으면 새로 만들지 않고 재사용한다(중복 심사·\n이중 콜백 방지). 응답의 `job_id`가 같으면 기존 잡에 수렴한 것.",
+        "description": "지출 1건의 AI 심사를 요청한다. **즉시 202로 접수만 하고 심사는 비동기 실행**된다.\n\n**pull 모델** — 요청에는 5필드만 담는다(지출 상세·예산·회칙은 Agent Server가\n백엔드 내부 API로 되물어 조회. `docs/백엔드_요구_내부API_명세.md` 참조).\n\n- `jobId`: 백엔드가 발급. 콜백에서 그대로 echo되므로 `expenses.ai_job_id` 대조 가능\n- `expenseId` / `organizationId`(= teams.id): 지출·모임 식별자\n- `reviewGoal`: 심사 목표 자연어 지시문\n- `receiptPath`: 영수증 조회 경로 (없으면 미첨부로 심사)\n\n**결과 수신 2경로**: ① 심사 완료 시 `POST {백엔드}/agent-callback` 으로 전송(주경로,\n3회 재시도) ② `GET /v1/jobs/{id}` 폴링(안전망 — 내부 job_id·백엔드 jobId 둘 다 조회 가능)\n\n**멱등성**: 같은 지출의 활성 잡이 있으면 새로 만들지 않고 재사용한다(중복 심사·\n이중 콜백 방지). 응답의 `job_id`가 같으면 기존 잡에 수렴한 것.",
         "operationId": "create_analyze_job_v1_analyze_post",
         "requestBody": {
           "content": {

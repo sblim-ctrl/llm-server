@@ -19,7 +19,7 @@ async def create_analyze_job(req: AnalyzeRequest) -> AnalyzeAccepted:
     """지출 1건의 AI 심사를 요청한다. **즉시 202로 접수만 하고 심사는 비동기 실행**된다.
 
     **pull 모델** — 요청에는 5필드만 담는다(지출 상세·예산·회칙은 Agent Server가
-    백엔드 내부 API로 되물어 조회. `docs/백엔드_요구_내부API_명세_2026-07-29.md` 참조).
+    백엔드 내부 API로 되물어 조회. `docs/백엔드_요구_내부API_명세.md` 참조).
 
     - `jobId`: 백엔드가 발급. 콜백에서 그대로 echo되므로 `expenses.ai_job_id` 대조 가능
     - `expenseId` / `organizationId`(= teams.id): 지출·모임 식별자
