@@ -16,6 +16,12 @@ agents:
                                 # 대조에서 few_shot 앵무새·필드 혼동을 프롬프트 교정으로도
                                 # 못 벗어남. 평가 전용이라 비용 영향 미미(~$0.005/건)
   query_rewriter: gpt-4o-mini   # rule_auditor CRAG 재검색 질의 재작성 — 드문 경로·저가 (A 소유 줄)
+  default_policy: gpt-4o-mini   # 회칙 미등록 팀의 기본 정책 모드 심사 (A 소유 줄).
+                                # rule_auditor(4o)와 달리 mini인 이유: 이 모드는 fail을 낼
+                                # 수 없어 최악이 'warn을 놓쳐 pass'인데, 그건 이 경로의
+                                # 종전 동작(무조건 pass)과 똑같다 — 기준선보다 나빠질 수
+                                # 없다. 회칙 없는 팀의 전 건이 지나는 경로라 비용도 크다.
+                                # 실측에서 놓침이 보이면 4o 승급.
   budget_planner: gpt-4o-mini   # 수치는 코드(burn_rate_forecast), LLM은 문구만 (C7 — B 소유 줄)
   rule_amendment: gpt-4o        # 회칙 개정 문안 — 판단 성격 (C7 — B 소유 줄)
 

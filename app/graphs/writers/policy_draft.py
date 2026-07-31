@@ -13,8 +13,6 @@
 
 import logging
 import re
-from functools import lru_cache
-from pathlib import Path
 
 from langgraph.graph import END, START, StateGraph
 from pydantic import BaseModel
@@ -24,6 +22,9 @@ from app.llm.client import chat_structured
 from app.llm.prompts import load_prompt
 from app.schemas.writers import PolicyDraft, PolicyDraftRequest, PolicyParamsSuggestion
 from app.tools.category_catalog import categories_for
+# 템플릿 로더는 심사 쪽 기본 정책 모드와 공유한다 (app/tools/policy_defaults.py) —
+# 같은 YAML을 두 군데서 따로 읽지 않기 위해서다. 재수출이라 기존 import 경로도 유효.
+from app.tools.policy_defaults import load_templates
 from app.tools.search_references import search_references
 
 logger = logging.getLogger(__name__)
@@ -64,7 +65,6 @@ def dedupe_rules(base: list[str], extra: list[str]) -> list[str]:
     return out
 
 
-_TEMPLATES_PATH = Path(__file__).resolve().parents[3] / "templates" / "policy_templates.yaml"
 PER_MEAL_LIMIT = 30_000  # 1인당 식비 기본 한도 — 추후 팀 규모 기반 조정
 # 강제 에스컬레이션 = 자동승인 한도 × 이 배수. 마법사 2단계 화면의 구간표
 # (소액 5만 미만 / 중간 5~20만 / 고액 20만 이상)에 맞춘 값 — 5만 × 4 = 20만.
@@ -74,13 +74,6 @@ DUES_RULE = "회비는 1인당 {dues}원으로 하며, 회비 수입 범위 내�
 # notes의 회비 표기. verify가 이 접두사로 '회비가 반영됐는지'를 판별하므로 조각을 상수로 둔다
 # — 단순히 notes에 '회비'가 있는지 보면 모임 이름('무회비 동아리' 등)에 걸려 오탐한다.
 DUES_NOTE = " · 회비 {dues}원"
-
-
-@lru_cache
-def load_templates() -> dict:
-    import yaml
-
-    return yaml.safe_load(_TEMPLATES_PATH.read_text(encoding="utf-8"))
 
 
 class DraftState(TypedDict, total=False):

@@ -7,8 +7,9 @@
   ③ 그래도 근거 없음 → 추측 판정 금지, warn("해석 애매") → 가드레일이 에스컬레이션
 근거 없이 조항을 지어내는(환각 인용) 경로를 구조적으로 차단한다 — 인용 정확도 지표(§9.1) 대응.
 
-회칙이 아예 인덱싱되지 않은 팀(온보딩 직후)은 '적용 회칙 없음'으로 pass —
-회칙 없는 팀도 예산·판례 심사만으로 파이프라인이 동작해야 한다.
+회칙이 아예 인덱싱되지 않은 팀(마법사 3단계 '건너뛰기')은 **기본 정책 모드**로 심사한다 —
+유형별 기본 조항을 근거로 보되 반려는 하지 않는다(_audit_by_default_policy 참조).
+전에는 무조건 pass여서 회칙 축이 통째로 비어 있었다.
 
 목 모드에서도 search_rules는 실제로 호출된다(검색 메커니즘 자체를 검증하기 위해) —
 다만 LLM 판정 자체는 mock_response 고정값. 실패 시에도 예외를 삼키고 error 소견을
@@ -22,6 +23,7 @@ from app.graphs.review.state import ReviewState
 from app.llm.client import chat_structured
 from app.llm.prompts import load_prompt
 from app.schemas.common import ExpenseClaim, LLMCallMeta, Opinion
+from app.tools.policy_defaults import FALLBACK_TEAM_TYPE, default_conduct_rules
 from app.tools.search_rules import search_rules
 
 logger = logging.getLogger(__name__)
@@ -91,6 +93,50 @@ async def _retrieve_with_correction(
     return [], "insufficient", rewrite_meta
 
 
+async def _audit_by_default_policy(
+    state: ReviewState, claim: ExpenseClaim, members: list[dict],
+) -> dict:
+    """기본 정책 모드 — 회칙 미등록 팀을 유형별 기본 조항으로 본다 (마법사 3단계 건너뛰기).
+
+    전에는 무조건 pass여서 회칙 축이 통째로 비어 있었다. 다만 근거가 '팀이 등록한 회칙'이
+    아니라 '우리가 유형 보고 만든 기본값'이므로 반려는 하지 않는다 — fail이 와도 warn으로
+    낮춘다(프롬프트에도 금지했지만 코드에서 한 번 더 막는다). warn은 가드레일이
+    에스컬레이션으로 받아 관리자에게 넘긴다.
+
+    근거 조항이 하나도 없는 유형이면(템플릿에 성격 조항이 없는 경우) 기존처럼 pass.
+    """
+    rules = default_conduct_rules(state.get("team_type") or FALLBACK_TEAM_TYPE)
+    if not rules:
+        return {"opinions": {"rule": Opinion(
+            auditor="rule", verdict="pass",
+            summary="이 팀에 인덱싱된 회칙이 없고 적용할 기본 정책 조항도 없음 — 예산·판례 심사로 판정",
+        )}}
+
+    evidence_text = "\n".join(f"- {r}" for r in rules)
+    spec = load_prompt("default_policy")
+    opinion, meta = await chat_structured(
+        agent="default_policy",
+        system=spec.system_with_few_shot(),
+        user=f"{claim.model_dump_json()}\n\n"
+             f"기본 정책 조항 (등록된 회칙 아님 — 유형별 기본값):\n{evidence_text}",
+        schema=Opinion,
+        mock_response=Opinion(
+            auditor="rule", verdict="pass",
+            summary=f"'{claim.category}' 지출 — 등록된 회칙이 없어 유형별 기본 정책 기준으로 봤고 "
+                    f"어긋나는 점 없음 (mock)",
+            evidence=list(rules),
+        ),
+        mask_with=members,
+        prompt_version=spec.version,
+    )
+    opinion.auditor = "rule"
+    if opinion.verdict == "fail":
+        # 팀이 합의한 적 없는 기준으로 반려하지 않는다 — 관리자 확인으로 낮춘다
+        opinion.verdict = "warn"
+        opinion.summary = f"[기본 정책 기준 — 반려 아님] {opinion.summary}"
+    return {"opinions": {"rule": opinion}, "llm_meta": {"default_policy": meta}}
+
+
 async def rule_auditor(state: ReviewState) -> dict:
     claim = state["claim"]
     members = state.get("team_members") or []
@@ -100,10 +146,7 @@ async def rule_auditor(state: ReviewState) -> dict:
         rewrite_llm_meta = {"query_rewriter": rewrite_meta} if rewrite_meta else {}
 
         if grade == "no_rules":
-            return {"opinions": {"rule": Opinion(
-                auditor="rule", verdict="pass",
-                summary="이 팀에 인덱싱된 회칙이 없음 — 회칙 기준 판단 대상 아님 (예산·판례 심사로 판정)",
-            )}}
+            return await _audit_by_default_policy(state, claim, members)
 
         if grade == "insufficient":
             # Self-RAG 원칙: 근거를 못 찾으면 지어내지 않는다 → 해석 애매로 관리자 확인
