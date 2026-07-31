@@ -362,7 +362,7 @@
       "PolicyParamsSuggestion": {
         "properties": {
           "auto_approve": {
-            "default": false,
+            "default": true,
             "title": "Auto Approve",
             "type": "boolean"
           },

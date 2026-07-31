@@ -29,12 +29,16 @@ class PolicyParamsSuggestion(BaseModel):
     auto_approve_limit: int
     force_escalation_amount: int
     confidence_threshold: float = 0.8
-    # 마법사 2단계 '당연히 모든 지출 직접 확인할래요' 토글의 AI 추천 초기값
+    # 마법사 2단계 '당연히 모든 지출을 직접 확인할래요' 토글의 AI 추천 초기값
     # (화면_대조 §2-3 — 이 값을 내려줄 통로가 없어 AI가 토글을 추천하지 못하던 항목).
-    # false를 권하는 이유: 온보딩 직후는 회칙이 아직 인덱싱되지 않았고 판례도 0건이라
-    # 자동 판정의 근거가 가장 빈약한 시점이다. 관리자가 토글로 켜는 것이 안전하다.
+    #
+    # true인 근거는 프로토타입 2단계 화면(9/38, 2026-07-31 확인)이다. 그 토글은 기본
+    # **꺼짐**이고, 같은 화면 구간표의 '소액 지출 50,000원 미만 → AI 자동 승인'이 활성으로
+    # 표시된다. 즉 화면의 기본 상태가 '자동 심사 사용'이므로 auto_approve=true가 화면과 맞는다.
+    # (토글이 켜지면 auto_approve=false — 문구와 값이 반대 방향인 점에 주의.)
+    #
     # 저장은 백엔드 team-settings 소관 — 우리는 추천만 한다(규율 3).
-    auto_approve: bool = False
+    auto_approve: bool = True
 
 
 class PolicyDraft(BaseModel):
