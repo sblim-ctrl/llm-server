@@ -21,7 +21,13 @@ class CallbackPayload(BaseModel):
     team_id: str
     verdict: Verdict                          # → API-045 finalVerdict
     suggested_category: str | None = None      # → API-045 suggestedCategory (classify_category 결과)
-    processed_by: str = "AI"                   # → API-045 processedBy (관리자 override 시 백엔드가 갱신)
+    # → API-045 processedBy. '최종 처리를 누가 했는가'를 뜻한다.
+    # escalate는 아직 최종 처리자가 없는 상태이므로 null을 보낸다 — 그 시점에 "AI"를
+    # 보내면 관리자 확인 대기 건이 화면에 'AI가 처리함'으로 뜬다. 관리자가 승인·반려하면
+    # 백엔드가 그때 "ADMIN"을 기입한다(우리는 그 시점을 알 수 없다).
+    # 이 규칙 덕에 프론트의 'AI 자동처리' 배지 조건이 processedBy == "AI" 한 줄이 된다
+    # (AI가 처음부터 끝까지 판단한 건만 AI로 남으므로). 팀 결정 2026-07-31.
+    processed_by: str | None = "AI"
     confidence: float | None = None
     opinions: list[Opinion] = []               # → API-045 detail의 근거 재료 (백엔드가 조합)
     mismatch: list[Mismatch] = []

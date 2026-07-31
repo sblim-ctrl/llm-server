@@ -6,24 +6,40 @@ from app.schemas.callback import CallbackPayload
 from app.tools.backend_client import send_callback
 
 
+def resolve_processed_by(verdict: str, admin_decision: dict | None) -> str | None:
+    """최종 처리 주체. 아직 처리자가 없으면 None.
+
+    - 관리자가 직접 결정한 건(HITL 재개)은 ADMIN
+    - AI가 승인·반려까지 끝낸 건은 AI
+    - escalate는 관리자 확인 대기라 최종 처리자가 없다 → None. 여기서 "AI"를 보내면
+      대기 건이 프론트에 'AI가 처리함'으로 표시된다. 관리자가 승인·반려하면 백엔드가
+      그 시점에 ADMIN을 기입한다(우리는 그 시점을 알 수 없다).
+
+    이 규칙 덕에 프론트의 'AI 자동처리' 배지 조건이 processedBy == "AI" 하나로 끝난다.
+    """
+    if admin_decision:
+        return "ADMIN"
+    return None if verdict == "escalate" else "AI"
+
+
 def build_callback_payload(state: ReviewState) -> CallbackPayload:
     # llm_meta 실측치 (B2→B4): adjudicator는 escalate 경로(영수증 불일치·가드레일
     # 차단)에선 실행되지 않으므로 반드시 .get() — 대괄호 접근이면 콜백이 크래시한다
     llm_meta = state.get("llm_meta") or {}
     adj = llm_meta.get("adjudicator")
     started_at = state.get("started_at")
+    verdict = state.get("verdict") or "escalate"
     return CallbackPayload(
         # 백엔드 발급 jobId를 echo (pull 모델) — 없으면(직접 그래프 호출) 내부 id
         job_id=state.get("external_job_id") or state["job_id"],
         expense_id=state["expense_id"],
         team_id=state["team_id"],
-        verdict=state.get("verdict") or "escalate",
+        verdict=verdict,
         # 카테고리 불일치 보류 시엔 AI 분류 의견을 전달(관리자 화면 "AI는 X로 봤어요"),
         # 평상시엔 확정 카테고리 — API-045/046 suggestedCategory 의미와 정합
         suggested_category=state.get("ai_suggested_category")
                            or state["claim"].category or None,
-        # HITL 재개 경로: 관리자가 직접 결정한 건은 processedBy=ADMIN (API-045/046)
-        processed_by="ADMIN" if state.get("admin_decision") else "AI",
+        processed_by=resolve_processed_by(verdict, state.get("admin_decision")),
         confidence=state.get("confidence"),
         opinions=list(state.get("opinions", {}).values()),
         mismatch=state.get("mismatch", []),

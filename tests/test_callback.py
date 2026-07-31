@@ -73,3 +73,40 @@ def test_meta_fields_filled_from_llm_meta():
     assert payload.prompt_version == "adjudicator/v1"
     assert payload.cost_usd == 0.003  # 전체 호출 합산
     assert payload.latency_ms > 0
+
+
+# ── processedBy = '최종 처리를 누가 했는가' (팀 결정 2026-07-31) ──
+
+
+def test_ai_completed_verdicts_are_processed_by_ai():
+    """AI가 승인·반려까지 끝낸 건만 AI로 남는다 — 프론트 'AI 자동처리' 배지 조건."""
+    for verdict in ("approve", "reject"):
+        state = _state()
+        state["verdict"] = verdict
+        assert build_callback_payload(state).processed_by == "AI"
+
+
+def test_escalate_has_no_processed_by():
+    """관리자 확인 대기 건은 최종 처리자가 아직 없다 — null.
+
+    여기서 'AI'를 보내면 대기 건이 화면에 'AI가 처리함'으로 표시된다.
+    """
+    state = _state()
+    state["verdict"] = "escalate"
+    assert build_callback_payload(state).processed_by is None
+
+
+def test_admin_decision_overrides_to_admin():
+    """HITL 재개 경로 — 관리자가 직접 결정한 건은 ADMIN."""
+    state = _state()
+    state["verdict"] = "escalate"
+    state["admin_decision"] = {"decision": "approve", "by": "admin-1"}
+    assert build_callback_payload(state).processed_by == "ADMIN"
+
+
+def test_processed_by_serializes_as_null_not_omitted():
+    """백엔드 파서가 키 부재와 null을 구분하지 않도록 키는 항상 실어 보낸다."""
+    state = _state()
+    state["verdict"] = "escalate"
+    dumped = build_callback_payload(state).model_dump(mode="json", by_alias=True)
+    assert "processedBy" in dumped and dumped["processedBy"] is None
