@@ -51,15 +51,20 @@ GET /internal/agent/organizations/{organizationId}/team-settings
 - **용도**: 자동승인 권한·한도 — 가드레일 **0번 규칙**(최상위 게이트)
 - **기대 응답**
   ```json
-  { "auto_approve": false, "auto_approve_limit": 50000, "escalation_threshold": 300000 }
+  { "auto_approve": false, "auto_approve_limit": 50000, "escalation_threshold": 200000 }
   ```
 - ✅ **`escalation_threshold`는 금액으로 확정**(2026-07-27 DB 스키마 `team_settings` 근거) —
-  우리 `force_escalation_amount`와 1:1이다("이 금액 초과 시 무조건 관리자 검토"). 코드 반영 완료이며
-  확신도 임계값 θ(0~1 실수)와는 분리했다. 명칭은 `escalationThreshold`로 통일한다.
-  → 목 구현이 아직 `0.8`을 반환하는 것은 우리 쪽 잔여 정리 사항이며, 회신이 필요한 항목이 아니다.
+  우리 `force_escalation_amount`와 1:1이다("이 금액 초과 시 무조건 관리자 검토").
+  확신도 임계값 θ(0~1 실수)와는 분리했다 — θ는 백엔드에서 받지 않는 LLM 내부 파라미터다.
+  명칭은 `escalationThreshold`로 통일한다.
+  (2026-07-31 코드 반영 — `load_context.py`가 이 값을 `force_escalation_amount`에 대입한다.
+  그 전까지는 θ에 대입하고 있었고, 목이 `0.8`을 반환해 목 모드에서는 드러나지 않았다.)
+- **`auto_approve_limit`이 `null`이면 0으로 간주한다** — 한도 0이면 모든 금액이 관리자 검토로
+  가므로 안전 방향이다(설계서 §8). DB상 NULL 허용이고 `auto_approve=FALSE`가 실서비스
+  기본이라 NULL이 정상 케이스라는 점을 반영했다.
 - ⚠️ **회신 필요**: 이 값의 **기본값**을 확정해 주세요. AI 마법사 2단계 화면이 200,000원 기준으로
-  그려져 있어 우리도 그에 맞출 예정인데, 현재 우리 코드 기본값은 300,000원이다
-  (`풀스택_회신요청.md` 15번 ④). 조회·수정 API에 이 필드가 없는 문제는 같은 문서 5번.
+  그려져 있어 우리 기본값도 200,000원으로 맞췄다 (`풀스택_회신요청.md` 15번 ④).
+  조회·수정 API에 이 필드가 없는 문제는 같은 문서 5번.
 - **실패 시 동작**: `auto_approve=False`로 fail-safe (안전 방향)
 
 ### ③ 예산 현황 조회
@@ -70,6 +75,9 @@ GET /internal/agent/teams/{teamId}/budget?category={optional}
 - **기대 응답**: `{ "total_budget": 300000, "spent": 118000 }`
 - **참고**: 예산은 **모임 전체 총액 하나**(팀 확인 2026-07-09). 카테고리별 한도 없음 —
   `category` 파라미터는 내역 조회용 선택값이지 한도 검사 기준이 아니다.
+- **키 표기는 세 가지를 모두 받는다** — 지출 합계는 `spent`·`used_budget`(DB 컬럼)·
+  `usedBudget`(프론트 API 표기), 총액은 `total_budget`·`totalBudget`. 어느 표기를 쓰실지
+  회신을 기다리지 않아도 되도록 우리 쪽 경계에서 흡수했다(2026-07-31). 편한 쪽으로 주시면 된다.
 
 ### ④ 영수증 이미지 조회
 ```

@@ -101,3 +101,46 @@ async def test_load_context_fail_safe_on_settings_error():
     ):
         updates = await load_context({"team_id": "org-1", "expense_id": "exp-1"})
     assert updates["policy_params"].auto_approve is False
+
+
+# ── team_settings 값 매핑 (escalation_threshold = 금액, 2026-07-27 DB 스키마) ──
+
+
+async def _policy_params_with(settings: dict):
+    with patch("app.graphs.review.nodes.load_context.get_team_settings", return_value=settings):
+        updates = await load_context({"team_id": "org-1", "expense_id": "exp-1"})
+    return updates["policy_params"]
+
+
+async def test_escalation_threshold_maps_to_amount_not_confidence():
+    """마법사 2단계 '관리자 확인 설정 금액'이 심사에 그대로 도달해야 한다.
+
+    이 값을 confidence_threshold(0~1 θ)에 대입하면 adjudicate의 임계 비교가
+    상시 거짓이 되어 전건 에스컬레이션된다.
+    """
+    p = await _policy_params_with(
+        {
+            "auto_approve": True,
+            "auto_approve_limit": 50_000,
+            "escalation_threshold": 300_000,
+        }
+    )
+    assert p.force_escalation_amount == 300_000
+    assert p.confidence_threshold == 0.8  # θ는 백엔드 값에 오염되지 않는다
+
+
+async def test_escalation_threshold_absent_uses_default():
+    p = await _policy_params_with({"auto_approve": True, "auto_approve_limit": 50_000})
+    assert p.force_escalation_amount == 200_000
+
+
+async def test_auto_approve_limit_null_becomes_zero():
+    """DB상 NULL 허용 컬럼 — None이면 0(전건 에스컬레이션, 안전 방향)이지 TypeError가 아니다."""
+    p = await _policy_params_with(
+        {
+            "auto_approve": False,
+            "auto_approve_limit": None,
+            "escalation_threshold": 200_000,
+        }
+    )
+    assert p.auto_approve_limit == 0
