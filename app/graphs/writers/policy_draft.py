@@ -10,6 +10,7 @@
 동기 실행: 마법사 UX상 즉시 응답이 필요해 llm-api가 직접 이 그래프를 호출한다
 (§2.2 'LLM 호출은 워커만' 원칙의 예외 — §7.2가 동기로 명시. 지연 문제 생기면 잡 전환).
 """
+
 import logging
 from functools import lru_cache
 from pathlib import Path
@@ -35,13 +36,20 @@ MAX_EXTRA_RULES = 7
 class ExtraRules(BaseModel):
     extra_rules: list[str] = []
 
+
 _TEMPLATES_PATH = Path(__file__).resolve().parents[3] / "templates" / "policy_templates.yaml"
 PER_MEAL_LIMIT = 30_000  # 1인당 식비 기본 한도 — 추후 팀 규모 기반 조정
+# 강제 에스컬레이션 = 자동승인 한도 × 이 배수. 마법사 2단계 화면의 구간표
+# (소액 5만 미만 / 중간 5~20만 / 고액 20만 이상)에 맞춘 값 — 5만 × 4 = 20만.
+FORCE_ESCALATION_MULTIPLE = 4
+# 회비가 입력된 경우에만 붙는 조항 (유형 무관이라 템플릿이 아닌 코드 상수).
+DUES_RULE = "회비는 1인당 {dues}원으로 하며, 회비 수입 범위 내에서 지출을 집행한다."
 
 
 @lru_cache
 def load_templates() -> dict:
     import yaml
+
     return yaml.safe_load(_TEMPLATES_PATH.read_text(encoding="utf-8"))
 
 
@@ -83,9 +91,13 @@ def _mock_extra_rules(description: str) -> list[str]:
     text = description.lower()
     rules: list[str] = []
     if any(k in text for k in ("등산", "캠핑", "액티비티", "레저", "운동")):
-        rules.append("야외·활동성 행사에 필요한 안전장비(구급용품 등) 구입은 활동 안전을 위한 지출로 우선 인정한다.")
+        rules.append(
+            "야외·활동성 행사에 필요한 안전장비(구급용품 등) 구입은 활동 안전을 위한 지출로 우선 인정한다."
+        )
     if any(k in text for k in ("스터디", "개발", "코딩", "프로젝트", "실습")):
-        rules.append("실습에 필요한 서버·도메인·구독형 개발 도구 비용은 스터디 기간 내 결제분만 인정한다.")
+        rules.append(
+            "실습에 필요한 서버·도메인·구독형 개발 도구 비용은 스터디 기간 내 결제분만 인정한다."
+        )
     if any(k in text for k in ("신입", "모집", "홍보", "리크루팅")):
         rules.append("신입 모집 관련 홍보물 제작비는 모집 기간 내 집행 건에 한해 인정한다.")
     return rules[:MAX_EXTRA_RULES]
@@ -101,15 +113,23 @@ async def generate_draft(state: DraftState) -> dict:
     """
     req, template = state["request"], state["template"]
 
-    auto_limit = max(10_000, (int(req.initial_budget * template["auto_approve_ratio"])
-                              // 10000) * 10000)
+    auto_limit = max(
+        10_000, (int(req.initial_budget * template["auto_approve_ratio"]) // 10000) * 10000
+    )
     params = PolicyParamsSuggestion(
         auto_approve_limit=auto_limit,
-        force_escalation_amount=auto_limit * 6,
+        force_escalation_amount=auto_limit * FORCE_ESCALATION_MULTIPLE,
     )
-    base_rules = [r.format(auto_approve_limit=f"{params.auto_approve_limit:,}",
-                           per_meal_limit=f"{PER_MEAL_LIMIT:,}")
-                 for r in template["base_rules"]]
+    base_rules = [
+        r.format(
+            auto_approve_limit=f"{params.auto_approve_limit:,}",
+            per_meal_limit=f"{PER_MEAL_LIMIT:,}",
+        )
+        for r in template["base_rules"]
+    ]
+    # 마법사 1단계 회비 — 입력됐을 때만 조항 1개 추가 ('없음'은 None·0 둘 다)
+    if req.dues:
+        base_rules.append(DUES_RULE.format(dues=f"{req.dues:,}"))
 
     extra_rules: list[str] = []
     if req.description:
@@ -121,8 +141,8 @@ async def generate_draft(state: DraftState) -> dict:
                 agent="policy_drafter",
                 system=spec.system_with_few_shot(),
                 user=f"모임 유형: {req.team_type}\n모임 이름: {req.team_name}\n"
-                     f"모임 소개: {req.description}\n\n"
-                     f"참고 규정(다른 모임 사례 — 그대로 베끼지 말고 참고만):\n{ref_text}",
+                f"모임 소개: {req.description}\n\n"
+                f"참고 규정(다른 모임 사례 — 그대로 베끼지 말고 참고만):\n{ref_text}",
                 schema=ExtraRules,
                 mock_response=ExtraRules(extra_rules=_mock_extra_rules(req.description)),
                 prompt_version=spec.version,
@@ -131,10 +151,13 @@ async def generate_draft(state: DraftState) -> dict:
         except Exception:
             logger.exception("policy_drafter 추가 조항 생성 실패 — 기본 조항만 사용")
 
+    dues_note = f" · 회비 {req.dues:,}원" if req.dues else ""
     draft = PolicyDraft(
-        rules=base_rules + extra_rules, policy_params=params,
+        rules=base_rules + extra_rules,
+        policy_params=params,
         recommended_categories=categories_for(req.team_type),  # 유형별 고정 6개 (신규 생성 없음)
-        notes=f"'{req.team_name}' ({req.team_type}) 초기예산 {req.initial_budget:,}원 기준 자동 생성 초안 — 관리자 검토 후 확정",
+        notes=f"'{req.team_name}' ({req.team_type}) 초기예산 {req.initial_budget:,}원{dues_note}"
+        " 기준 자동 생성 초안 — 관리자 검토 후 확정",
     )
     return {"draft": draft}
 

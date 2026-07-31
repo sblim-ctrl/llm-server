@@ -1,15 +1,26 @@
 """문서 생성 에이전트 순수 함수 테스트 — 검증(Generator-Evaluator)·집계."""
+
 from app.graphs.writers.policy_draft import (
-    MAX_EXTRA_RULES, _mock_extra_rules, generate_draft, load_template, load_templates,
+    MAX_EXTRA_RULES,
+    _mock_extra_rules,
+    generate_draft,
+    load_template,
+    load_templates,
     verify_draft_pure,
 )
 from app.graphs.writers.report import aggregate_pure, verify_report_pure
-from app.schemas.writers import BudgetReport, PolicyDraft, PolicyDraftRequest, PolicyParamsSuggestion
+from app.schemas.writers import (
+    BudgetReport,
+    PolicyDraft,
+    PolicyDraftRequest,
+    PolicyParamsSuggestion,
+)
 
 TEAM_TYPES = ["동아리/학생회", "스터디", "친목", "동호회", "회사"]
 
 
 # ── PolicyDrafter (예산 배분 없음 — 팀 결정 2026-07-09) ──
+
 
 def test_templates_cover_all_five_team_types():
     templates = load_templates()
@@ -22,8 +33,10 @@ def test_templates_cover_all_five_team_types():
 def _draft(rules=None, auto=50_000, force=300_000):
     return PolicyDraft(
         rules=rules if rules is not None else ["제1조 테스트"],
-        policy_params=PolicyParamsSuggestion(auto_approve_limit=auto,
-                                             force_escalation_amount=force))
+        policy_params=PolicyParamsSuggestion(
+            auto_approve_limit=auto, force_escalation_amount=force
+        ),
+    )
 
 
 def test_verify_catches_limit_order_error():
@@ -46,6 +59,7 @@ def test_verify_passes_valid_draft():
 
 # ── generate_draft: description 기반 맞춤 조항 (목 모드) ─
 
+
 def test_no_description_adds_no_extra_rules():
     assert _mock_extra_rules("") == []
 
@@ -63,15 +77,19 @@ def test_multiple_keywords_still_capped_at_max():
 
 
 async def test_generate_draft_appends_extra_rules_without_touching_base():
-    req = PolicyDraftRequest(team_type="동호회", team_name="주말 등산 모임",
-                             initial_budget=500_000, description="매주 등산을 가는 모임입니다")
+    req = PolicyDraftRequest(
+        team_type="동호회",
+        team_name="주말 등산 모임",
+        initial_budget=500_000,
+        description="매주 등산을 가는 모임입니다",
+    )
     state = await load_template({"request": req})
     result = await generate_draft({"request": req, "template": state["template"]})
     draft = result["draft"]
     base_count = len(load_templates()["동호회"]["base_rules"])
-    assert len(draft.rules) == base_count + 1          # 기본 6개 + 추가 1개
+    assert len(draft.rules) == base_count + 1  # 기본 6개 + 추가 1개
     assert "안전장비" in draft.rules[-1]
-    assert verify_draft_pure(draft) is None            # placeholder 없이 정상 치환
+    assert verify_draft_pure(draft) is None  # placeholder 없이 정상 치환
 
 
 async def test_generate_draft_without_description_matches_old_behavior():
@@ -80,6 +98,46 @@ async def test_generate_draft_without_description_matches_old_behavior():
     result = await generate_draft({"request": req, "template": state["template"]})
     draft = result["draft"]
     assert len(draft.rules) == len(load_templates()["회사"]["base_rules"])
+
+
+# ── 마법사 2단계 구간표 · 1단계 회비 ──────────────────────
+
+
+async def _draft_for(**kwargs):
+    req = PolicyDraftRequest(**kwargs)
+    state = await load_template({"request": req})
+    return (await generate_draft({"request": req, "template": state["template"]}))["draft"]
+
+
+async def test_thresholds_match_wizard_step2_table():
+    """마법사 2단계 구간표(소액 5만 미만 / 중간 5~20만 / 고액 20만 이상)와 일치."""
+    draft = await _draft_for(
+        team_type="동아리/학생회", team_name="코딩 동아리", initial_budget=1_000_000
+    )
+    assert draft.policy_params.auto_approve_limit == 50_000
+    assert draft.policy_params.force_escalation_amount == 200_000
+
+
+async def test_dues_adds_one_rule_and_appears_in_notes():
+    base = len(load_templates()["스터디"]["base_rules"])
+    draft = await _draft_for(
+        team_type="스터디", team_name="알고리즘 스터디", initial_budget=600_000, dues=20_000
+    )
+    assert len(draft.rules) == base + 1
+    assert "20,000원" in draft.rules[-1]
+    assert "회비 20,000원" in draft.notes
+    assert verify_draft_pure(draft) is None
+
+
+async def test_no_dues_adds_no_rule():
+    """화면의 '없음' 체크 — None·0 둘 다 조항을 만들지 않는다."""
+    base = len(load_templates()["스터디"]["base_rules"])
+    for dues in (None, 0):
+        draft = await _draft_for(
+            team_type="스터디", team_name="알고리즘 스터디", initial_budget=600_000, dues=dues
+        )
+        assert len(draft.rules) == base
+        assert "회비" not in draft.notes
 
 
 # ── ReportWriter ─────────────────────────────────────────
@@ -94,7 +152,7 @@ def test_aggregate_math():
     f = aggregate_pure("2026-06", EXPENSES)
     assert f.total_spent == 100_000
     assert f.expense_count == 2
-    assert f.by_category[0].category == "식비"     # 지출 큰 순 정렬
+    assert f.by_category[0].category == "식비"  # 지출 큰 순 정렬
     assert f.by_category[0].share == 0.8
     assert f.top_expense_title == "회식"
 
@@ -106,8 +164,7 @@ def test_aggregate_empty():
 
 def test_report_verification_detects_figure_mismatch():
     f = aggregate_pure("2026-06", EXPENSES)
-    bad = BudgetReport(figures=f, summary="총 지출 999,999원", recommendations=[],
-                       verified=False)
+    bad = BudgetReport(figures=f, summary="총 지출 999,999원", recommendations=[], verified=False)
     assert verify_report_pure(bad, f) is False
 
 
