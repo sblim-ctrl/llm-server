@@ -29,6 +29,12 @@ class PolicyParamsSuggestion(BaseModel):
     auto_approve_limit: int
     force_escalation_amount: int
     confidence_threshold: float = 0.8
+    # 마법사 2단계 '당연히 모든 지출 직접 확인할래요' 토글의 AI 추천 초기값
+    # (화면_대조 §2-3 — 이 값을 내려줄 통로가 없어 AI가 토글을 추천하지 못하던 항목).
+    # false를 권하는 이유: 온보딩 직후는 회칙이 아직 인덱싱되지 않았고 판례도 0건이라
+    # 자동 판정의 근거가 가장 빈약한 시점이다. 관리자가 토글로 켜는 것이 안전하다.
+    # 저장은 백엔드 team-settings 소관 — 우리는 추천만 한다(규율 3).
+    auto_approve: bool = False
 
 
 class PolicyDraft(BaseModel):

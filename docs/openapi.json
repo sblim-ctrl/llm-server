@@ -361,6 +361,11 @@
       },
       "PolicyParamsSuggestion": {
         "properties": {
+          "auto_approve": {
+            "default": false,
+            "title": "Auto Approve",
+            "type": "boolean"
+          },
           "auto_approve_limit": {
             "title": "Auto Approve Limit",
             "type": "integer"

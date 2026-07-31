@@ -112,6 +112,52 @@
         "rules_count": 8,
         "rules_contain": ["안전장비", "서버", "홍보물"]
       }
+    },
+    {
+      "id": "pd-dues",
+      "scenario": "마법사 1단계 회비 — 입력 시 회비 조항 1개 추가 (기본 5 + 회비 1)",
+      "input": {"team_type": "동아리/학생회", "team_name": "산악부", "initial_budget": 1000000, "dues": 30000},
+      "expect": {
+        "verified": true,
+        "rules_count": 6,
+        "auto_approve_limit": 50000,
+        "force_escalation_amount": 200000,
+        "rules_contain": ["회비는 1인당 30,000원"]
+      }
+    },
+    {
+      "id": "pd-dues-zero",
+      "scenario": "회비 '없음' — 0은 미입력과 같게 처리해 조항이 늘지 않는다",
+      "input": {"team_type": "동아리/학생회", "team_name": "무회비 동아리", "initial_budget": 1000000, "dues": 0},
+      "expect": {
+        "verified": true,
+        "rules_count": 5,
+        "rules_not_contain": ["회비는 1인당"]
+      }
+    },
+    {
+      "id": "pd-dues-desc",
+      "scenario": "회비 + 소개 동시 — 회비 조항과 소개 맞춤 조항이 함께 (기본 5 + 회비 1 + 추가 1)",
+      "input": {"team_type": "동호회", "team_name": "주말 산악회", "initial_budget": 500000, "dues": 20000, "description": "매주 등산과 캠핑을 즐기는 모임입니다"},
+      "expect": {
+        "verified": true,
+        "rules_count": 7,
+        "auto_approve_limit": 20000,
+        "force_escalation_amount": 80000,
+        "rules_contain": ["회비는 1인당 20,000원", "안전장비"]
+      }
+    },
+    {
+      "id": "pd-wizard-bands",
+      "scenario": "마법사 2단계 구간표 정합 — 초기예산 100만이면 소액 5만 / 고액 20만이어야 한다",
+      "input": {"team_type": "동아리/학생회", "team_name": "구간 검증팀", "initial_budget": 1000000},
+      "expect": {
+        "verified": true,
+        "auto_approve_limit": 50000,
+        "force_escalation_amount": 200000,
+        "rules_contain": ["50,000원 이하"],
+        "rules_not_contain": ["300,000원"]
+      }
     }
   ],
   "report_cases": [
