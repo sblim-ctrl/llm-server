@@ -105,6 +105,14 @@ def test_verify_allows_rule_citing_either_suggested_limit():
     assert verify_draft_pure(_draft(rules=rules, auto=50_000, force=300_000)) is None
 
 
+def test_verify_catches_hallucinated_limit_without_the_word_auto():
+    """'자동'이라는 말 없이 관리자 확인으로 기준을 말해도 금액이 어긋나면 잡는다."""
+    err = verify_draft_pure(
+        _draft(rules=["80,000원을 넘는 지출은 관리자가 확인한다."], auto=50_000)
+    )
+    assert err is not None and "불일치" in err
+
+
 def test_verify_ignores_amounts_in_non_auto_rules():
     """자동 심사와 무관한 조항의 금액(식비 한도 등)은 대조 대상이 아니다."""
     rules = ["1인당 식비는 회당 30,000원을 초과할 수 없다."]

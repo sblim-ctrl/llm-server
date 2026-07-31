@@ -193,8 +193,11 @@ async def generate_draft(state: DraftState) -> dict:
     return {"draft": draft}
 
 
-# 자동 심사 한도를 언급하는 조항을 식별 — 이 조항의 금액은 policy_params와 반드시 같아야 한다.
-_AUTO_RULE_HINT = re.compile(r"자동\s*(?:심사|승인)")
+# 승인 기준선을 말하는 조항을 식별 — 이 조항의 금액은 policy_params와 반드시 같아야 한다.
+# '자동 심사'뿐 아니라 '관리자 승인/확인'까지 보는 이유: 같은 기준을 "8만원 넘으면 관리자가
+# 확인한다"처럼 '자동'이라는 말 없이 쓸 수 있고, 그때도 회칙과 심사 기준은 똑같이 갈라진다.
+# 기존 조항 28개(5유형 base + 회비 + 목 추가조항) 전수 확인 결과 헛경보 0건.
+_AUTO_RULE_HINT = re.compile(r"자동\s*(?:심사|승인)|관리자.{0,4}(?:승인|확인)")
 _AMOUNT_RE = re.compile(r"([\d,]+)\s*원")
 # DUES_RULE·DUES_NOTE에서 placeholder 앞부분만 — 문구를 고쳐도 따라간다
 _DUES_PREFIX = DUES_RULE.split("{")[0]
