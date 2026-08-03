@@ -537,6 +537,12 @@
         "title": "ValidationError",
         "type": "object"
       }
+    },
+    "securitySchemes": {
+      "ServiceToken": {
+        "scheme": "bearer",
+        "type": "http"
+      }
     }
   },
   "info": {
@@ -559,6 +565,7 @@
             "description": "Successful Response"
           }
         },
+        "security": [],
         "summary": "Healthz",
         "tags": [
           "health"
@@ -578,6 +585,7 @@
             "description": "Successful Response"
           }
         },
+        "security": [],
         "summary": "Readyz",
         "tags": [
           "health"
@@ -1054,5 +1062,10 @@
         ]
       }
     }
-  }
+  },
+  "security": [
+    {
+      "ServiceToken": []
+    }
+  ]
 }
