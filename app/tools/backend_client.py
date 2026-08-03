@@ -47,11 +47,35 @@ async def close_backend_client() -> None:
     _http_client = None
 
 
+def _normalize_budget(data: dict[str, Any]) -> dict[str, Any]:
+    """예산 응답 키 흡수 — DB 표기(used_budget)·프론트 API 표기(usedBudget) 양쪽 수용.
+
+    어느 표기도 없으면 KeyError를 그대로 낸다 — budget_auditor가 error 소견으로
+    잡아 에스컬레이션되는 기존 실패 경로를 유지하기 위해서다 (0으로 때우면
+    '잔액 0 → 반려'라는 틀린 근거가 만들어진다).
+    """
+
+    def pick(*keys: str) -> int:
+        for k in keys:
+            v = data.get(k)
+            if v is not None:
+                return int(v)
+        raise KeyError(keys[0])
+
+    return {
+        "total_budget": pick("total_budget", "totalBudget"),
+        "spent": pick("spent", "used_budget", "usedBudget"),
+    }
+
+
 async def get_budget_status(team_id: int, category: str | None = None) -> dict[str, Any]:
     """GET {BE}/internal/agent/teams/{id}/budget — 총예산·승인 지출 합계.
 
     [팀 확인 2026-07-09] 예산 = 모임 전체 총액. 잔액 = total_budget − spent(승인 합계).
     category는 내역 조회용 선택 파라미터 (한도 검사 기준 아님).
+
+    백엔드 표기가 DB 컬럼(used_budget)인지 프론트 API 표기(usedBudget)인지 미확정이라
+    여기 경계에서만 흡수한다 — 심사관들의 내부 계약(total_budget/spent)은 그대로 둔다.
     """
     s = get_settings()
     if s.mock_backend:
@@ -66,7 +90,7 @@ async def get_budget_status(team_id: int, category: str | None = None) -> dict[s
         params={"category": category} if category else None,
     )
     r.raise_for_status()
-    return r.json()
+    return _normalize_budget(r.json())
 
 
 async def get_expense_history(team_id: int, **filters: Any) -> list[dict[str, Any]]:
@@ -255,6 +279,9 @@ async def get_team_settings(organization_id: int) -> dict[str, Any]:
     목 규약: organization_id에 "noauto" 포함 → auto_approve=False (게이트 검증용).
     그 외에는 True — 골든셋·데모의 자동판정 흐름을 보존하기 위한 목 전용 기본값이며
     실서비스 기본값(False)과 다르다는 점에 주의.
+
+    escalation_threshold는 금액이다 (2026-07-27 DB 스키마 team_settings로 확정 —
+    우리 force_escalation_amount와 1:1). 확신도 θ(0~1)와 혼동 금지.
     """
     s = get_settings()
     if s.mock_backend:
@@ -262,7 +289,7 @@ async def get_team_settings(organization_id: int) -> dict[str, Any]:
         return {
             "auto_approve": "noauto" not in organization_key.lower(),
             "auto_approve_limit": 50_000,
-            "escalation_threshold": 0.8,
+            "escalation_threshold": 200_000,
         }
     r = await _client().get(f"/internal/agent/organizations/{organization_id}/team-settings")
     r.raise_for_status()

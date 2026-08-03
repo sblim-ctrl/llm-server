@@ -66,13 +66,18 @@ async def load_context(state: ReviewState) -> dict:
         updates["policy_params"] = PolicyParams(auto_approve=False)
     else:
         defaults = PolicyParams()
+        # auto_approve_limit은 DB상 NULL 허용("자동 승인 사용 시에만 값 존재")이고 실서비스
+        # 기본이 auto_approve=FALSE라 NULL이 정상 케이스다. None은 0으로 — 한도 0이면 모든
+        # 금액이 over_auto_approve_limit에 걸려 에스컬레이션되므로 안전 방향(§8).
+        raw_limit = settings_r.get("auto_approve_limit", defaults.auto_approve_limit)
+        # escalation_threshold는 금액이다 (2026-07-27 DB 스키마) — force_escalation_amount와
+        # 1:1. 확신도 θ는 LLM 내부 파라미터로 분리해 백엔드 값에서 받지 않는다 (Q4④).
+        raw_force = settings_r.get("escalation_threshold")
         updates["policy_params"] = PolicyParams(
             auto_approve=bool(settings_r.get("auto_approve", False)),
-            auto_approve_limit=int(
-                settings_r.get("auto_approve_limit", defaults.auto_approve_limit)
-            ),
-            confidence_threshold=float(
-                settings_r.get("escalation_threshold", defaults.confidence_threshold)
+            auto_approve_limit=0 if raw_limit is None else int(raw_limit),
+            force_escalation_amount=(
+                defaults.force_escalation_amount if raw_force is None else int(raw_force)
             ),
         )
 

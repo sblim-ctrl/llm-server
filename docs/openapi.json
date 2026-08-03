@@ -165,8 +165,10 @@
             "title": "Indexed At"
           },
           "team_id": {
+            "description": "양의 백엔드 BIGINT 기본키",
+            "format": "int64",
             "title": "Team Id",
-            "type": "string"
+            "type": "integer"
           },
           "version": {
             "anyOf": [
@@ -544,8 +546,10 @@
             "title": "Period"
           },
           "team_id": {
+            "description": "양의 백엔드 BIGINT 기본키",
+            "format": "int64",
             "title": "Team Id",
-            "type": "string"
+            "type": "integer"
           }
         },
         "required": [
@@ -933,8 +937,10 @@
             "name": "team_id",
             "required": true,
             "schema": {
+              "description": "양의 백엔드 BIGINT 기본키",
+              "format": "int64",
               "title": "Team Id",
-              "type": "string"
+              "type": "integer"
             }
           }
         ],
