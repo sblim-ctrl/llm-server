@@ -7,6 +7,7 @@
 | 2단계 승인 정책 | 없음 (백엔드) |
 | 3단계 회칙·규정 | `POST /v1/policy-draft` — AI 초안 |
 | 3단계 등록 후 | `POST /v1/context/refresh` — 회칙 반영 알림 |
+| 3단계 등록 확인 | `GET /v1/context/status` — 반영됐는지 조회 |
 
 회비 저장, 승인 정책 저장, 회칙 파일 업로드·직접 입력은 백엔드 소관이라 LLM 서버 호출이
 없다.
@@ -163,4 +164,40 @@ Authorization: Bearer {SERVICE_TOKEN}
 | `version` | integer | O | 회칙 버전 (`policies.version`) |
 
 원문은 저희가 다시 조회하므로 위 세 값만 보내시면 된다. 202로 접수하고 인덱싱은
-비동기로 처리한다.
+비동기로 처리한다. 응답의 `job_id`로 `GET /v1/jobs/{job_id}`를 조회하면 그 건의 처리
+결과를 볼 수 있다.
+
+## GET /v1/context/status
+
+회칙이 실제로 심사에 반영될 수 있는 상태인지 알려준다. 인덱싱이 비동기라 `/refresh`가
+202를 돌려준 뒤 실패해도 알 방법이 없는데, 그 경우 관리자는 회칙을 등록했다고 알고
+있지만 심사는 회칙 없이 진행된다. 등록 직후 이 값을 확인해 주시면 그 상황을 막을 수
+있다.
+
+```
+GET /v1/context/status?team_id=team-1
+Authorization: Bearer {SERVICE_TOKEN}
+```
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| `indexed` | boolean | `false`면 회칙 기준 심사가 되지 않는다 |
+| `chunk_count` | integer | 인덱싱된 조항 수 |
+| `version` | integer \| null | 반영된 회칙 버전 |
+| `indexed_at` | string \| null | 인덱싱 시각 (ISO8601) |
+
+```json
+{
+  "team_id": "team-1",
+  "indexed": true,
+  "chunk_count": 12,
+  "version": 2,
+  "indexed_at": "2026-08-03T10:30:00"
+}
+```
+
+`indexed: true`면 "AI가 회칙 12개 조항을 읽었어요"처럼 보여주실 수 있다.
+
+`indexed: false`는 오류가 아니다. 회칙을 등록하지 않았거나 건너뛴 팀의 정상 상태이며,
+그 팀은 모임 유형별 기본 정책으로 심사된다. 기본 정책 모드에서는 반려 판정을 내리지
+않고 관리자 확인으로만 보내며, 예산·판례 심사는 평소대로 동작한다.
