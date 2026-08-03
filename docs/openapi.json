@@ -135,6 +135,53 @@
         "title": "ContextRefreshRequest",
         "type": "object"
       },
+      "ContextStatus": {
+        "properties": {
+          "chunk_count": {
+            "title": "Chunk Count",
+            "type": "integer"
+          },
+          "indexed": {
+            "title": "Indexed",
+            "type": "boolean"
+          },
+          "indexed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Indexed At"
+          },
+          "team_id": {
+            "title": "Team Id",
+            "type": "string"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          }
+        },
+        "required": [
+          "team_id",
+          "indexed",
+          "chunk_count",
+          "version",
+          "indexed_at"
+        ],
+        "title": "ContextStatus",
+        "type": "object"
+      },
       "DecisionRequest": {
         "description": "관리자 결정 — HITL 재개 입력.",
         "properties": {
@@ -818,6 +865,7 @@
     },
     "/v1/context/refresh": {
       "post": {
+        "description": "회칙 변경을 알린다. 접수만 하고 인덱싱은 비동기로 처리한다.\n\n반환된 `job_id`로 `GET /v1/jobs/{job_id}`를 조회하면 인덱싱 성공 여부를 볼 수 있고,\n아래 `/context/status`로 팀 단위 현재 상태를 볼 수도 있다.",
         "operationId": "refresh_context_v1_context_refresh_post",
         "requestBody": {
           "content": {
@@ -852,6 +900,49 @@
           }
         },
         "summary": "Refresh Context",
+        "tags": [
+          "context"
+        ]
+      }
+    },
+    "/v1/context/status": {
+      "get": {
+        "description": "이 팀 회칙이 실제로 심사에 반영될 수 있는 상태인지 알려준다.\n\n`indexed=false`면 회칙 기준 심사가 되지 않는다. 그 경우 심사는 모임 유형별 기본\n정책으로 진행되며(반려는 하지 않고 관리자 확인으로 보낸다), 예산·판례 심사는 정상\n동작한다.\n\n마법사 3단계에서 회칙을 등록하신 뒤 이 값을 확인해 \"AI가 회칙 N개 조항을 읽었어요\"\n처럼 보여주시면 관리자가 반영 여부를 알 수 있다.",
+        "operationId": "read_context_status_v1_context_status_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "title": "Team Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContextStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "팀 회칙 인덱싱 상태 조회",
         "tags": [
           "context"
         ]
