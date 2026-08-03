@@ -75,3 +75,26 @@ def test_verdict_metrics_bundle():
     assert m["escalation_recall"] == m["per_class"]["escalate"]["recall"]
     assert m["escalation_precision"] == m["per_class"]["escalate"]["precision"]
     assert "confusion" in m and "automation_rate" in m
+
+
+def test_zero_precision_reports_zero_not_na():
+    """전부 틀린 것(0.0)과 측정 불가(None)를 구분한다.
+
+    진리값 검사로 짜면 precision=0.0이 None으로 빠져 화면에 N/A로 뜬다.
+    성능이 바닥인 상황이 오히려 안 보이게 되는 쪽이라 위험하다.
+    """
+    # reject 정답 1건을 approve로 흘리고, approve로 판정한 건은 그것뿐 → approve precision 0.0
+    results = [_r("reject", "approve")]
+    ap = per_class_prf(results)["approve"]
+    assert ap["precision"] == 0.0, "N/A가 아니라 0.0이어야 한다"
+    assert ap["recall"] is None, "approve 정답이 0건이라 recall은 측정 불가"
+    assert ap["f1"] is None, "recall이 없으면 f1도 측정 불가"
+
+
+def test_f1_is_zero_when_both_zero():
+    """precision·recall이 둘 다 0이면 f1은 0.0이다 (0으로 나누지 않는다)."""
+    # escalate 정답 1건을 approve로 흘리고, escalate로 판정한 것도 1건 있으나 오답
+    results = [_r("escalate", "approve"), _r("approve", "escalate")]
+    esc = per_class_prf(results)["escalate"]
+    assert esc["precision"] == 0.0 and esc["recall"] == 0.0
+    assert esc["f1"] == 0.0

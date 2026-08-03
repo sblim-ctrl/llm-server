@@ -27,10 +27,15 @@ def confusion_matrix(results: list[dict[str, Any]]) -> dict[str, dict[str, int]]
 def _prf(tp: int, fp: int, fn: int) -> dict[str, float | int | None]:
     precision = tp / (tp + fp) if (tp + fp) else None
     recall = tp / (tp + fn) if (tp + fn) else None
-    if precision and recall:
-        f1: float | None = 2 * precision * recall / (precision + recall)
+    # None(측정 불가)과 0.0(측정했는데 전부 틀림)을 구분한다. 진리값으로 검사하면
+    # precision=0.0이 None으로 빠져 화면에 N/A로 뜨는데, 그건 "재료가 없다"는 뜻이라
+    # 성능이 바닥인 상황이 오히려 안 보이게 된다. 분모가 0일 때만 f1도 None이다.
+    if precision is None or recall is None:
+        f1: float | None = None
+    elif precision + recall == 0:
+        f1 = 0.0
     else:
-        f1 = None
+        f1 = 2 * precision * recall / (precision + recall)
     return {"precision": precision, "recall": recall, "f1": f1, "support": tp + fn}
 
 
