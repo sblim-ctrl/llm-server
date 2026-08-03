@@ -10,6 +10,7 @@ from fastapi.responses import FileResponse
 from app.api import (
     analyze,
     briefings,
+    categories,
     context,
     digests,
     drafts,
@@ -61,6 +62,7 @@ app.include_router(jobs.router)
 app.include_router(context.router)
 app.include_router(precedents.router)
 app.include_router(drafts.router)
+app.include_router(categories.router)
 app.include_router(reports.router)
 app.include_router(briefings.router)
 app.include_router(digests.router)

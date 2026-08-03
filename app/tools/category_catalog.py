@@ -26,6 +26,16 @@ def categories_for(team_type: str) -> list[str]:
     return [c["name"] for c in _entry(team_type)["categories"]]
 
 
+def team_types() -> list[str]:
+    """카탈로그에 정의된 모임 유형 목록. YAML 정의 순서를 그대로 따른다."""
+    return list(load_catalog().keys())
+
+
+def fallback_for(team_type: str) -> str:
+    """분류가 어느 카테고리에도 안 걸렸을 때 쓰는 기본 카테고리."""
+    return _entry(team_type)["fallback"]
+
+
 def keyword_category_or_none(text: str, team_type: str) -> str | None:
     """키워드가 실제로 적중한 경우에만 카테고리 반환 — 미적중이면 None.
 
