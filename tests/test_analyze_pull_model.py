@@ -181,3 +181,40 @@ async def test_budget_status_normalizes_camel_case_key():
     """프론트 API-026 표기(totalBudget/usedBudget)로 와도 동일 결과."""
     result = await _budget_with_response({"totalBudget": 300_000, "usedBudget": 118_000})
     assert result == {"total_budget": 300_000, "spent": 118_000}
+
+
+async def test_escalation_threshold_absent_uses_default():
+    """응답에 escalation_threshold가 없으면 PolicyParams 기본값(20만원)을 쓴다.
+
+    마법사 2단계 화면의 '고액 지출 20만원 이상'과 같은 값이다.
+    """
+    with patch(
+        "app.graphs.review.nodes.load_context.get_team_settings",
+        return_value={"auto_approve": True, "auto_approve_limit": 50_000},
+    ):
+        updates = await load_context({"team_id": "org-1", "expense_id": "exp-1"})
+    assert updates["policy_params"].force_escalation_amount == 200_000
+
+
+async def test_budget_status_skips_explicit_null_alias():
+    """명시 null은 건너뛰고 다음 표기 후보를 쓴다.
+
+    백엔드가 전 필드를 직렬화해 {"spent": null, "usedBudget": 118000}을 보내는 경우,
+    키 존재만 보고 None을 집으면 지출이 0원으로 잡혀 잔액이 실제보다 많아진다 —
+    과다 승인 방향의 오류라 §8에 정면으로 어긋난다.
+    """
+    result = await _budget_with_response(
+        {"total_budget": 300_000, "spent": None, "usedBudget": 118_000}
+    )
+    assert result == {"total_budget": 300_000, "spent": 118_000}
+
+
+async def test_budget_status_raises_when_no_alias_present():
+    """어느 표기도 없으면 KeyError — budget_auditor가 error 소견으로 잡아 에스컬레이션된다.
+
+    0으로 때우면 '잔액 0 → 반려'라는 틀린 근거가 만들어진다.
+    """
+    import pytest
+
+    with pytest.raises(KeyError):
+        await _budget_with_response({"total_budget": 300_000})
