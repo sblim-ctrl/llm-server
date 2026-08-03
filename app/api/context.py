@@ -1,8 +1,9 @@
 """POST /v1/context/refresh — REQ-041 컨텍스트 갱신 이벤트 수신.
 
-TODO(2주차): 인덱싱 파이프라인 그래프(fetch→chunk→embed→upsert) 연결.
-지금은 잡 등록까지만 (워커의 context_refresh 핸들러는 스텁).
+잡 등록까지만 담당 — 인덱싱 파이프라인 그래프(fetch→chunk→embed→upsert) 실행은
+워커의 context_refresh 핸들러(app/worker.py)가 맡는다.
 """
+
 from fastapi import APIRouter
 
 from app.db.pool import insert_job
