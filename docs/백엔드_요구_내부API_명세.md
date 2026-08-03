@@ -62,7 +62,11 @@ GET /internal/agent/organizations/{organizationId}/team-settings
 - ✅ **`escalation_threshold`는 금액으로 확정**(2026-07-27 DB 스키마 `team_settings` 근거) —
   우리 `force_escalation_amount`와 1:1이다("이 금액 초과 시 무조건 관리자 검토"). 코드 반영 완료이며
   확신도 임계값 θ(0~1 실수)와는 분리했다. 명칭은 `escalationThreshold`로 통일한다.
-  → 현재 목 구현의 `300000`은 아래 기본값 합의 후 `200000`으로 맞출 우리 쪽 잔여 정리 사항이다.
+  (2026-07-31 코드 반영 — `load_context.py`가 이 값을 `force_escalation_amount`에 대입한다.
+  그 전까지는 θ에 대입하고 있었고, 목이 `0.8`을 반환해 목 모드에서는 드러나지 않았다.)
+- **`auto_approve_limit`이 `null`이면 0으로 간주한다** — 한도 0이면 모든 금액이 관리자 검토로
+  가므로 안전 방향이다(설계서 §8). DB상 NULL 허용이고 `auto_approve=FALSE`가 실서비스
+  기본이라 NULL이 정상 케이스라는 점을 반영했다.
 - ⚠️ **회신 필요**: 이 값의 **기본값을 200,000원으로 통일**하는 안을 제안한다. AI 마법사
   2단계 화면과 LLM 정책 기본값을 같은 기준으로 맞추기 위함이다
   (`풀스택_회신요청.md` 15번 ④).
@@ -79,6 +83,9 @@ GET /internal/agent/teams/{teamId}/budget?category={optional}
 - **기대 응답**: `{ "total_budget": 300000, "spent": 118000 }`
 - **참고**: 예산은 **모임 전체 총액 하나**(팀 확인 2026-07-09). 카테고리별 한도 없음 —
   `category` 파라미터는 내역 조회용 선택값이지 한도 검사 기준이 아니다.
+- **키 표기는 세 가지를 모두 받는다** — 지출 합계는 `spent`·`used_budget`(DB 컬럼)·
+  `usedBudget`(프론트 API 표기), 총액은 `total_budget`·`totalBudget`. 어느 표기를 쓰실지
+  회신을 기다리지 않아도 되도록 우리 쪽 경계에서 흡수했다(2026-07-31). 편한 쪽으로 주시면 된다.
 
 ### ④ 영수증 이미지 조회
 ```

@@ -8,3 +8,4 @@ pgdata/
 .langsmith/
 eval/results/
 .claude/settings.local.json
+.moai/
