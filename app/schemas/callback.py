@@ -26,9 +26,10 @@ class CallbackPayload(BaseModel):
     opinions: list[Opinion] = []               # → API-045 detail의 근거 재료 (백엔드가 조합)
     mismatch: list[Mismatch] = []
     reasons: Reasons | None = None             # → API-045 detail의 근거 재료
-    model_version: str = "mock"
-    prompt_version: str = "review/v1"
-    cost_usd: float = 0.0
-    latency_ms: int = 0
     # dry-run 기능은 Sprint 1 범위 외(P2) — 콜백 필드만 선반영 (업무분장 C5·§4)
     dry_run: bool = False
+
+    # model_version·prompt_version·cost_usd·latency_ms는 2026-08-03 제거했다.
+    # 지출 상세 화면 4종 어디에도 표시되지 않는 관측 전용값이라 백엔드로 보낼 이유가
+    # 없었다 (`docs/internal/화면_대조_2026-08-03.md` §4). 값 자체는 worker가
+    # jobs.result에 남기므로 GET /v1/jobs/{job_id}로 되짚을 수 있다.

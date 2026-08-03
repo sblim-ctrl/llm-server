@@ -34,6 +34,42 @@ class Recorder:
         return self.ret
 
 
+async def test_review_result_keeps_observability_dropped_from_callback(monkeypatch):
+    """콜백에서 뺀 관측값이 jobs.result에 남는지 (화면_대조_2026-08-03 §4·§5).
+
+    이게 깨지면 콜백 정제가 곧 관측 유실이 된다 — 정제의 전제 조건이라 고정한다.
+    """
+    from app.schemas.common import Opinion
+
+    final_state = {
+        "claim": ExpenseClaim(title="회식", amount=30000, category="식비", date="2026-08-03"),
+        "verdict": "approve",
+        "confidence": 0.9,
+        "opinions": {"rule": Opinion(auditor="rule", verdict="pass", summary="회칙 부합")},
+        "mismatch": [],
+        "llm_meta": {"adjudicator": LLMCallMeta(model="gpt-4o", prompt_version="adjudicator/v3",
+                                                cost_usd=0.002)},
+        "started_at": 100.0,
+    }
+
+    class _StubGraph:
+        async def ainvoke(self, state, config=None):
+            return final_state
+
+    monkeypatch.setattr(worker, "_review_graph", _StubGraph())
+    job = _job("review", attempts=1, payload={
+        "jobId": "be-1", "expenseId": "exp-1", "organizationId": "team-1"})
+    result, _ = await worker.run_review_job(job)
+
+    assert result["opinions"] == [{"auditor": "rule", "verdict": "pass", "summary": "회칙 부합",
+                                   "evidence": [], "figures": {}, "similar_cases": []}]
+    assert result["mismatch"] == []
+    assert result["model_version"] == "gpt-4o"
+    assert result["prompt_version"] == "adjudicator/v3"
+    assert result["cost_usd"] == 0.002
+    assert result["latency_ms"] > 0
+
+
 def test_meta_totals_sums_and_handles_empty():
     metas = {
         "a": LLMCallMeta(model="gpt-4o", tokens_in=100, tokens_out=50, cost_usd=0.001),
