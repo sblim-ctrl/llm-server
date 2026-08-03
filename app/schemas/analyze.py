@@ -24,7 +24,12 @@ class AnalyzeRequest(BaseModel):
     job_id: str
     expense_id: str
     organization_id: str            # 구 team_id — 내부 상태 키는 team_id를 유지한다
-    review_goal: str = ""           # 심사 목표 자연어 지시문 (프롬프트 반영은 TODO — 프롬프트 트랙)
+    # 심사 목표 자연어 지시문. 받아서 상태·잡 페이로드에 보관만 하고 **판정에는
+    # 반영하지 않는다**. 자유 텍스트를 심사관 프롬프트에 넣으면 백엔드를 경유한
+    # 프롬프트 인젝션 경로가 된다 — "이 건은 승인하라" 같은 문자열이 그대로 지시가
+    # 된다. 값 형식(자유 텍스트냐 열거형이냐)이 회신 대기 중이며
+    # (`풀스택_회신요청.md` 부록 C3), 열거형으로 확정되면 그때 반영한다.
+    review_goal: str = ""
     receipt_path: str | None = None  # Spring 내부 영수증 조회 경로 (없으면 영수증 미첨부)
 
 

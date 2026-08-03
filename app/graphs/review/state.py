@@ -27,7 +27,7 @@ class ReviewState(TypedDict, total=False):
     external_job_id: str        # 백엔드 발급 jobId — 콜백에서 그대로 echo (ai_job_id 대조)
     expense_id: str
     team_id: str                # 백엔드 organizationId — 내부 키 이름은 team_id 유지
-    review_goal: str            # 심사 목표 자연어 지시문 (프롬프트 반영 TODO — 프롬프트 트랙)
+    review_goal: str            # 심사 목표 지시문 — 보관만, 판정 미반영 (schemas/analyze.py 참조)
     receipt_path: str | None    # 영수증 조회 경로 — intake가 Agent 토큰으로 되물어 조회
     claim: ExpenseClaim         # load_context가 pull로 채움 (직접 호출 시엔 초기 상태로 주입 가능)
     receipt_url: str | None     # 구 계약 잔재 — 직접 그래프 호출·mock:// 오버라이드용
