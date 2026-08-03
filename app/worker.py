@@ -16,6 +16,7 @@ from app.config import get_settings
 from app.db.pool import apply_schema, close_pool, finish_job, get_pool, open_pool
 from app.graphs.indexing.graph import indexing_graph
 from app.graphs.review.graph import build_review_graph
+from app.graphs.review.nodes.callback import trace_meta
 from app.observability import langsmith_config, setup_langsmith
 from app.graphs.writers.briefing import briefing_graph
 
@@ -91,6 +92,7 @@ async def run_review_job(job: dict[str, Any]) -> tuple[dict[str, Any], dict[str,
         final_state = await _review_graph.ainvoke(None if ckpt else initial_state, config=config)
 
     reasons = final_state.get("reasons")
+    meta = trace_meta(final_state)
     result = {
         "verdict": final_state.get("verdict"),
         "confidence": final_state.get("confidence"),
@@ -99,6 +101,17 @@ async def run_review_job(job: dict[str, Any]) -> tuple[dict[str, Any], dict[str,
         # classify_category가 채운 최종 카테고리 — UI에서 분류 결과 확인용
         "category": final_state["claim"].category,
         "category_source": final_state.get("category_source"),
+        # 아래는 콜백 정제(화면_대조_2026-08-03.md) 대비 관측 보관처. 지금까지 심사관
+        # 소견·불일치·모델 버전은 콜백 페이로드에만 있었고 우리 쪽엔 남지 않았다 —
+        # 콜백에서 덜어내도 GET /v1/jobs/{id}로 되짚을 수 있어야 한다.
+        "opinions": [o.model_dump() for o in final_state.get("opinions", {}).values()],
+        "mismatch": [m.model_dump() for m in final_state.get("mismatch", [])],
+        "model_version": meta["model_version"],
+        "prompt_version": meta["prompt_version"],
+        "latency_ms": meta["latency_ms"],
+        # jobs.cost_usd 컬럼에도 기록되지만(B-7) JobStatusResponse가 그 컬럼을 노출하지
+        # 않는다 — 콜백에서 뺀 이상 여기 없으면 API로는 조회할 방법이 사라진다.
+        "cost_usd": meta["cost_usd"],
     }
     return result, final_state
 
