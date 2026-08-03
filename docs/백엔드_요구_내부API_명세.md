@@ -6,7 +6,7 @@
 | 작성 | LLM팀 (개발자 A) |
 | 근거 | `app/tools/backend_client.py` 현행 구현 (경로·파라미터·기대 응답을 코드에서 그대로 추출) |
 | **위치** | **`풀스택_회신요청.md` 1번(내부 조회 API 8종 요청)의 구체안** — 그 문서가 "8종이 명세에 없으니 열어달라"고 요청했다면, 이 문서는 **각 API의 경로·파라미터·응답 예시를 제안**한다. |
-| 함께 볼 것 | `README.md`(문서 안내) · `풀스택_연동_계약.md`(기술 계약) · `풀스택_회신요청.md`(회신 필요 14건) |
+| 함께 볼 것 | `README.md`(문서 안내) · `풀스택_연동_계약.md`(기술 계약) · `풀스택_팀별_AI에이전트_연동제안.md`(모임 생성) · `풀스택_회신요청.md`(회신 필요 16건) |
 
 ## 0. 왜 이 문서가 필요한가
 
@@ -51,15 +51,24 @@ GET /internal/agent/organizations/{organizationId}/team-settings
 - **용도**: 자동승인 권한·한도 — 가드레일 **0번 규칙**(최상위 게이트)
 - **기대 응답**
   ```json
-  { "auto_approve": false, "auto_approve_limit": 50000, "escalation_threshold": 300000 }
+  {
+    "auto_approve": false,
+    "auto_approve_limit": 50000,
+    "escalation_threshold": 200000,
+    "policy_sync_status": "READY",
+    "policy_version": 1
+  }
   ```
 - ✅ **`escalation_threshold`는 금액으로 확정**(2026-07-27 DB 스키마 `team_settings` 근거) —
   우리 `force_escalation_amount`와 1:1이다("이 금액 초과 시 무조건 관리자 검토"). 코드 반영 완료이며
   확신도 임계값 θ(0~1 실수)와는 분리했다. 명칭은 `escalationThreshold`로 통일한다.
-  → 목 구현이 아직 `0.8`을 반환하는 것은 우리 쪽 잔여 정리 사항이며, 회신이 필요한 항목이 아니다.
-- ⚠️ **회신 필요**: 이 값의 **기본값**을 확정해 주세요. AI 마법사 2단계 화면이 200,000원 기준으로
-  그려져 있어 우리도 그에 맞출 예정인데, 현재 우리 코드 기본값은 300,000원이다
-  (`풀스택_회신요청.md` 15번 ④). 조회·수정 API에 이 필드가 없는 문제는 같은 문서 5번.
+  → 현재 목 구현의 `300000`은 아래 기본값 합의 후 `200000`으로 맞출 우리 쪽 잔여 정리 사항이다.
+- ⚠️ **회신 필요**: 이 값의 **기본값을 200,000원으로 통일**하는 안을 제안한다. AI 마법사
+  2단계 화면과 LLM 정책 기본값을 같은 기준으로 맞추기 위함이다
+  (`풀스택_회신요청.md` 15번 ④).
+- `policy_sync_status`·`policy_version`은 팀별 논리적 에이전트 준비 상태 확인을 위한 권장 필드다.
+  `policy_sync_status != "READY"`이면 저장된 관리자 설정이 `true`여도 이 내부 API의
+  `auto_approve`는 유효값 `false`로 내려 자동 승인을 막는 방식을 제안한다.
 - **실패 시 동작**: `auto_approve=False`로 fail-safe (안전 방향)
 
 ### ③ 예산 현황 조회
@@ -128,9 +137,12 @@ POST /agent-callback
                   "summary":"...","evidence":[],"figures":{},"similar_cases":[]}],
     "reasons": {"requester":"요청자용(수치 비노출)","admin":"관리자용(조항·수치 인용)"},
     "mismatch": [{"field":"amount","claimed":"40000","receipt":"25000"}],
-    "modelVersion":"gpt-4o", "promptVersion":"adjudicator/v3",
-    "costUsd":0.0061, "latencyMs":3300, "dryRun": false }
+    "dryRun": false }
   ```
+- **최상위 키는 11개다.** 이전 버전의 `modelVersion`·`promptVersion`·`costUsd`·`latencyMs`
+  4개는 지출 상세 화면에서 쓰이지 않아 제거했다. 값은 LLM 서버에 남아
+  `GET /v1/jobs/{job_id}`의 `result`로 조회된다. 전환 중에는 4개가 더 실려 올 수 있으니
+  **모르는 필드는 무시하는 파서**로 만들어 달라 — 위 11키는 두 버전 모두에서 항상 온다.
 - ⚠️ **파서 작성 시 주의 2건**(현행 출력 기준 — `풀스택_회신요청.md` 14번으로 회신 요청 중):
   1. **`opinions[].similar_cases`만 snake_case**다. 최상위 필드는 camelCase 변환
      설정이 걸려 있지만, 중첩된 `Opinion` 모델은 그 설정을 상속받지 않는다
