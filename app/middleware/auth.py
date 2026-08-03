@@ -19,11 +19,11 @@ class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         if request.url.path in PUBLIC_PATHS:
             return await call_next(request)
-        # MCP는 읽기 전용 툴만 노출(§5.2) — 개발·시연용이라 토큰 면제.
-        # TODO(운영 전): MCP 클라이언트 헤더 인증 추가
-        if request.url.path.startswith("/mcp"):
-            return await call_next(request)
-
+        # /mcp도 토큰이 필요하다. 종전에는 "읽기 전용이라 안전"으로 면제했는데,
+        # 노출 툴 4종이 전부 team_id를 인자로 받아 team_id만 바꾸면 임의 팀의
+        # 회칙·판례·예산·지출이력을 읽을 수 있었다. 지출 이력에는 신청자명이 들어가
+        # PII 경로이기도 하다(그래프 경로는 마스킹하지만 MCP는 원문을 준다).
+        # 읽기 전용이라는 것은 '남의 데이터를 못 읽는다'와 다른 이야기다.
         auth = request.headers.get("Authorization", "")
         expected = f"Bearer {get_settings().service_token}"
         if not hmac.compare_digest(auth, expected):

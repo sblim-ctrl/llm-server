@@ -4,6 +4,11 @@ from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# 개발용 기본 토큰. 리포를 볼 수 있는 사람은 누구나 아는 값이므로 운영에서 이 값이
+# 남아 있으면 인증이 사실상 없는 것과 같다. /readyz가 실모드에서 이 값을 감지해
+# not_ready로 떨어뜨린다(app/api/health.py check_config_ready).
+DEFAULT_SERVICE_TOKEN = "dev-service-token-change-me"  # noqa: S105
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
@@ -12,7 +17,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://budgetops:budgetops@localhost:5433/budgetops_llm"
 
     # 인증
-    service_token: str = "dev-service-token-change-me"
+    service_token: str = DEFAULT_SERVICE_TOKEN
 
     # LLM
     openai_api_key: str = ""
