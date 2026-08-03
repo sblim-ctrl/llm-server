@@ -7,7 +7,7 @@
 
 실행: uv run python scripts/seed_demo.py  (llm-postgres만 떠 있으면 됨)
 출력: 주차별 에스컬레이션 비율 표 + eval/results/demo_weeks.csv (PPT 그래프용)
-실행 후 판례가 DB에 남으므로 /ui 대시보드·브리핑 데모에도 그대로 사용 가능 (팀: demo-growth).
+실행 후 판례가 DB에 남으므로 /ui 대시보드·브리핑 데모에도 그대로 사용 가능 (팀: 9001).
 """
 
 import asyncio
@@ -27,7 +27,7 @@ from app.graphs.review.graph import review_graph  # noqa: E402
 from app.schemas.common import ExpenseClaim  # noqa: E402
 from app.tools.precedent_store import save_precedent, summarize_claim  # noqa: E402
 
-TEAM = "demo-growth"
+TEAM = 9001
 
 # 지출 템플릿 풀 — 주차가 지날수록 이전 주 유형이 반복되고 새 유형이 조금씩 추가된다
 CLAIMS = [
@@ -65,7 +65,7 @@ async def submit(week: int, idx: int) -> dict:
     state = await review_graph.ainvoke(
         {
             "job_id": f"demo-w{week}-{idx}",
-            "expense_id": f"demo-exp-w{week}-{idx}",
+            "expense_id": 900_000 + week * 100 + idx,
             "team_id": TEAM,
             "claim": claim,
             "receipt_url": f"https://example.com/r/demo-{week}-{idx}",
