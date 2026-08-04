@@ -5,57 +5,36 @@
 화면이 같은 곳을 본다. 그래서 여기서 검증할 것은 응답 형태보다 '분류기와 같은 목록을
 주는가'다.
 """
-import pytest
-
 from app.api.categories import read_categories
-from app.tools.category_catalog import categories_for, team_types
+from app.graphs.writers.policy_draft import all_categories as draft_categories
+from app.tools.category_catalog import all_categories, fallback_category
 
 
-async def test_single_team_type():
-    result = await read_categories(team_type="스터디")
-    assert len(result.teams) == 1
-    assert result.teams[0].team_type == "스터디"
-
-
-async def test_all_team_types_when_omitted():
+async def test_returns_the_global_nine():
     result = await read_categories()
-    assert [t.team_type for t in result.teams] == team_types()
-    assert len(result.teams) == 5
+    assert len(result.categories) == 9
+    assert result.categories == all_categories()
 
 
-@pytest.mark.parametrize("team_type", ["동아리/학생회", "스터디", "친목", "동호회", "회사"])
-async def test_six_categories_per_type(team_type):
-    """유형당 6개 고정 (팀 확정 2026-07-10)."""
-    result = await read_categories(team_type=team_type)
-    assert len(result.teams[0].categories) == 6
+async def test_fallback_is_other_and_inside_the_list():
+    result = await read_categories()
+    assert result.fallback == "기타"
+    assert result.fallback in result.categories
 
 
-@pytest.mark.parametrize("team_type", ["동아리/학생회", "스터디", "친목", "동호회", "회사"])
-async def test_matches_classifier_catalog(team_type):
-    """분류기가 쓰는 목록과 정확히 같아야 한다 — 이 API의 존재 이유다.
-
-    어긋나면 관리자가 화면에서 본 카테고리로 지출을 등록했는데 심사 쪽에서는
-    모르는 값이 되는 상황이 생긴다.
-    """
-    result = await read_categories(team_type=team_type)
-    assert result.teams[0].categories == categories_for(team_type)
+async def test_exposes_version_so_backend_can_cache():
+    """고정값이라 매번 부를 필요가 없다 — 캐시 갱신 판단용 판 번호를 함께 준다."""
+    result = await read_categories()
+    assert isinstance(result.version, int) and result.version >= 1
 
 
-async def test_fallback_is_one_of_the_categories():
-    """분류 미적중 시 쓰는 기본값은 반드시 목록 안에 있어야 한다."""
-    for team in (await read_categories()).teams:
-        assert team.fallback in team.categories, f"{team.team_type}: fallback이 목록 밖"
+async def test_same_source_as_classifier_and_draft():
+    """화면·심사·초안이 같은 원본을 본다 — 목록이 갈리면 조용히 망가진다."""
+    result = await read_categories()
+    assert result.categories == all_categories() == draft_categories()
+    assert fallback_category() in result.categories
 
 
-async def test_unknown_team_type_is_404():
-    """없는 유형은 조용히 기본값을 주지 않고 404로 알린다.
-
-    categories_for()는 미지의 유형에 기본 유형을 돌려주는데(심사 fail-open), 조회
-    API에서 그러면 오타를 눈치채지 못한 채 엉뚱한 목록을 화면에 그리게 된다.
-    """
-    from fastapi import HTTPException
-
-    with pytest.raises(HTTPException) as exc:
-        await read_categories(team_type="동아리")  # 실제 값은 '동아리/학생회'
-    assert exc.value.status_code == 404
-    assert "동아리/학생회" in exc.value.detail  # 가능한 값을 알려준다
+async def test_no_duplicates():
+    result = await read_categories()
+    assert len(set(result.categories)) == len(result.categories)

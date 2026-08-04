@@ -21,7 +21,7 @@ from typing_extensions import TypedDict
 from app.llm.client import chat_structured
 from app.llm.prompts import load_prompt
 from app.schemas.writers import PolicyDraft, PolicyDraftRequest, PolicyParamsSuggestion
-from app.tools.category_catalog import categories_for
+from app.tools.category_catalog import all_categories
 # 템플릿 로더는 심사 쪽 기본 정책 모드와 공유한다 (app/tools/policy_defaults.py) —
 # 같은 YAML을 두 군데서 따로 읽지 않기 위해서다. 재수출이라 기존 import 경로도 유효.
 from app.tools.policy_defaults import load_templates
@@ -179,7 +179,7 @@ async def generate_draft(state: DraftState) -> dict:
     draft = PolicyDraft(
         rules=base_rules + extra_rules,
         policy_params=params,
-        recommended_categories=categories_for(req.team_type),  # 유형별 고정 6개 (신규 생성 없음)
+        recommended_categories=all_categories(),  # 전역 고정 9종 (신규 생성 없음)
         notes=f"'{req.team_name}' ({req.team_type}) 초기예산 {req.initial_budget:,}원{dues_note}"
         " 기준 자동 생성 초안 — 관리자 검토 후 확정",
     )

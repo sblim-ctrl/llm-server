@@ -26,7 +26,7 @@ from app.graphs.review.state import ReviewState
 from app.llm.client import chat_structured
 from app.llm.prompts import load_prompt
 from app.tools.category_catalog import (
-    DEFAULT_TEAM_TYPE, categories_for, classify_by_keywords, keyword_category_or_none,
+    all_categories, classify_by_keywords, fallback_category, keyword_category_or_none,
 )
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ class CategoryPrediction(BaseModel):
     confidence: float = 1.0
 
 
-async def _check_category_mismatch(state: ReviewState, team_type: str,
+async def _check_category_mismatch(state: ReviewState,
                                    candidates: list[str], text: str) -> dict:
     """사용자 지정 카테고리 vs AI 분류 — 확신 있는 불일치만 표식.
 
@@ -52,17 +52,17 @@ async def _check_category_mismatch(state: ReviewState, team_type: str,
     claim = state["claim"]
     # 카탈로그 후보 밖의 카테고리는 다른 어휘 체계(구 백엔드 명칭 등) — 비교 자체가
     # 무의미하므로 건너뛴다(오탐 방지, 골든셋 실측으로 확인된 결함). 실서비스는
-    # 카테고리가 유형별 고정 6개 드롭다운(동적 추가 금지)이라 항상 후보 안 = 검사 활성.
+    # 카테고리가 고정 9개 드롭다운(동적 추가 금지)이라 항상 후보 안 = 검사 활성.
     if claim.category not in candidates:
         return {"category_source": "user"}
-    kw = keyword_category_or_none(text, team_type)
+    kw = keyword_category_or_none(text)
     try:
         spec = load_prompt("classifier")
         pred, meta = await chat_structured(
             agent="classifier",
             system=spec.system_with_few_shot(),
-            user=f"모임 유형: {team_type}\n카테고리 후보(이 중에서만 선택): "
-                 f"{', '.join(candidates)}\n\n지출 내용: {text}",
+            user=f"카테고리 후보(이 중에서만 선택): {', '.join(candidates)}\n\n"
+                 f"지출 내용: {text}",
             schema=CategoryPrediction,
             mock_response=CategoryPrediction(category=kw or claim.category,
                                              confidence=1.0 if kw else 0.0),
@@ -83,12 +83,11 @@ async def _check_category_mismatch(state: ReviewState, team_type: str,
 
 async def classify_category(state: ReviewState) -> dict:
     claim = state["claim"]
-    team_type = state.get("team_type") or DEFAULT_TEAM_TYPE
-    candidates = categories_for(team_type)
+    candidates = all_categories()
     if claim.category:
         # 사용자 선택 존중(라벨 불변) — 단 확신 있는 불일치면 가드레일이 보류
         return await _check_category_mismatch(
-            state, team_type, candidates, f"{claim.title} {claim.description}")
+            state, candidates, f"{claim.title} {claim.description}")
     text = f"{claim.title} {claim.description}"
 
     llm_meta = {}
@@ -97,19 +96,19 @@ async def classify_category(state: ReviewState) -> dict:
         pred, meta = await chat_structured(
             agent="classifier",
             system=spec.system_with_few_shot(),
-            user=f"모임 유형: {team_type}\n카테고리 후보(이 중에서만 선택): "
-                 f"{', '.join(candidates)}\n\n지출 내용: {text}",
+            user=f"카테고리 후보(이 중에서만 선택): {', '.join(candidates)}\n\n"
+                 f"지출 내용: {text}",
             schema=CategoryPrediction,
-            mock_response=CategoryPrediction(category=classify_by_keywords(text, team_type)),
+            mock_response=CategoryPrediction(category=classify_by_keywords(text)),
             mask_with=state.get("team_members") or [],
             prompt_version=spec.version,
         )
         llm_meta = {"classifier": meta}
         category = pred.category if pred.category in candidates \
-            else classify_by_keywords(text, team_type)
+            else classify_by_keywords(text)
     except Exception:
-        logger.exception("classify_category failed — 유형 fallback으로 폴백")
-        category = classify_by_keywords("", team_type)  # 미매칭 → fallback 반환
+        logger.exception("classify_category failed — '기타'로 폴백")
+        category = fallback_category()
 
     return {"claim": claim.model_copy(update={"category": category}),
             "category_source": "ai", "llm_meta": llm_meta}
