@@ -51,7 +51,7 @@ NODE_LABELS = {
     "load_context": "컨텍스트 로드",
     "classify_category": "카테고리 분류",
     "intake_receipt": "영수증 판독",
-    "mismatch_gate": "영수증-청구 일치 검증",
+    "mismatch_gate": "증빙 심사관",
     "rule_auditor": "회칙 심사관",
     "budget_auditor": "예산 심사관",
     "precedent_auditor": "판례 심사관",
@@ -62,7 +62,9 @@ NODE_LABELS = {
     "callback": "백엔드 콜백",
     "persist_precedent": "판례 저장",
 }
-AUDITOR_NODES = {"rule_auditor", "budget_auditor", "precedent_auditor"}
+# mismatch_gate도 증빙 심사관 소견을 내므로 스트림에 소견을 함께 실어 보낸다
+# (풀스택 협의 2026-08-04 — 지출 상세 'AI 심사결과'의 네 번째 심사관).
+AUDITOR_NODES = {"rule_auditor", "budget_auditor", "precedent_auditor", "mismatch_gate"}
 
 
 class DecisionRequest(BaseModel):
