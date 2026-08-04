@@ -17,6 +17,7 @@ from app.api import (
     eval as eval_api,
     health,
     jobs,
+    policy,
     precedents,
     proposals,
     reports,
@@ -60,6 +61,7 @@ app.include_router(analyze.router)
 app.include_router(reviews_stream.router)  # 실시간 심사 SSE (데모·관측 전용)
 app.include_router(jobs.router)
 app.include_router(context.router)
+app.include_router(policy.router)  # 마법사 2단계 승인 정책 반영 상태
 app.include_router(precedents.router)
 app.include_router(drafts.router)
 app.include_router(categories.router)
