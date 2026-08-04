@@ -403,7 +403,7 @@
         <ul>
           <li>저희 추천 카테고리는 <b>모임 유형별로 다릅니다</b> — 유형당 6개 × 5유형 = <b>30종</b></li>
           <li>나머지 4유형 <b>24종의 매핑을 아래에 제안</b>드립니다. 확정만 해주시면 됩니다</li>
-          <li>회신에 <code>IT_인프라</code>는 매핑 대상이 아니라고 하셨는데, 회사 유형의
+          <li>회신에 <code>IT인프라</code>는 매핑 대상이 아니라고 하셨는데, 회사 유형의
               <code>업무도구/소프트웨어비</code>가 여기에 해당합니다</li>
           <li><code>suggestedCategory</code> 표기는 아직 확정이 안 됩니다 —
               <b>화면의 <code>강연비</code>와 7종 ENUM이 서로 맞지 않습니다</b> (7번 항목)</li>
@@ -511,11 +511,11 @@
         </thead>
         <tbody>
           <tr><td>교재/자료비</td><td class="mono">교재_자료비</td><td><span class="enum">교육</span></td><td class="mono">②</td><td>회사 <code>교육/도서비</code>가 도서를 교육에 묶는 것과 일관</td></tr>
-          <tr><td>온라인/구독비</td><td class="mono">온라인_구독비</td><td><span class="enum">교육</span></td><td class="mono">②</td><td><span class="flag">▲</span> IT_인프라와 갈림</td></tr>
+          <tr><td>온라인/구독비</td><td class="mono">온라인_구독비</td><td><span class="enum">교육</span></td><td class="mono">②</td><td><span class="flag">▲</span> IT인프라와 갈림</td></tr>
           <tr><td>공간/대관비</td><td class="mono">공간_대관비</td><td><span class="enum">회의</span></td><td class="mono">②</td><td><span class="flag">▲</span> 기타와 갈림</td></tr>
           <tr><td>인쇄/문구비</td><td class="mono">인쇄_문구비</td><td><span class="enum enum-etc">기타</span></td><td class="mono">③</td><td>소모품 성격</td></tr>
           <tr><td>식비/다과비</td><td class="mono">식비_다과비</td><td><span class="enum">식비</span></td><td class="mono">①</td><td></td></tr>
-          <tr><td>실습/프로젝트비</td><td class="mono">실습_프로젝트비</td><td><span class="enum">IT_인프라</span></td><td class="mono">②</td><td><span class="flag">▲</span> 기타와 갈림</td></tr>
+          <tr><td>실습/프로젝트비</td><td class="mono">실습_프로젝트비</td><td><span class="enum">IT인프라</span></td><td class="mono">②</td><td><span class="flag">▲</span> 기타와 갈림</td></tr>
         </tbody>
       </table>
     </div>
@@ -571,7 +571,7 @@
         </thead>
         <tbody>
           <tr><td>교통/출장비</td><td class="mono">교통_출장비</td><td><span class="enum enum-etc">기타</span></td><td class="mono">③</td><td></td></tr>
-          <tr><td><b>업무도구/소프트웨어비</b></td><td class="mono">업무도구_소프트웨어비</td><td><span class="enum">IT_인프라</span></td><td class="mono">②</td><td><b>회신의 "IT인프라는 매핑 대상 아님"을 뒤집는 항목</b></td></tr>
+          <tr><td><b>업무도구/소프트웨어비</b></td><td class="mono">업무도구_소프트웨어비</td><td><span class="enum">IT인프라</span></td><td class="mono">②</td><td><b>회신의 "IT인프라는 매핑 대상 아님"을 뒤집는 항목</b></td></tr>
           <tr><td>교육/도서비</td><td class="mono">교육_도서비</td><td><span class="enum">교육</span></td><td class="mono">①</td><td></td></tr>
           <tr><td>회의/워크숍비</td><td class="mono">회의_워크숍비</td><td><span class="enum">회의</span></td><td class="mono">①</td><td></td></tr>
           <tr><td>식대/회식비</td><td class="mono">식대_회식비</td><td><span class="enum">식비</span></td><td class="mono">①</td><td></td></tr>
@@ -597,16 +597,16 @@
         <tbody>
           <tr>
             <td><code>온라인/구독비</code><br><span style="color:var(--g500);font-size:12.5px">스터디</span></td>
-            <td><span class="enum">교육</span> / <span class="enum">IT_인프라</span></td>
+            <td><span class="enum">교육</span> / <span class="enum">IT인프라</span></td>
             <td>분류 키워드에 <code>인강·수강·강의</code>와 <code>구독·멤버십·클라우드</code>가 섞여 있습니다.
                 스터디 맥락에서는 강의 구독이 주류라 <b>교육</b>을 골랐고, 클라우드성 지출은 회사 유형의
                 <code>업무도구/소프트웨어비</code>가 더 정확한 수신처라고 봤습니다.</td>
           </tr>
           <tr>
             <td><code>실습/프로젝트비</code><br><span style="color:var(--g500);font-size:12.5px">스터디</span></td>
-            <td><span class="enum">IT_인프라</span> / <span class="enum enum-etc">기타</span></td>
+            <td><span class="enum">IT인프라</span> / <span class="enum enum-etc">기타</span></td>
             <td>키워드가 <code>실습·프로젝트·서버·도메인·API·재료·키트</code>입니다. 개발 스터디를 전제로
-                <b>IT_인프라</b>를 골랐지만, 비개발 스터디라면 <code>재료·키트</code>가 주가 되어 기타가 맞습니다.</td>
+                <b>IT인프라</b>를 골랐지만, 비개발 스터디라면 <code>재료·키트</code>가 주가 되어 기타가 맞습니다.</td>
           </tr>
           <tr>
             <td><code>활동/프로그램비</code><br><span style="color:var(--g500);font-size:12.5px">동호회</span></td>
@@ -633,7 +633,7 @@
 
     <div class="chart">
       <svg width="620" height="252" viewBox="0 0 620 252" role="img"
-           aria-label="백엔드 ENUM별 수신 카테고리 개수 — 기타 12, 식비 5, 교육 5, 회의 3, IT_인프라 2, 행사 2, 디자인 1">
+           aria-label="백엔드 ENUM별 수신 카테고리 개수 — 기타 12, 식비 5, 교육 5, 회의 3, IT인프라 2, 행사 2, 디자인 1">
         <g font-family="JetBrains Mono, monospace" font-size="12">
           <!-- 기타 -->
           <text x="96" y="22" text-anchor="end" fill="#141413" font-weight="500">기타</text>
@@ -651,8 +651,8 @@
           <text x="96" y="124" text-anchor="end" fill="#3D3D3A">회의</text>
           <rect x="104" y="112" width="115" height="17" rx="3" fill="#788C5D"/>
           <text x="229" y="124" fill="#3D3D3A">3</text>
-          <!-- IT_인프라 -->
-          <text x="96" y="158" text-anchor="end" fill="#3D3D3A">IT_인프라</text>
+          <!-- IT인프라 -->
+          <text x="96" y="158" text-anchor="end" fill="#3D3D3A">IT인프라</text>
           <rect x="104" y="146" width="77" height="17" rx="3" fill="#788C5D"/>
           <text x="191" y="158" fill="#3D3D3A">2</text>
           <!-- 행사 -->
@@ -685,9 +685,9 @@
         <tbody>
           <tr><td>친목</td><td class="num"><b>5</b> / 6</td><td class="num"><b>83%</b></td><td>식비 하나만 남습니다</td></tr>
           <tr><td>동호회</td><td class="num">3 / 6</td><td class="num">50%</td><td>행사 · 식비 · 교육</td></tr>
-          <tr><td>회사</td><td class="num">2 / 6</td><td class="num">33%</td><td>IT_인프라 · 교육 · 회의 · 식비</td></tr>
+          <tr><td>회사</td><td class="num">2 / 6</td><td class="num">33%</td><td>IT인프라 · 교육 · 회의 · 식비</td></tr>
           <tr><td>동아리/학생회</td><td class="num">1 / 6</td><td class="num">17%</td><td>행사 · 디자인 · 교육 · 식비 · 회의</td></tr>
-          <tr><td>스터디</td><td class="num">1 / 6</td><td class="num">17%</td><td>교육 · 회의 · 식비 · IT_인프라</td></tr>
+          <tr><td>스터디</td><td class="num">1 / 6</td><td class="num">17%</td><td>교육 · 회의 · 식비 · IT인프라</td></tr>
         </tbody>
       </table>
     </div>
@@ -748,7 +748,7 @@
   "공간/대관비":            "회의",       <span class="hl">// 확정 필요</span>
   "인쇄/문구비":            "기타",
   "식비/다과비":            "식비",
-  "실습/프로젝트비":        "IT_인프라",  <span class="hl">// 확정 필요</span>
+  "실습/프로젝트비":        "IT인프라",  <span class="hl">// 확정 필요</span>
 
   <span class="cm">// 친목</span>
   "숙박/여행비":            "기타",
@@ -766,7 +766,7 @@
 
   <span class="cm">// 회사</span>
   "교통/출장비":            "기타",
-  "업무도구/소프트웨어비":  "IT_인프라",
+  "업무도구/소프트웨어비":  "IT인프라",
   "교육/도서비":            "교육",
   "회의/워크숍비":          "회의",
   "식대/회식비":            "식비",
@@ -793,9 +793,9 @@ CASE :src
   WHEN '회의/운영비'           THEN '회의'
   WHEN '공간/대관비'           THEN '회의'      <span class="hl">-- 확정 필요</span>
   WHEN '회의/워크숍비'         THEN '회의'
-  <span class="cm">-- IT_인프라</span>
-  WHEN '업무도구/소프트웨어비' THEN 'IT_인프라'
-  WHEN '실습/프로젝트비'       THEN 'IT_인프라' <span class="hl">-- 확정 필요</span>
+  <span class="cm">-- IT인프라</span>
+  WHEN '업무도구/소프트웨어비' THEN 'IT인프라'
+  WHEN '실습/프로젝트비'       THEN 'IT인프라' <span class="hl">-- 확정 필요</span>
   <span class="cm">-- 디자인</span>
   WHEN '홍보/콘텐츠비'         THEN '디자인'    <span class="hl">-- 재검토 중</span>
   <span class="cm">-- 기타 (나머지 11종) — 명시하지 않고 ELSE로 받으셔도 됩니다</span>
@@ -806,9 +806,17 @@ END</pre>
     <div class="callout">
       <span class="ico">★</span>
       <div>
-        <b>모르는 값이 오면 <code>기타</code>로 떨어뜨려 주세요.</b>
-        저희 카탈로그는 팀 확정 사항이라 임의로 늘리지 않지만, 만에 하나 목록 밖 값이 가더라도
-        저장이 실패하지 않게 <code>ELSE '기타'</code> 형태를 권합니다.
+        <p>
+          <b>모르는 값이 오면 <code>기타</code>로 떨어뜨려 주세요.</b>
+          저희 카탈로그는 팀 확정 사항이라 임의로 늘리지 않지만, 만에 하나 목록 밖 값이 가더라도
+          저장이 실패하지 않게 <code>ELSE '기타'</code> 형태를 권합니다.
+        </p>
+        <p>
+          <b>ENUM 저장값 표기 한 가지만 확인 부탁드립니다.</b> 위 표와 코드에는 8/4 회신에 적어주신 대로
+          <code>IT인프라</code>로 적었는데, 저희가 7/27에 받은 DB 스키마에는 <code>IT_인프라</code>(언더바)로
+          되어 있고 화면에는 <code>IT/인프라</code>(슬래시)로 표시됩니다. <b>저장값이 셋 중 어느 것인지만
+          알려주시면</b> 그대로 맞추겠습니다 — 이 값 하나가 어긋나면 매핑이 통째로 실패합니다.
+        </p>
       </div>
     </div>
 
