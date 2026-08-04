@@ -170,7 +170,7 @@
     <button data-tab="review" class="active">지출 심사</button>
     <button data-tab="draft">회칙·예산 초안</button>
     <button data-tab="report">정산 리포트</button>
-    <button data-tab="proposal">예산 제안</button>
+    <!-- [MVP 제외] budget_planner — 복원 시 아래 버튼 주석 해제 --><!-- <button data-tab="proposal">예산 제안</button> -->
     <button data-tab="digest">AI 총무 브리핑</button>
     <button data-tab="eval">골든셋 평가</button>
   </nav>
@@ -306,7 +306,8 @@
     </div>
   </section>
 
-  <!-- ④ 예산 제안 (A-8) -->
+  <!-- [MVP 제외] budget_planner — 복원 시 아래 패널 주석 해제 (원본 라벨: ④ 예산 제안 (A-8)) -->
+  <!--
   <section class="panel" id="panel-proposal">
     <div class="card">
       <h2>예산 조정 제안 (BudgetPlanner)</h2>
@@ -332,6 +333,7 @@
       </div>
     </div>
   </section>
+  -->
 
   <!-- ⑤ AI 총무 브리핑 (A-8) -->
   <section class="panel" id="panel-digest">
@@ -730,7 +732,8 @@ $("rp-submit").addEventListener("click", async () => {
   }
 });
 
-// ── ④ 예산 제안 (A-8) ────────────────────────────────────
+// [MVP 제외] budget_planner — 복원 시 아래 블록 주석 해제 (원본 라벨: ④ 예산 제안 (A-8))
+/*
 let ppProposalId = null;
 
 $("pp-submit").addEventListener("click", async () => {
@@ -793,6 +796,7 @@ async function decideProposal(status) {
 }
 $("pp-accept").addEventListener("click", () => decideProposal("accepted"));
 $("pp-dismiss").addEventListener("click", () => decideProposal("dismissed"));
+*/
 
 // ── ⑤ AI 총무 브리핑 (A-8) ───────────────────────────────
 $("dg-submit").addEventListener("click", async () => {
