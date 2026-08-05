@@ -168,9 +168,37 @@ def test_verifier_allows_category_amounts():
 
 
 def test_allowed_money_excludes_zero():
-    """0원은 허용 목록에 넣지 않는다 — '0원'이 아무 데나 붙는 걸 막는다."""
+    """0원은 허용 목록에 넣지 않는다 — '0원'이 아무 데나 붙는 걸 막는다.
+
+    잔액이 남아 있는데 "남은 예산은 0원"이라고 쓰는 것을 막는 가드다. 아래
+    test_allowed_money_includes_zero_only_when_balance_is_zero와 한 쌍으로 본다.
+    """
     f = _figures([], {"total_budget": 500_000, "spent": 0})
+    assert f.remaining == 500_000
     assert "0원" not in allowed_money(f)
+
+
+def test_allowed_money_includes_zero_only_when_balance_is_zero():
+    """예산을 딱 맞춰 쓴 달만 '0원'을 허용한다 — 2026-08-05에 발견한 회귀.
+
+    잔액이 정확히 0이면 본문에 "남은 예산은 0원입니다"가 나올 수밖에 없는데,
+    0을 일괄로 걸러내던 탓에 그 요약이 통째로 폐기됐다. 음수 잔액 건과 한 쌍이다.
+
+    처음엔 0을 전부 허용하도록 고쳤다가 위 가드를 깨뜨렸다 — 0은 어느 문장에나
+    자연스럽게 붙어서 일괄 허용하면 검증기가 사실상 그 표현을 못 막는다.
+    그래서 **실제로 잔액이 0인 경우만** 연다.
+    """
+    exact = _figures(
+        expenses=[{"title": "행사", "amount": 300000, "category": "행사_활동",
+                   "date": "2026-07-10", "status": "APPROVED"}],
+        budget={"total_budget": 300000, "spent": 300000},
+    )
+    assert exact.remaining == 0
+    assert "0원" in allowed_money(exact)
+    doc = DashboardSummaryDoc(
+        figures=exact, verified=False,
+        message="이번 달 지출은 300,000원으로 예산의 100%를 썼어요. 남은 예산은 0원입니다.")
+    assert verify_summary_pure(doc) is True
 
 
 # ── API (목 모드) ─────────────────────────────────────────────────────────

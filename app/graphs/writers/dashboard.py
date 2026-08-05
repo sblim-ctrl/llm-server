@@ -182,7 +182,15 @@ def allowed_money(f: DashboardFigures) -> set[str]:
               f.largest_expense_amount}
     values |= {c.spent for c in f.categories}
     values |= {c.prev_spent for c in f.categories}
-    return {f"{v:,}원" for v in values if v}
+    # 0은 기본적으로 넣지 않는다 — '0원'은 어느 문장에나 자연스럽게 붙어서, 허용하면
+    # 검증기가 사실상 그 표현을 못 막는다(예: 잔액이 48만인데 "남은 예산은 0원").
+    allowed = {f"{v:,}원" for v in values if v}
+    # 다만 **잔액이 정확히 0인 달**은 예외다. 예산을 딱 맞춰 쓴 경우 본문에 "0원"이
+    # 나올 수밖에 없는데, 그때 허용 목록에 없어 요약이 통째로 폐기됐다
+    # (2026-08-05 발견, 음수 잔액과 한 쌍). 실제로 0인 경우만 열어 가드는 유지한다.
+    if f.remaining == 0:
+        allowed.add("0원")
+    return allowed
 
 
 def allowed_percent(f: DashboardFigures) -> set[str]:
