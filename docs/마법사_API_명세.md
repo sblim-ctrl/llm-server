@@ -2,60 +2,52 @@
 
 | 화면 | LLM 서버 API |
 |---|---|
-| 모임 생성 | 없음 (백엔드) |
-| 1단계 회비 설정 | `GET /v1/categories` — 카테고리 추천 목록 |
-| 2단계 승인 정책 (초기값) | `POST /v1/policy-draft` 응답의 `policy_params` — AI 추천값 |
+| 모임 생성 (0단계) | 없음 (백엔드) — 여기서 만들어진 `teamId`가 아래 `team_id`로 들어온다 |
+| 1단계 회비 설정 | `GET /v1/categories` — 카테고리 목록 (전역 9종) |
 | 2단계 승인 정책 (저장) | 없음 (백엔드 `team-settings`) |
 | 2단계 설정 확인 | `GET /v1/policy-params/status` — 저장한 값이 심사에 어떻게 적용되는지 |
-| 3단계 회칙·규정 | `POST /v1/policy-draft` — AI 초안 |
+| 1~3단계 통합 | `POST /v1/policy-draft` — 마법사 데이터 일괄 전달, `rule_source=ai`면 AI 초안 |
 | 3단계 등록 후 | `POST /v1/context/refresh` — 회칙 반영 알림 |
 | 3단계 등록 확인 | `GET /v1/context/status` — 반영됐는지 조회 |
 
-회비 저장, 승인 정책 저장, 회칙 파일 업로드·직접 입력은 백엔드 소관이라 LLM 서버 호출이
-없다.
+회비 저장, 승인 정책 저장, 회칙 파일 업로드·직접 입력 본문 저장은 백엔드 소관이라
+LLM 서버 호출이 없다. 2단계 승인 정책의 **초기값 추천은 LLM-005 전면 개정(2026-08-05)
+으로 없어졌다** — 기준 금액은 사용자 입력이 원천이라 AI가 되돌려 줄 값이 없다.
 
 ## GET /v1/categories
 
-모임 유형별 지출 카테고리를 돌려준다. 1단계 화면의 "모임 유형 ㅇㅇ에 맞는 지출 카테고리를
+지출 카테고리 목록을 돌려준다. 1단계 화면의 "모임 유형 ㅇㅇ에 맞는 지출 카테고리를
 AI가 자동으로 추천해 드려요" 안내에 쓰는 목록이다.
 
-목록은 **유형당 6개 고정값**이며 AI가 새로 만들지 않는다. 그럼에도 API로 여는 이유는
-심사할 때 지출을 분류하는 카탈로그와 같은 원본이기 때문이다. 백엔드가 별도로 갖고 계시면
-두 목록이 어긋날 수 있고, 그러면 관리자가 화면에서 고른 카테고리가 심사 쪽에서는 모르는
-값이 된다.
+목록은 **모임 유형과 무관한 전역 9종 고정**이며 AI가 새로 만들지 않는다(풀스택 협의
+2026-08-04 — 종전 유형별 6종은 백엔드 지출 ENUM과 겹치는 값이 없어 폐기). 그럼에도
+API로 여는 이유는 심사할 때 지출을 분류하는 카탈로그와 같은 원본이기 때문이다.
+백엔드가 별도로 갖고 계시면 두 목록이 어긋날 수 있고, 어긋나도 조용히 망가진다 —
+카탈로그 밖 카테고리가 오면 심사 쪽 분류 검증이 에러 없이 건너뛴다.
 
 ```
-GET /v1/categories                    5개 유형 전부
-GET /v1/categories?team_type=스터디    해당 유형만
+GET /v1/categories
 Authorization: Bearer {SERVICE_TOKEN}
 ```
 
 | 필드 | 타입 | 설명 |
 |---|---|---|
-| `teams[].team_type` | string | 모임 유형 |
-| `teams[].categories` | string[] | 카테고리 6개 |
-| `teams[].fallback` | string | 분류가 어느 항목에도 안 걸릴 때 쓰는 기본값. 항상 `categories` 안에 있다 |
+| `categories` | string[] | 카테고리 9종 — **저장값(언더바 표기)** 그대로다. 화면의 `IT/인프라` 등은 프론트가 출력 시점에 `_`를 `/`로 바꾼다 |
+| `fallback` | string | 분류가 어느 항목에도 안 걸릴 때 쓰는 기본값 (항상 `기타`) |
+| `version` | integer | 카탈로그 버전. 고정값이라 매번 부르실 필요 없이 이 값이 바뀔 때만 갱신하시면 된다 |
 
 ```json
 {
-  "teams": [
-    {
-      "team_type": "스터디",
-      "categories": ["교재/자료비", "온라인/구독비", "공간/대관비",
-                     "인쇄/문구비", "식비/다과비", "실습/프로젝트비"],
-      "fallback": "실습/프로젝트비"
-    }
-  ]
+  "categories": ["식비", "교통", "IT_인프라", "교육", "회의",
+                 "장소_대관", "행사_활동", "비품", "기타"],
+  "fallback": "기타",
+  "version": 2
 }
 ```
 
 | 코드 | 상황 |
 |---|---|
 | 401 | 서비스 토큰 없음·불일치 |
-| 404 | `team_type`이 다섯 값 밖 (응답에 가능한 값 목록을 함께 준다) |
-
-> 현재 이 카테고리는 백엔드 지출 카테고리 7종과 겹치는 항목이 없다. 협의 결과에 따라
-> 목록이 바뀔 수 있다(`풀스택_회신요청.md` 3번).
 
 ## 2단계 승인 정책 — 저장은 백엔드, 사용은 LLM 서버
 
@@ -66,36 +58,35 @@ Authorization: Bearer {SERVICE_TOKEN}
 
 ### 입력·출력 한눈에
 
-2단계는 **저장 API만 없을 뿐 입출력이 양쪽으로 다 있다.**
-
 | 방향 | API | 값 |
 |---|---|---|
-| 출력 (우리 → 화면) | `POST /v1/policy-draft` → `policy_params` | `auto_approve`, `auto_approve_limit`, `force_escalation_amount`, `confidence_threshold` — 화면 초기값 추천 |
 | 저장 (화면 → 백엔드) | 백엔드 `team-settings` | `auto_approve`, `auto_approve_limit` |
+| 전달 (화면 → 우리) | `POST /v1/policy-draft` 요청 | 같은 기준 금액이 `force_escalation_amount` 필드로 실려 온다 (아래 절) |
 | 입력 (백엔드 → 우리) | `GET /internal/agent/organizations/{id}/team-settings` (우리가 호출) | `auto_approve`, `auto_approve_limit` |
 | 확인 (우리 → 화면) | `GET /v1/policy-params/status` | 저장값 + 실효 한도 + 한 줄 설명 |
 
-> **2026-08-05 화면 개편.** 금액 입력칸이 2개("소액 자동 승인 한도" + "고액 직접 확인
-> 기준")에서 1개("관리자 승인 필수 금액")로 줄었다. 이에 맞춰 백엔드가 `team_settings`의
-> `escalation_threshold` 컬럼을 삭제하기로 했고, 화면의 한 칸은 `auto_approve_limit`에
-> 저장한다. 우리 `POST /v1/policy-draft`는 `force_escalation_amount`를 계속 내려주지만
-> 화면이 쓰지 않으며, 회칙 초안의 금액 검증에만 쓰인다.
+> **2026-08-05 화면 개편 + LLM-005 전면 개정.** 금액 입력칸이 2개("소액 자동 승인
+> 한도" + "고액 직접 확인 기준")에서 1개("관리자 승인 필수 금액")로 줄었다. 이에 맞춰
+> 백엔드가 `team_settings`의 `escalation_threshold` 컬럼을 삭제하기로 했고, 화면의 한
+> 칸은 `auto_approve_limit`에 저장한다. 우리 `POST /v1/policy-draft`의 **초기값 추천
+> (`policy_params`)은 제거됐다** — 사용자가 입력한 기준 금액이 원천이고, 그 값이 요청
+> 필드로 들어와 회칙 초안의 금액 조항·검증에 쓰인다.
 
 `confidence_threshold`(θ)는 저장·조회 대상이 아니다. LLM 내부 파라미터라 백엔드가
-모르고, 추천값으로 내려주기만 한다.
+모르고, 응답에도 싣지 않는다.
 
 ### 값이 흐르는 경로
 
 ```
-POST /v1/policy-draft  ──추천값──▶  2단계 화면
-                                      │ 관리자가 조정
-                                      ▼
-                            백엔드 team_settings 저장
-                                      │
-              ┌───────────────────────┴───────────────────────┐
+2단계 화면 (관리자 입력)  ──저장──▶  백엔드 team_settings
+        │                                    │
+        └─▶ POST /v1/policy-draft 요청       │
+            (force_escalation_amount —       │
+             회칙 초안 금액 조항에 반영)      │
+              ┌──────────────────────────────┴────────────────┐
               ▼ 매 심사마다 조회                                ▼ 저장 직후 확인
    GET .../team-settings                        GET /v1/policy-params/status
-              │ load_context.py 매핑                            │ 같은 매핑 규칙
+              │ policy_params.py 매핑                           │ 같은 매핑 규칙
               ▼                                                 ▼
      PolicyParams → guardrail_gate 판정              화면에 "N원까지 자동 승인"
 ```
@@ -244,16 +235,25 @@ POST /v1/policy-draft  ──추천값──▶  2단계 화면
    백엔드가 `escalation_threshold` 컬럼을 삭제하기로 했다.
 3. **토글 저장 방향.** 켬 = `auto_approve: false`. 백엔드 저장 시점에 반전하는지, 화면에서
    반전해 보내는지 어느 쪽인지 정해야 한다.
-4. **`auto_approve` 추천값 전달 통로.** 우리 `POST /v1/policy-draft`가 추천값을 내려주는데
-   (아래 절 `policy_params.auto_approve`), 2단계 화면이 이 값을 받아 토글 초기 상태로
-   쓸지 확정이 필요하다. 현재 추천 기본값은 `true`(자동 심사 사용 = 토글 꺼짐)다.
+4. ~~**`auto_approve` 추천값 전달 통로.**~~ **소멸** (2026-08-06) — LLM-005 전면 개정으로
+   `policy_params` 추천 자체가 제거됐다. 토글 초기 상태는 화면 기본값(꺼짐 = 자동 심사
+   사용)을 쓰면 된다.
 5. **컬럼 삭제 시점.** 우리 매핑 수정이 배포된 뒤에 백엔드가 `escalation_threshold`를
    지워야 한다. 순서가 반대면 관리자 설정값이 모델 기본값 200,000으로 축소된다.
 
-## POST /v1/policy-draft
+## POST /v1/policy-draft — 마법사 1~3단계 통합 요청 (LLM-005 전면 개정 2026-08-05)
 
-회칙 초안과 승인 정책 추천값을 만든다. **동기 방식**이라 결과를 그 자리에서 돌려준다
-(202 접수 후 콜백이 아니다). `teamId`는 받지 않는다.
+마법사 1~3단계 데이터를 **한 번에** 받는다 (0단계 모임 생성은 백엔드 별도 API).
+**동기 방식**이라 결과를 그 자리에서 돌려준다 (202 접수 후 콜백이 아니다).
+저장은 하지 않는다 — 회칙 본문·승인 정책 저장은 백엔드 소관이다.
+
+**호출 시점** (개정안 §1-5):
+
+- `rule_source=ai` — 3단계 'AI 초안' 버튼을 누른 시점. 응답의 `rules`를 편집 화면에
+  그대로 띄우면 된다.
+- 그 외(`file` · `manual` · `skip`) — 마법사 '설정 완료' 시점에 1회. `rules`는 빈 배열이다.
+- 회칙 본문 저장이 끝나면 `POST /v1/context/refresh`(LLM-006)를 호출해야 심사에
+  반영된다.
 
 ```
 POST /v1/policy-draft
@@ -263,22 +263,33 @@ Content-Type: application/json
 
 ### 요청
 
-| 필드 | 타입 | 필수 | 설명 |
-|---|---|---|---|
-| `team_type` | string | O | `동아리/학생회` · `스터디` · `친목` · `동호회` · `회사` 중 하나 (슬래시까지 일치) |
-| `team_name` | string | O | 모임 이름 |
-| `initial_budget` | integer | O | 원 단위 총액, 0보다 커야 함. 한도 계산 기준 |
-| `dues` | integer \| null | X | 1인당 회비 (마법사 1단계 입력). `null`·`0` 둘 다 "없음" |
-| `description` | string | X | 모임 소개. 있으면 AI가 맞춤 조항을 추가한다 |
-| `member_count` | integer \| null | X | 현재 미사용 |
+| 필드 | 타입 | 필수 | 출처 | 설명 |
+|---|---|---|---|---|
+| `team_id` | integer (int64) | O | 0단계 | 모임 생성 응답의 `teamId` |
+| `team_type` | string | O | 0단계 | `동아리/학생회` · `스터디` · `친목` · `동호회` · `회사` 중 하나 (슬래시까지 일치) |
+| `team_name` | string | O | 0단계 | 모임 이름 |
+| `initial_budget` | integer | O | 0단계 | 원 단위 총액, 0보다 커야 함 |
+| `member_count` | integer \| null | X | 0단계 | 현재 미사용 |
+| `description` | string | X | 0단계 | 모임 소개. 있으면 AI가 맞춤 조항을 추가한다 (`rule_source=ai`일 때) |
+| `dues` | integer \| null | X | 1단계 | 1인당 회비. `null`·`0` 둘 다 "없음" |
+| `force_escalation_amount` | integer | O | 2단계 | '관리자 확인 설정 금액'. 이 값 하나로 승인 정책이 결정된다 — **AI는 승인 정책을 제안하지 않는다.** 서버는 0 초과만 확인하고(아래 오류표), 화면의 최소 50,000원 하한은 화면 몫이다 |
+| `rule_source` | string | O | 3단계 | `file`(파일 업로드) · `manual`(직접 입력) · `ai`(AI 초안) · `skip`(건너뛰기) |
+| `rule_text` | string \| null | 조건부 | 3단계 | `rule_source=manual`일 때 필수 — 직접 입력한 회칙 원문 |
+| `rule_file_ref` | string \| null | 조건부 | 3단계 | `rule_source=file`일 때 필수 — 업로드 파일을 BE-005로 되물을 참조 키 |
+
+`rule_text`·`rule_file_ref`는 이 API에서 **검증만** 한다 — 본문 저장은 백엔드,
+심사 반영은 LLM-006 인덱싱 경로가 담당한다.
 
 ```json
 {
+  "team_id": 9001,
   "team_type": "동아리/학생회",
   "team_name": "산악부",
   "initial_budget": 1000000,
   "dues": 30000,
-  "description": "주말 등산과 캠핑을 즐기는 동아리입니다. 3월 신입 모집도 준비 중입니다."
+  "description": "주말 등산과 캠핑을 즐기는 동아리입니다. 3월 신입 모집도 준비 중입니다.",
+  "force_escalation_amount": 50000,
+  "rule_source": "ai"
 }
 ```
 
@@ -286,13 +297,15 @@ Content-Type: application/json
 
 | 필드 | 타입 | 설명 |
 |---|---|---|
-| `rules` | string[] | 회칙 초안. 조항 단위 배열 |
-| `policy_params.auto_approve_limit` | integer | 관리자 승인 필수 금액 추천값. `초기예산 × 유형별 비율`, 만원 단위 내림, **최소 50,000** (화면 최소 제약과 같은 값 — 더 낮으면 화면이 거부한다) |
-| `policy_params.force_escalation_amount` | integer | `auto_approve_limit × 4`. 화면 금액 칸이 하나로 합쳐진 뒤로는 화면이 쓰지 않으며, 회칙 초안의 금액 검증에만 쓰인다 |
-| `policy_params.confidence_threshold` | number | AI 확신도 임계값 (기본 0.8). LLM 내부값 |
-| `policy_params.auto_approve` | boolean | 자동 심사 사용 추천 (기본 `true`). 2단계 토글과 **반대 방향** — 토글을 켜면 `false` |
-| `recommended_categories` | string[] | 유형별 지출 카테고리 6개 (고정) |
-| `notes` | string | 생성 근거 한 줄 |
+| `rules` | string[] | 회칙 초안. 조항 단위 배열 — **`rule_source=ai`일 때만 채워지고, 그 외에는 빈 배열** |
+| `recommended_categories` | string[] | 지출 카테고리 — 전역 9종 고정 (모임 유형 무관, `GET /v1/categories`와 같은 목록) |
+| `notes` | string | 참고 문구 한 줄 |
+| ~~`policy_params`~~ | — | **제거됐다** — 기준 금액은 사용자 입력이 원천이라 되돌려 줄 값이 없다 |
+
+회칙 초안의 금액 조항에는 요청의 `force_escalation_amount`가 그대로 들어간다
+("50,000원 미만 지출은 AI 자동 심사, 50,000원 이상은 관리자 승인" 형태). 백엔드가
+같은 금액을 `team_settings`에 저장하므로(아래 저장 규약) 회칙 문구와 심사 기준이
+일치한다.
 
 ```json
 {
@@ -306,16 +319,8 @@ Content-Type: application/json
     "야외·활동성 행사에 필요한 안전장비(구급용품 등) 구입은 활동 안전을 위한 지출로 우선 인정한다.",
     "신입 모집 관련 홍보물 제작비는 모집 기간 내 집행 건에 한해 인정한다."
   ],
-  "policy_params": {
-    "auto_approve_limit": 50000,
-    "force_escalation_amount": 200000,
-    "confidence_threshold": 0.8,
-    "auto_approve": true
-  },
-  "recommended_categories": [
-    "행사/프로그램비", "홍보/콘텐츠비", "교육/강연비",
-    "식비/간식비", "회의/운영비", "물품/소모품비"
-  ],
+  "recommended_categories": ["식비", "교통", "IT_인프라", "교육", "회의",
+                             "장소_대관", "행사_활동", "비품", "기타"],
   "notes": "'산악부' (동아리/학생회) 초기예산 1,000,000원 · 회비 30,000원 기준 자동 생성 초안 — 관리자 검토 후 확정"
 }
 ```
@@ -323,19 +328,51 @@ Content-Type: application/json
 조항 개수는 유형별 기본 4~5개 + 회비 1개(`dues` 있을 때) + AI 추가 0~7개(`description`
 있을 때)로 정해진다. 위 예시는 5 + 1 + 2 = 8개다.
 
+`rule_source`가 `skip`·`manual`·`file`이면 `rules`는 셋 다 빈 배열이지만, `notes`
+문구는 아래처럼 무엇을 선택했는지에 따라 다르다:
+
+| `rule_source` | `notes` |
+|---|---|
+| `skip` | "…— 회칙 없이 시작 — 기본 정책 모드로 심사합니다." |
+| `manual` | "…— 직접 입력한 회칙을 사용합니다 — 저장 후 회칙 변경 알림(LLM-006)이 심사에 반영합니다." |
+| `file` | "…— 업로드한 회칙 파일을 사용합니다 — 저장 후 회칙 변경 알림(LLM-006)이 심사에 반영합니다." |
+
+`skip` 예시:
+
+```json
+{
+  "rules": [],
+  "recommended_categories": ["식비", "교통", "IT_인프라", "교육", "회의",
+                             "장소_대관", "행사_활동", "비품", "기타"],
+  "notes": "'산악부' (동아리/학생회) — 회칙 없이 시작 — 기본 정책 모드로 심사합니다."
+}
+```
+
+### 백엔드 저장 규약 (개정안 §1-3)
+
+```
+team_settings.auto_approve_limit = team_settings.escalation_threshold
+                                 = 사용자가 입력한 기준 금액
+```
+
+두 값을 같은 금액으로 저장하면 '대기 구간'이 사라져 "미만 = 자동 승인, 이상 =
+관리자 확인" 정책이 그대로 구현된다 (심사 로직 무수정). 나중에 관리 화면에서 두 값을
+따로 조정하면 기존 3구간 동작으로 자연 복귀한다. `escalation_threshold` 컬럼 삭제
+후에는 `auto_approve_limit` 하나만 저장하면 된다 — 우리 매핑이 같은 값으로 읽는다.
+
 ### 오류
 
 | 코드 | 상황 |
 |---|---|
 | 401 | 서비스 토큰 없음·불일치 |
-| 422 | 필수 필드 누락, `initial_budget` 0 이하, `team_type`이 다섯 값 밖 |
+| 422 | 필수 필드 누락(`team_id` · `force_escalation_amount` · `rule_source` 포함), `initial_budget`·`force_escalation_amount` 0 이하, `team_type`·`rule_source`가 허용값 밖, `manual`인데 `rule_text` 없음, `file`인데 `rule_file_ref` 없음 |
 | 500 | 생성된 초안이 내부 검증 불통과 (`{"detail": "초안 검증 실패: ..."}`) |
 
 ```json
 {
   "detail": [
-    {"loc": ["body", "team_name"], "msg": "Field required"},
-    {"loc": ["body", "initial_budget"], "msg": "Input should be greater than 0"}
+    {"loc": ["body", "force_escalation_amount"], "msg": "Field required"},
+    {"loc": ["body"], "msg": "Value error, rule_source=manual이면 rule_text가 필요합니다"}
   ]
 }
 ```
@@ -350,12 +387,12 @@ Content-Type: application/json
 POST /v1/context/refresh
 Authorization: Bearer {SERVICE_TOKEN}
 
-{ "team_id": "team-1", "change_type": "rule", "version": 2 }
+{ "team_id": 9001, "change_type": "rule", "version": 2 }
 ```
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `team_id` | string | O | 백엔드 organizationId |
+| `team_id` | integer (int64) | O | 0단계 모임 생성 응답의 `teamId`와 같은 값 |
 | `change_type` | string | O | `rule` · `category` · `params` 중 하나. 회칙 등록·수정은 `rule` |
 | `version` | integer | O | 회칙 버전 (`policies.version`) |
 
@@ -371,7 +408,7 @@ Authorization: Bearer {SERVICE_TOKEN}
 있다.
 
 ```
-GET /v1/context/status?team_id=team-1
+GET /v1/context/status?team_id=9001
 Authorization: Bearer {SERVICE_TOKEN}
 ```
 
@@ -384,7 +421,7 @@ Authorization: Bearer {SERVICE_TOKEN}
 
 ```json
 {
-  "team_id": "team-1",
+  "team_id": 9001,
   "indexed": true,
   "chunk_count": 12,
   "version": 2,

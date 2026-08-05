@@ -1,8 +1,10 @@
-"""PolicyDrafter — 마법사 'AI 초안' 경로 (REQ-036, §4.4-c).
+"""PolicyDrafter — 마법사 1~3단계 통합 요청 (REQ-036, §4.4-c · LLM-005 전면 개정).
 
 [팀 결정 2026-07-09] AI가 카테고리별 예산을 배분하는 기능은 제거 —
-회칙 초안 + 에이전트 정책 파라미터(자동승인 한도 등) 제안만 생성한다.
 예산 현황은 지난 지출 내역 기반으로 표시(ReportWriter 담당).
+[개정 2026-08-05] 승인 정책 제안(policy_params)도 제거 — 기준 금액은 마법사 2단계
+사용자 입력이 원천이라 LLM이 제안할 것이 없다. 회칙 초안은 rule_source=ai일 때만
+생성하고, 그 외(file·manual·skip)는 빈 rules로 응답한다 (API 명세서 개정안 §1).
 
 패턴: 템플릿 로드 → 생성 → 검증(Generator-Evaluator, 강의 12-03).
 한도 수치는 코드가 계산하고, LLM은 문구 다듬기만 담당한다.
@@ -20,7 +22,7 @@ from typing_extensions import TypedDict
 
 from app.llm.client import chat_structured
 from app.llm.prompts import load_prompt
-from app.schemas.writers import PolicyDraft, PolicyDraftRequest, PolicyParamsSuggestion
+from app.schemas.writers import PolicyDraft, PolicyDraftRequest
 from app.tools.category_catalog import all_categories
 
 # 템플릿 로더는 심사 쪽 기본 정책 모드와 공유한다 (app/tools/policy_defaults.py) —
@@ -70,13 +72,6 @@ def dedupe_rules(base: list[str], extra: list[str]) -> list[str]:
 
 
 PER_MEAL_LIMIT = 30_000  # 1인당 식비 기본 한도 — 추후 팀 규모 기반 조정
-# 추천 한도의 하한. 마법사 2단계 화면이 "최소 금액은 50,000원이에요"로 그보다 작은
-# 값을 거부하므로(2026-08-05 개편), 하한이 더 낮으면 초기예산이 작은 모임에 화면이
-# 받아주지 않는 값을 추천하게 된다.
-MIN_AUTO_APPROVE_LIMIT = 50_000
-# 강제 에스컬레이션 = 자동승인 한도 × 이 배수. 화면 금액 칸이 하나로 합쳐진 뒤로는
-# 화면이 쓰지 않는 값이며, 회칙 초안의 금액 검증(verify_draft_pure)에만 쓰인다.
-FORCE_ESCALATION_MULTIPLE = 4
 # 회비가 입력된 경우에만 붙는 조항 (유형 무관이라 템플릿이 아닌 코드 상수).
 DUES_RULE = "회비는 1인당 {dues}원으로 하며, 회비 수입 범위 내에서 지출을 집행한다."
 # notes의 회비 표기. verify가 이 접두사로 '회비가 반영됐는지'를 판별하므로 조각을 상수로 둔다
@@ -106,6 +101,8 @@ async def retrieve_references(state: DraftState) -> dict:
     진행 가능하므로 fail-open. (강의 08 Agentic RAG 패턴)
     """
     req = state["request"]
+    if req.rule_source != "ai":
+        return {"references": []}  # 초안을 만들지 않으므로 검색 불필요
     query = f"{req.team_type} {req.description}".strip()
     try:
         refs = await search_references(query)
@@ -134,27 +131,44 @@ def _mock_extra_rules(description: str) -> list[str]:
     return rules[:MAX_EXTRA_RULES]
 
 
-async def generate_draft(state: DraftState) -> dict:
-    """초안 조립. 한도 수치는 코드 계산, 기본 조항은 템플릿 + 치환.
+# rule_source별 notes 문구 — ai가 아니면 초안 없이 안내만 돌려준다.
+_NON_AI_NOTES = {
+    "skip": "회칙 없이 시작 — 기본 정책 모드로 심사합니다.",
+    "manual": "직접 입력한 회칙을 사용합니다 — 저장 후 회칙 변경 알림(LLM-006)이 심사에 반영합니다.",
+    "file": "업로드한 회칙 파일을 사용합니다 — 저장 후 회칙 변경 알림(LLM-006)이 심사에 반영합니다.",
+}
 
-    모임 소개가 있으면 LLM이 그 모임 특성에 맞는 추가 조항(최대 MAX_EXTRA_RULES개)을
-    제안한다. 소개가 없으면 LLM을 호출하지 않아 기본 조항만 남는다.
-    기본 조항은 LLM이 절대 건드리지 않음 — 필수 조항 보장은 코드 검증(verify_draft)의
-    책임으로 유지하기 위해서다.
+
+async def generate_draft(state: DraftState) -> dict:
+    """초안 조립. 기준 금액은 요청 값 그대로, 기본 조항은 템플릿 + 치환.
+
+    rule_source가 ai가 아니면(파일·직접 입력·건너뛰기) 회칙 초안을 만들지 않는다 —
+    rules는 빈 배열이고 LLM·RAG도 타지 않는다 (개정안 §1-4). 회비 조각도 notes에
+    붙이지 않는다 — 회칙 조항이 없으므로 notes에도 표기가 없어야 verify의 정합
+    검사와 맞는다 (회비 반영은 ai 초안 경로의 몫).
+
+    ai 경로: 모임 소개가 있으면 LLM이 그 모임 특성에 맞는 추가 조항(최대
+    MAX_EXTRA_RULES개)을 제안한다. 소개가 없으면 LLM을 호출하지 않아 기본 조항만
+    남는다. 기본 조항은 LLM이 절대 건드리지 않음 — 필수 조항 보장은 코드 검증
+    (verify_draft)의 책임으로 유지하기 위해서다.
     """
     req, template = state["request"], state["template"]
 
-    auto_limit = max(
-        MIN_AUTO_APPROVE_LIMIT,
-        (int(req.initial_budget * template["auto_approve_ratio"]) // 10000) * 10000,
-    )
-    params = PolicyParamsSuggestion(
-        auto_approve_limit=auto_limit,
-        force_escalation_amount=auto_limit * FORCE_ESCALATION_MULTIPLE,
-    )
+    if req.rule_source != "ai":
+        draft = PolicyDraft(
+            rules=[],
+            recommended_categories=all_categories(),
+            notes=f"'{req.team_name}' ({req.team_type}) — {_NON_AI_NOTES[req.rule_source]}",
+        )
+        return {"draft": draft}
+
+    # 기준 금액 하나가 회칙의 승인 기준선이 된다. 템플릿 placeholder 이름은
+    # {auto_approve_limit}지만 넣는 값은 요청의 force_escalation_amount다 —
+    # 백엔드가 auto_approve_limit = escalation_threshold = 기준금액으로 저장하므로
+    # (개정안 §1-3 저장 규약) 두 이름은 같은 금액을 가리킨다.
     base_rules = [
         r.format(
-            auto_approve_limit=f"{params.auto_approve_limit:,}",
+            auto_approve_limit=f"{req.force_escalation_amount:,}",
             per_meal_limit=f"{PER_MEAL_LIMIT:,}",
         )
         for r in template["base_rules"]
@@ -187,7 +201,6 @@ async def generate_draft(state: DraftState) -> dict:
     dues_note = DUES_NOTE.format(dues=f"{req.dues:,}") if req.dues else ""
     draft = PolicyDraft(
         rules=base_rules + extra_rules,
-        policy_params=params,
         recommended_categories=all_categories(),  # 전역 고정 9종 (신규 생성 없음)
         notes=f"'{req.team_name}' ({req.team_type}) 초기예산 {req.initial_budget:,}원{dues_note}"
         " 기준 자동 생성 초안 — 관리자 검토 후 확정",
@@ -195,7 +208,7 @@ async def generate_draft(state: DraftState) -> dict:
     return {"draft": draft}
 
 
-# 승인 기준선을 말하는 조항을 식별 — 이 조항의 금액은 policy_params와 반드시 같아야 한다.
+# 승인 기준선을 말하는 조항을 식별 — 이 조항의 금액은 요청의 기준 금액과 반드시 같아야 한다.
 # '자동 심사'뿐 아니라 '관리자 승인/확인'까지 보는 이유: 같은 기준을 "8만원 넘으면 관리자가
 # 확인한다"처럼 '자동'이라는 말 없이 쓸 수 있고, 그때도 회칙과 심사 기준은 똑같이 갈라진다.
 # 기존 조항 28개(5유형 base + 회비 + 목 추가조항) 전수 확인 결과 헛경보 0건.
@@ -216,17 +229,32 @@ def _amounts_in(text: str) -> list[int]:
     return out
 
 
-def verify_draft_pure(draft: PolicyDraft) -> str | None:
+def verify_draft_pure(
+    draft: PolicyDraft, *, rule_source: str, force_escalation_amount: int
+) -> str | None:
     """검증(Evaluator) — 위반 시 사유 반환, 통과 시 None. 순수 함수 (단위 테스트 대상).
 
     이 초안은 관리자가 그대로 확정하면 곧바로 팀 회칙이 되고, 심사 에이전트가 그 회칙을
     근거로 판정한다. 그래서 '그럴듯하지만 서로 어긋나는' 산출물을 통과시키지 않는 것이
-    핵심이다 — 특히 LLM 추가 조항이 코드가 계산한 한도와 다른 금액을 말하면, 회원이 보는
-    회칙과 에이전트가 쓰는 기준이 갈라진다.
+    핵심이다 — 특히 LLM 추가 조항이 요청의 기준 금액과 다른 금액을 말하면, 회원이 보는
+    회칙과 심사 기준이 갈라진다. rule_source가 ai가 아니면 초안을 만들지 않는 계약이라
+    rules가 비어 있어야 한다 (개정안 §1-4).
     """
-    p = draft.policy_params
-    if not (0 < p.auto_approve_limit < p.force_escalation_amount):
-        return "한도 순서 오류 (auto_approve_limit < force_escalation_amount 여야 함)"
+    # 마법사 1단계가 이 목록을 그대로 칩으로 보여준다 — 비면 화면이 비고 중복이면 칩이 두 번 뜬다
+    cats = draft.recommended_categories
+    if not cats:
+        return "추천 카테고리 없음"
+    if len(cats) != len(set(cats)):
+        return "추천 카테고리 중복"
+
+    if rule_source != "ai":
+        if draft.rules:
+            return f"rule_source={rule_source}인데 회칙 조항 존재 (빈 배열이어야 함)"
+        # non-ai notes는 팀 이름을 그대로 품는다(§generate_draft) — 회비 조항이 아예
+        # 없는 경로라 아래 정합 검사를 적용할 대상이 없다. 적용하면 notes에 우연히
+        # " · 회비 "가 낀 팀 이름(예: '산악 · 회비 모임')에서 오탐 500이 난다.
+        return None
+
     if not draft.rules:
         return "조항 없음"
     if any("{" in r for r in draft.rules):
@@ -238,23 +266,15 @@ def verify_draft_pure(draft: PolicyDraft) -> str | None:
     if len(keys) != len(set(keys)):
         return "중복 조항 존재"
 
-    # 마법사 1단계가 이 목록을 그대로 칩으로 보여준다 — 비면 화면이 비고 중복이면 칩이 두 번 뜬다
-    cats = draft.recommended_categories
-    if not cats:
-        return "추천 카테고리 없음"
-    if len(cats) != len(set(cats)):
-        return "추천 카테고리 중복"
-
-    # 환각 방어 — 자동 심사를 말하는 조항의 금액은 제안 파라미터 둘 중 하나여야 한다
-    allowed = {p.auto_approve_limit, p.force_escalation_amount}
+    # 환각 방어 — 자동 심사를 말하는 조항의 금액은 요청의 기준 금액 하나뿐이어야 한다
     for rule in draft.rules:
         if not _AUTO_RULE_HINT.search(rule):
             continue
-        bad = [a for a in _amounts_in(rule) if a not in allowed]
+        bad = [a for a in _amounts_in(rule) if a != force_escalation_amount]
         if bad:
             return (
-                f"자동 심사 한도 조항의 금액이 제안값과 불일치: {bad[0]:,}원 "
-                f"(제안 {p.auto_approve_limit:,}원 / {p.force_escalation_amount:,}원)"
+                f"자동 심사 한도 조항의 금액이 설정 금액과 불일치: {bad[0]:,}원 "
+                f"(설정 {force_escalation_amount:,}원)"
             )
 
     # 회비 조항과 notes 표기는 같은 입력(req.dues)에서 나온다 — 한쪽만 있으면 조립 버그
@@ -264,7 +284,12 @@ def verify_draft_pure(draft: PolicyDraft) -> str | None:
 
 
 async def verify_draft(state: DraftState) -> dict:
-    error = verify_draft_pure(state["draft"])
+    req = state["request"]
+    error = verify_draft_pure(
+        state["draft"],
+        rule_source=req.rule_source,
+        force_escalation_amount=req.force_escalation_amount,
+    )
     if error:
         logger.error("policy draft verification failed: %s", error)
     return {"verified": error is None, "verify_error": error}

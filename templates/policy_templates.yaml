@@ -3,10 +3,11 @@
 #
 # [팀 결정 2026-07-09] AI가 카테고리별 예산을 배분하는 기능은 제거 —
 # 예산 현황은 '지난 지출 내역' 기반으로 모임관리 페이지에서 표시(ReportWriter 담당).
-# 이 템플릿은 회칙 조항 + 에이전트 정책 파라미터 제안만 담당한다.
+# [개정 2026-08-05] 승인 정책 제안도 제거(LLM-005 전면 개정) — {auto_approve_limit}에는
+# 마법사 2단계에서 사용자가 입력한 기준 금액이 그대로 들어간다.
+# 이 템플릿은 회칙 조항만 담당한다.
 
 동아리/학생회:
-  auto_approve_ratio: 0.05        # 초기예산 대비 자동승인 한도 제안 비율
   base_rules:
     - "모든 지출은 영수증(현금영수증·카드전표)을 첨부해야 하며, 미첨부 시 지출로 인정하지 않는다."
     - "1인당 식비는 회당 {per_meal_limit}원을 초과할 수 없다."
@@ -15,7 +16,6 @@
     - "{auto_approve_limit}원 미만의 지출은 AI 자동 심사로 처리하고, {auto_approve_limit}원 이상은 관리자 승인을 받는다."
 
 스터디:
-  auto_approve_ratio: 0.05
   base_rules:
     - "모든 지출은 영수증을 첨부해야 한다."
     - "도서·강의 구입은 스터디 주제와 관련된 항목만 인정한다."
@@ -24,7 +24,6 @@
     - "{auto_approve_limit}원 미만 지출은 AI 자동 심사, {auto_approve_limit}원 이상은 관리자 승인."
 
 친목:
-  auto_approve_ratio: 0.06
   base_rules:
     - "모든 지출은 영수증을 첨부해야 한다."
     - "1인당 회식비는 회당 {per_meal_limit}원을 초과할 수 없다."
@@ -32,7 +31,6 @@
     - "{auto_approve_limit}원 미만 지출은 AI 자동 심사, {auto_approve_limit}원 이상은 관리자 승인."
 
 동호회:
-  auto_approve_ratio: 0.05
   base_rules:
     - "모든 지출은 영수증을 첨부해야 한다."
     - "공용 장비 구입은 총무 사전 협의 후 집행한다."
@@ -41,7 +39,6 @@
     - "{auto_approve_limit}원 미만 지출은 AI 자동 심사, {auto_approve_limit}원 이상은 관리자 승인."
 
 회사:
-  auto_approve_ratio: 0.03
   base_rules:
     - "모든 지출은 증빙(영수증·세금계산서)을 첨부해야 한다."
     - "1인당 회식비는 회당 {per_meal_limit}원을 초과할 수 없다."

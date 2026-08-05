@@ -530,15 +530,12 @@
         "type": "object"
       },
       "PolicyDraft": {
-        "description": "[팀 결정 2026-07-09] 예산 카테고리 배분(budget_plan) 제거 —\n예산 현황은 지난 지출 내역 기반(ReportWriter)으로 표시.",
+        "description": "[팀 결정 2026-07-09] 예산 카테고리 배분(budget_plan) 제거 —\n예산 현황은 지난 지출 내역 기반(ReportWriter)으로 표시.\n\n[개정 2026-08-05] policy_params(승인 정책 제안) 제거 — 기준 금액은 사용자 입력이\n원천이라 LLM이 되돌려 줄 값이 없다 (API 명세서 개정안 §1-4).",
         "properties": {
           "notes": {
             "default": "",
             "title": "Notes",
             "type": "string"
-          },
-          "policy_params": {
-            "$ref": "#/components/schemas/PolicyParamsSuggestion"
           },
           "recommended_categories": {
             "default": [],
@@ -557,14 +554,13 @@
           }
         },
         "required": [
-          "rules",
-          "policy_params"
+          "rules"
         ],
         "title": "PolicyDraft",
         "type": "object"
       },
       "PolicyDraftRequest": {
-        "description": "모임 생성 화면 + AI 마법사 1단계 입력\n(모임 생성: 유형 5종 · 이름 · 초기예산 총액 · 소개 / 마법사 1단계: 회비).",
+        "description": "마법사 1~3단계 통합 요청 (API 명세서 개정안 §1 — 회의 2·3·5번).\n\n0단계(모임 생성)는 백엔드 별도 API — 여기는 그 결과인 team_id를 받는다.\n1단계 회비(dues) · 2단계 기준 금액(force_escalation_amount) · 3단계 회칙\n(rule_source·rule_text·rule_file_ref)을 한 번에 담는다.",
         "properties": {
           "description": {
             "default": "",
@@ -584,6 +580,12 @@
             "description": "1인당 회비. None·0 = 없음",
             "title": "Dues"
           },
+          "force_escalation_amount": {
+            "description": "원 단위 기준 금액",
+            "exclusiveMinimum": 0.0,
+            "title": "Force Escalation Amount",
+            "type": "integer"
+          },
           "initial_budget": {
             "description": "원 단위 총액",
             "exclusiveMinimum": 0.0,
@@ -600,6 +602,44 @@
               }
             ],
             "title": "Member Count"
+          },
+          "rule_file_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule File Ref"
+          },
+          "rule_source": {
+            "enum": [
+              "file",
+              "manual",
+              "ai",
+              "skip"
+            ],
+            "title": "Rule Source",
+            "type": "string"
+          },
+          "rule_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule Text"
+          },
+          "team_id": {
+            "description": "양의 백엔드 BIGINT 기본키",
+            "format": "int64",
+            "title": "Team Id",
+            "type": "integer"
           },
           "team_name": {
             "title": "Team Name",
@@ -618,9 +658,12 @@
           }
         },
         "required": [
+          "team_id",
           "team_type",
           "team_name",
-          "initial_budget"
+          "initial_budget",
+          "force_escalation_amount",
+          "rule_source"
         ],
         "title": "PolicyDraftRequest",
         "type": "object"
@@ -682,34 +725,6 @@
         "title": "PolicyParamsStatus",
         "type": "object"
       },
-      "PolicyParamsSuggestion": {
-        "properties": {
-          "auto_approve": {
-            "default": true,
-            "title": "Auto Approve",
-            "type": "boolean"
-          },
-          "auto_approve_limit": {
-            "title": "Auto Approve Limit",
-            "type": "integer"
-          },
-          "confidence_threshold": {
-            "default": 0.8,
-            "title": "Confidence Threshold",
-            "type": "number"
-          },
-          "force_escalation_amount": {
-            "title": "Force Escalation Amount",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "auto_approve_limit",
-          "force_escalation_amount"
-        ],
-        "title": "PolicyParamsSuggestion",
-        "type": "object"
-      },
       "PolicyProposal": {
         "description": "저장된 회칙 초안. 승인·거절은 PATCH /v1/proposals/{proposalId}로 기록한다.",
         "properties": {
@@ -766,6 +781,12 @@
             "description": "1인당 회비. None·0 = 없음",
             "title": "Dues"
           },
+          "force_escalation_amount": {
+            "description": "원 단위 기준 금액",
+            "exclusiveMinimum": 0.0,
+            "title": "Force Escalation Amount",
+            "type": "integer"
+          },
           "initial_budget": {
             "description": "원 단위 총액",
             "exclusiveMinimum": 0.0,
@@ -787,6 +808,34 @@
             "default": false,
             "title": "Regenerate",
             "type": "boolean"
+          },
+          "rule_file_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule File Ref"
+          },
+          "rule_source": {
+            "const": "ai",
+            "default": "ai",
+            "title": "Rule Source",
+            "type": "string"
+          },
+          "rule_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule Text"
           },
           "team_id": {
             "description": "양의 백엔드 BIGINT 기본키",
@@ -811,10 +860,11 @@
           }
         },
         "required": [
+          "team_id",
           "team_type",
           "team_name",
           "initial_budget",
-          "team_id"
+          "force_escalation_amount"
         ],
         "title": "PolicyProposalRequest",
         "type": "object"
@@ -1430,7 +1480,7 @@
     },
     "/v1/policy-draft": {
       "post": {
-        "description": "마법사 3단계 — 회칙 초안을 만들어 그 자리에서 돌려준다 (저장 없음).",
+        "description": "마법사 1~3단계 통합 요청 (LLM-005 전면 개정) — 저장 없이 결과만 돌려준다.\n\n`rule_source=ai`면 'AI 초안' 버튼 시점에 호출되어 `rules`에 회칙 초안이 담기고,\n그 외(file·manual·skip)는 '설정 완료' 시점 1회 호출로 `rules`가 빈 배열이다.\n승인 정책은 제안하지 않는다 — 기준 금액(`force_escalation_amount`)은 사용자\n입력이 원천이며 저장은 백엔드 team_settings 소관이다 (개정안 §1-3).",
         "operationId": "create_policy_draft_v1_policy_draft_post",
         "requestBody": {
           "content": {

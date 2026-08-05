@@ -255,7 +255,7 @@
   <section class="panel" id="panel-draft">
     <div class="card">
       <h2>회칙·정책 초안 생성 (PolicyDrafter)</h2>
-      <div class="desc">POST /v1/policy-draft (동기) — 모임 생성 화면 입력 그대로. 회칙 초안과 에이전트 정책 파라미터(자동승인 한도 등)를 제안합니다. (예산 카테고리 배분은 팀 결정으로 제외)</div>
+      <div class="desc">POST /v1/policy-draft (동기) — 마법사 1~3단계 통합 요청 (LLM-005 전면 개정). 승인 정책은 제안하지 않는다 — 사용자가 입력한 기준 금액이 그대로 회칙에 반영된다. 회칙 초안(rules)은 rule_source=ai일 때만 채워진다.</div>
       <div class="row">
         <div class="field">
           <label>모임 유형</label>
@@ -266,6 +266,17 @@
         </div>
         <div class="field"><label>모임 이름</label><input id="pd-name" value="알고리즘 스터디"></div>
         <div class="field"><label>초기 예산(원)</label><input id="pd-budget" type="number" value="1000000"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>팀 ID</label><input id="pd-team-id" type="number" value="9001"></div>
+        <div class="field"><label>관리자 확인 설정 금액(원)</label><input id="pd-force-amount" type="number" value="50000"></div>
+        <div class="field">
+          <label>회칙 등록 방식 (rule_source)</label>
+          <select id="pd-rule-source">
+            <option value="ai">AI 초안</option><option value="skip">건너뛰기</option>
+            <option value="manual">직접 입력</option><option value="file">파일 업로드</option>
+          </select>
+        </div>
       </div>
       <button class="btn" id="pd-submit">초안 생성</button>
       <div class="status-line" id="pd-status"></div>
@@ -668,8 +679,11 @@ $("pd-submit").addEventListener("click", async () => {
   $("pd-result").classList.add("empty");
   try {
     const payload = {
+      team_id: Number($("pd-team-id").value),
       team_type: $("pd-type").value, team_name: $("pd-name").value,
       initial_budget: Number($("pd-budget").value),
+      force_escalation_amount: Number($("pd-force-amount").value),
+      rule_source: $("pd-rule-source").value,
     };
     const res = await fetch("/v1/policy-draft", { method: "POST", headers: authHeaders(), body: JSON.stringify(payload) });
     if (!res.ok) throw new Error(`초안 생성 실패 (${res.status}): ${await res.text()}`);
@@ -678,9 +692,9 @@ $("pd-submit").addEventListener("click", async () => {
     $("pd-status").textContent = "완료";
     $("pd-verified").innerHTML = `<span class="badge approve">검증 통과</span>`;
     $("pd-params").innerHTML = `
-      <div class="row2"><span class="k">자동승인 한도</span><span class="v2">${draft.policy_params.auto_approve_limit.toLocaleString()}원</span></div>
-      <div class="row2"><span class="k">강제 에스컬레이션</span><span class="v2">${draft.policy_params.force_escalation_amount.toLocaleString()}원</span></div>
-      <div class="row2"><span class="k">신뢰도 임계값</span><span class="v2">${draft.policy_params.confidence_threshold}</span></div>`;
+      <div class="row2"><span class="k">회칙 조항 수</span><span class="v2">${draft.rules.length}개</span></div>
+      <div class="row2"><span class="k">추천 카테고리</span><span class="v2">${draft.recommended_categories.length}종</span></div>
+      <div class="row2"><span class="k">비고</span><span class="v2">${draft.notes}</span></div>`;
     $("pd-rules").innerHTML = draft.rules.map(r => `<li>${r}</li>`).join("");
     $("pd-raw").textContent = JSON.stringify(draft, null, 2);
     $("pd-result").classList.remove("empty");

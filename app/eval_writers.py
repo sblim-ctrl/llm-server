@@ -8,6 +8,7 @@ BriefingWriter 케이스는 실행 전 해당 팀 판례를 DB에 시드한다 (
 재삽입 — 멱등). 시드가 save_precedent를 그대로 쓰므로 마스킹·임베딩 경로까지
 실제 저장 경로와 동일하게 지나간다.
 """
+
 import csv
 import json
 from pathlib import Path
@@ -21,8 +22,9 @@ from app.schemas.writers import BriefingRequest, PolicyDraftRequest, ReportReque
 from app.tools.precedent_store import save_precedent
 
 ACCURACY_THRESHOLD = 0.90  # eval_support와 동일 기준
-DEFAULT_GOLDEN_PATH = (Path(__file__).resolve().parents[1]
-                       / "eval" / "golden" / "writers_golden_v1.json")
+DEFAULT_GOLDEN_PATH = (
+    Path(__file__).resolve().parents[1] / "eval" / "golden" / "writers_golden_v1.json"
+)
 RESULTS_DIR = Path(__file__).resolve().parents[1] / "eval" / "results"
 
 
@@ -53,8 +55,6 @@ async def _run_policy_draft_case(case: dict[str, Any]) -> dict[str, Any]:
         "verified": state.get("verified"),
         "verify_error": state.get("verify_error"),
         "rules_count": len(draft.rules),
-        "auto_approve_limit": draft.policy_params.auto_approve_limit,
-        "force_escalation_amount": draft.policy_params.force_escalation_amount,
         "categories_count": len(draft.recommended_categories),
         "rules_text": "\n".join(draft.rules),
     }
@@ -82,15 +82,18 @@ async def _seed_briefing_precedents(team_id: int, precedents: list[dict[str, Any
     for p in precedents:
         summary = f"[{p['category']}] {p['title']} — {p['amount']:,}원."
         await save_precedent(
-            team_id, summary, p["decision"], p["decided_by"],
-            reason=p.get("reason"), is_override=p.get("is_override", False),
+            team_id,
+            summary,
+            p["decision"],
+            p["decided_by"],
+            reason=p.get("reason"),
+            is_override=p.get("is_override", False),
         )
 
 
 async def _run_briefing_case(case: dict[str, Any]) -> dict[str, Any]:
     await _seed_briefing_precedents(case["team_id"], case["precedents"])
-    state = await briefing_graph.ainvoke(
-        {"request": BriefingRequest(team_id=case["team_id"])})
+    state = await briefing_graph.ainvoke({"request": BriefingRequest(team_id=case["team_id"])})
     briefing = state["briefing"]
     figures = briefing.figures
     return {
@@ -121,14 +124,16 @@ async def run_writers_golden_set(golden_path: Path | None = None) -> dict[str, A
         for case in golden.get(section, []):
             actual = await runner(case)
             failures = evaluate_expectations(case["expect"], actual)
-            results.append({
-                "kind": kind,
-                "id": case["id"],
-                "scenario": case.get("scenario", ""),
-                "passed": not failures,
-                "verified": actual.get("verified"),
-                "failures": failures,
-            })
+            results.append(
+                {
+                    "kind": kind,
+                    "id": case["id"],
+                    "scenario": case.get("scenario", ""),
+                    "passed": not failures,
+                    "verified": actual.get("verified"),
+                    "failures": failures,
+                }
+            )
 
     correct = sum(r["passed"] for r in results)
     unverified = [r["id"] for r in results if r["verified"] is False]
@@ -140,7 +145,7 @@ async def run_writers_golden_set(golden_path: Path | None = None) -> dict[str, A
         "correct": correct,
         "accuracy": accuracy,
         "accuracy_threshold": ACCURACY_THRESHOLD,
-        "unverified_count": len(unverified),   # 하드 게이트 — 검증 불통과 산출물 0건
+        "unverified_count": len(unverified),  # 하드 게이트 — 검증 불통과 산출물 0건
         "unverified_ids": unverified,
         "passed": not unverified and accuracy >= ACCURACY_THRESHOLD,
         "results": results,
@@ -157,6 +162,14 @@ def export_writers_csv(results: list[dict[str, Any]]) -> Path:
         writer = csv.writer(f)
         writer.writerow(["kind", "id", "scenario", "passed", "verified", "failures"])
         for r in results:
-            writer.writerow([r["kind"], r["id"], r["scenario"], r["passed"],
-                             r["verified"], " | ".join(r["failures"])])
+            writer.writerow(
+                [
+                    r["kind"],
+                    r["id"],
+                    r["scenario"],
+                    r["passed"],
+                    r["verified"],
+                    " | ".join(r["failures"]),
+                ]
+            )
     return path

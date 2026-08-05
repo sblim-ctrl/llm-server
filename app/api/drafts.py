@@ -20,11 +20,15 @@
 
 `budget_planner`·`rule_amendment`가 쓰는 흐름과 같다 — 새 저장소를 만들지 않았다.
 """
+
 from fastapi import APIRouter, HTTPException
 
 from app.graphs.writers.policy_draft import policy_draft_graph
 from app.schemas.writers import (
-    PolicyDraft, PolicyDraftRequest, PolicyProposal, PolicyProposalRequest,
+    PolicyDraft,
+    PolicyDraftRequest,
+    PolicyProposal,
+    PolicyProposalRequest,
 )
 from app.tools.proposal_store import list_proposals, save_proposal
 
@@ -38,8 +42,7 @@ async def _generate(req: PolicyDraftRequest) -> PolicyDraft:
     state = await policy_draft_graph.ainvoke({"request": req})
     if not state.get("verified"):
         # 검증 실패한 초안은 절대 반환하지 않는다 (환각 수치 차단)
-        raise HTTPException(status_code=500,
-                            detail=f"초안 검증 실패: {state.get('verify_error')}")
+        raise HTTPException(status_code=500, detail=f"초안 검증 실패: {state.get('verify_error')}")
     return state["draft"]
 
 
@@ -50,19 +53,31 @@ async def _latest_open_proposal(team_id: int) -> PolicyProposal | None:
     if row is None:
         return None
     return PolicyProposal(
-        proposal_id=str(row["id"]), team_id=team_id, status=row["status"],
-        draft=PolicyDraft.model_validate(row["payload"]), reused=True,
+        proposal_id=str(row["id"]),
+        team_id=team_id,
+        status=row["status"],
+        draft=PolicyDraft.model_validate(row["payload"]),
+        reused=True,
     )
 
 
 @router.post("/policy-draft", response_model=PolicyDraft)
 async def create_policy_draft(req: PolicyDraftRequest) -> PolicyDraft:
-    """마법사 3단계 — 회칙 초안을 만들어 그 자리에서 돌려준다 (저장 없음)."""
+    """마법사 1~3단계 통합 요청 (LLM-005 전면 개정) — 저장 없이 결과만 돌려준다.
+
+    `rule_source=ai`면 'AI 초안' 버튼 시점에 호출되어 `rules`에 회칙 초안이 담기고,
+    그 외(file·manual·skip)는 '설정 완료' 시점 1회 호출로 `rules`가 빈 배열이다.
+    승인 정책은 제안하지 않는다 — 기준 금액(`force_escalation_amount`)은 사용자
+    입력이 원천이며 저장은 백엔드 team_settings 소관이다 (개정안 §1-3).
+    """
     return await _generate(req)
 
 
-@router.post("/policy-proposals", response_model=PolicyProposal,
-             summary="회칙 초안 생성·저장 (회칙·정책 관리 화면)")
+@router.post(
+    "/policy-proposals",
+    response_model=PolicyProposal,
+    summary="회칙 초안 생성·저장 (회칙·정책 관리 화면)",
+)
 async def create_policy_proposal(req: PolicyProposalRequest) -> PolicyProposal:
     """회칙 초안을 만들어 `proposals`에 남기고 돌려준다.
 
@@ -83,12 +98,16 @@ async def create_policy_proposal(req: PolicyProposalRequest) -> PolicyProposal:
 
     draft = await _generate(req.to_draft_request())
     proposal_id = await save_proposal(req.team_id, RULE_DRAFT, draft.model_dump(mode="json"))
-    return PolicyProposal(proposal_id=proposal_id, team_id=req.team_id,
-                          status="proposed", draft=draft, reused=False)
+    return PolicyProposal(
+        proposal_id=proposal_id, team_id=req.team_id, status="proposed", draft=draft, reused=False
+    )
 
 
-@router.get("/policy-proposals", response_model=PolicyProposal | None,
-            summary="저장된 회칙 초안 조회 (없으면 null)")
+@router.get(
+    "/policy-proposals",
+    response_model=PolicyProposal | None,
+    summary="저장된 회칙 초안 조회 (없으면 null)",
+)
 async def read_policy_proposal(team_id: int) -> PolicyProposal | None:
     """아직 결정되지 않은 회칙 초안을 돌려준다. 없으면 `null`이다.
 
