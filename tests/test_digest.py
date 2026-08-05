@@ -127,3 +127,35 @@ async def test_advice_may_cite_known_figures():
 async def test_empty_advice_is_rejected():
     doc, f = await _valid_doc()
     assert verify_digest_pure(doc.model_copy(update={"advice": "  "}), f) is False
+
+
+def test_advice_may_cite_negative_balance_when_budget_exceeded():
+    """예산 초과 시 advice의 음수 잔액 표기 — 2026-08-05에 발견한 회귀.
+
+    금액 정규식이 앞의 마이너스를 안 잡아서, advice의 "-50,000원"에서 "50,000원"만
+    뽑히고 허용 목록("-50,000원")과 어긋나 **브리핑이 통째로 폐기**됐다.
+    dashboard의 같은 결함과 한 쌍이다.
+
+    주간 지출(37,000원)을 잔액 절댓값(50,000원)과 **일부러 다르게** 뒀다. 같으면
+    떼어낸 "50,000원"이 우연히 허용 목록에 들어 있어 버그가 있어도 통과해버린다.
+    """
+    from app.graphs.writers.digest import DigestFigures
+
+    forecast_cls = DigestFigures.model_fields["forecast"].annotation
+    f = DigestFigures(
+        week_start="2026-07-01", week_end="2026-07-07", auto_approved=1,
+        auto_rejected=0, escalated=0, weekly_spent=37000,
+        forecast=forecast_cls(
+            total_budget=200000, spent=250000, elapsed_days=20, daily_burn=12500.0,
+            projected_period_end_spent=375000, depletion_date="2026-07-10",
+            over_categories=[], under_categories=[]),
+        anomalies=[])
+    assert f.forecast.total_budget - f.forecast.spent == -50000
+    doc = DigestDoc(
+        figures=f, verified=False,
+        summary=("이번 주에는 자동 승인 1건, 반려 0건, 관리자 확인 0건을 처리했습니다. "
+                 "주간 지출은 37,000원이며 기간 말 예상 지출은 375,000원, 잔액은 "
+                 "2026-07-10에 소진될 것으로 예상됩니다."),
+        highlights=["자동 승인 1건 · 반려 0건 · 에스컬레이션 0건"],
+        advice="잔액이 -50,000원으로 이미 예산을 넘겼습니다. 남은 기간 집행을 멈추고 점검해 주세요.")
+    assert verify_digest_pure(doc, f) is True

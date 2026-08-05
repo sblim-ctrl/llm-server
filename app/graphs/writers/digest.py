@@ -281,7 +281,10 @@ async def generate_digest(state: DigestState) -> dict:
     return {"digest": digest, "llm_meta": {"digest_writer": meta}}
 
 
-_MONEY_RE = re.compile(r"[\d,]*\d원")
+# 앞의 마이너스 포함 — dashboard와 같은 이유다. allowed_money에 잔액
+# (total_budget - spent)이 들어 있어 예산 초과 시 음수 표기가 나온다. 마이너스를
+# 빼고 잡으면 허용 목록과 어긋나 advice가 통째로 폐기된다 (2026-08-05 발견).
+_MONEY_RE = re.compile(r"-?[\d,]*\d원")
 
 
 def verify_digest_pure(doc: DigestDoc, f: DigestFigures) -> bool:

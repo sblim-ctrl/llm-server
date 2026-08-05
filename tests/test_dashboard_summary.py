@@ -134,6 +134,34 @@ def test_verifier_rejects_empty_message():
     assert verify_summary_pure(_doc("   ")) is False
 
 
+def test_verifier_accepts_negative_remaining_when_budget_exceeded():
+    """예산 초과(잔액 음수) — 2026-08-05에 발견한 회귀.
+
+    금액 정규식이 앞의 마이너스를 안 잡아서, 본문의 "-99,000원"에서 "99,000원"만
+    뽑히고 허용 목록("-99,000원")과 어긋나 **요약이 항상 폐기**됐다. 예산을 넘긴
+    달은 관리자가 대시보드를 가장 봐야 할 때인데 그때 화면이 비는 방향이라
+    실사용에서 가장 나빴다.
+    """
+    over = _figures(
+        expenses=[{"title": "행사비", "amount": 399000, "category": "행사_활동",
+                   "date": "2026-07-10", "status": "APPROVED"}],
+        budget={"total_budget": 300000, "spent": 399000},
+    )
+    assert over.remaining == -99000, "이 케이스는 잔액이 음수여야 의미가 있다"
+    doc = DashboardSummaryDoc(
+        figures=over, verified=False,
+        message="이번 달 지출은 399,000원으로 남은 예산은 -99,000원입니다.")
+    assert verify_summary_pure(doc) is True
+
+
+def test_verifier_still_rejects_invented_negative_money():
+    """마이너스를 허용했다고 아무 음수나 통과하면 안 된다 — 환각 방어는 그대로."""
+    over = _figures(budget={"total_budget": 300000, "spent": 399000})
+    doc = DashboardSummaryDoc(
+        figures=over, verified=False, message="남은 예산은 -12,345원입니다.")
+    assert verify_summary_pure(doc) is False
+
+
 def test_verifier_allows_category_amounts():
     assert verify_summary_pure(_doc(
         "IT/인프라가 180,000원으로 가장 큽니다.")) is True

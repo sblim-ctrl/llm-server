@@ -20,7 +20,7 @@ def _receipt_opinion(receipt: ReceiptData | None, claim: ExpenseClaim,
     """증빙 심사관 소견 (순수 함수) — 표시 전용. 가드레일 판단과 의미를 맞춘다."""
     if receipt is None or not receipt.parse_ok:
         return Opinion(
-            auditor="receipt", verdict="warn",
+            auditor="evidence", verdict="warn",
             summary=("영수증을 판독하지 못했습니다 — 관리자 확인이 필요합니다."
                      if receipt is not None
                      else "영수증이 첨부되지 않았습니다 — 관리자 확인이 필요합니다."),
@@ -47,13 +47,13 @@ def _receipt_opinion(receipt: ReceiptData | None, claim: ExpenseClaim,
             for m in mismatches
         )
         return Opinion(
-            auditor="receipt", verdict="fail",
+            auditor="evidence", verdict="fail",
             summary=f"영수증과 청구 내용이 일치하지 않습니다 — {detail}",
             evidence=[detail, *evidence], figures=figures,
         )
     where = f" — {receipt.merchant}" if receipt.merchant else ""
     return Opinion(
-        auditor="receipt", verdict="pass",
+        auditor="evidence", verdict="pass",
         summary=f"영수증이 청구 내용과 일치합니다 (금액 {claim.amount:,}원){where}.",
         evidence=evidence, figures=figures,
     )
@@ -74,7 +74,7 @@ async def mismatch_gate(state: ReviewState) -> dict:
             mismatches.append(Mismatch(field="date", claimed=claim.date, receipt=receipt.date))
 
     return {"mismatch": mismatches,
-            "opinions": {"receipt": _receipt_opinion(receipt, claim, mismatches)}}
+            "opinions": {"evidence": _receipt_opinion(receipt, claim, mismatches)}}
 
 
 AUDITORS = ["rule_auditor", "budget_auditor", "precedent_auditor"]
