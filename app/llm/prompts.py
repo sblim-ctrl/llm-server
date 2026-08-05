@@ -80,9 +80,25 @@ DEFAULT_VERSIONS = {
                              #  백엔드 추출 텍스트에는 상호·품목이 없는 경우가 흔해서
                              #  운영 자동 처리율을 통째로 죽이는 결함이었다.
     "precedent_auditor": "v3",
-    "digest_writer": "v2",   # sblim판 — few_shot 자기모순·검증 누락 해소
-    "policy_drafter": "v2",  # sblim판 — 빈 few_shot 해소 + 금액 정책 상호 명시
-    "dashboard_writer": "v2",  # 수치 과장 표현 차단 — 실모드 승격(2026-08-04, 2회 재현).
+    "digest_writer": "v3",   # sblim v2 + advice 계약 복구 (PR #9 리뷰 D2). v2는 코드가
+                             #  필수로 요구하는 advice를 system·few_shot 어디에서도 언급하지
+                             #  않아, 목 모드에서만 _mock_advice로 가려지고 실모드에서
+                             #  verify_digest_pure에 걸려 전건 폐기될 상태였다.
+                             #  few_shot input도 런타임 compact 직렬화에 맞췄다.
+    "policy_drafter": "v3",  # sblim v2 + cowbro v2의 분량·문체 지침 이식 (PR #9 리뷰 D6).
+                             #  상한을 코드 MAX_EXTRA_RULES=7과 일치시켰다 — v2는 프롬프트가
+                             #  "최대 3개"라 실효 상한이 3이었다. few_shot 출력 건수도 함께
+                             #  늘렸다(규칙보다 예시가 세다 — 지침만 얹으면 예시가 이긴다).
+    "dashboard_writer": "v2",  # ⚠️ v3가 존재하지만 **의도적으로 승격하지 않았다.**
+                             #  v3 = v2 + few_shot input을 런타임 compact 직렬화에 정합화
+                             #  (digest_writer D2 ②와 같은 결함이 여기에도 있다). 다만 v2의
+                             #  과장 차단은 여러 줄 입력 상태에서 2회 재현으로 승격한 것이라,
+                             #  형식을 바꾸면 그 실측 근거가 그대로 적용되지 않는다.
+                             #  "실측으로 재현된 개선만 승격" 규율에 따라 재측정 라운드에서
+                             #  v2·v3를 비교한 뒤 정한다. 같은 형식 불일치가
+                             #  briefing_writer·report_writer·judge에도 남아 있다(전부 기본값).
+                             # ── 아래는 v2 이력 ──
+                             #  수치 과장 표현 차단 — 실모드 승격(2026-08-04, 2회 재현).
                              #  v1은 95% 사용·10,000원 잔여를 "전체 예산을 모두
                              #  사용했어요"로 썼다. 숫자가 맞아서 verify_summary_pure가
                              #  못 잡는다(검증기는 토큰만 보고 서술의 과장은 못 본다).
