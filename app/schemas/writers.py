@@ -49,9 +49,42 @@ class PolicyDraft(BaseModel):
 
     rules: list[str]  # 회칙 초안 (조항 단위 — 그대로 인덱싱 가능)
     policy_params: PolicyParamsSuggestion
-    # 유형별 고정 카테고리 6개 (마법사 ①단계 "AI가 카테고리 추천" — 신규 생성 없음)
+    # 전역 고정 카테고리 9종 (마법사 ①단계 "AI가 카테고리 추천" — 신규 생성 없음)
     recommended_categories: list[str] = []
     notes: str = ""
+
+
+class PolicyProposalRequest(PolicyDraftRequest):
+    """회칙·정책 관리 화면의 초안 요청 (풀스택 협의 2026-08-04 7번).
+
+    입력은 마법사 3단계와 같다 — 초안을 만드는 재료가 달라질 이유가 없다. 다른 것은
+    결과를 `proposals`에 남긴다는 점과, 이미 있으면 재사용한다는 점이다.
+    """
+
+    team_id: BigIntId
+    # true면 미결정 초안이 있어도 새로 만든다. 관리자가 '다시 생성'을 눌렀을 때만 쓴다 —
+    # 기본이 재사용인 이유는 화면을 새로 고칠 때마다 회칙이 바뀌면 안 되기 때문이다
+    # (LLM은 부를 때마다 다른 문장을 낸다).
+    regenerate: bool = False
+
+    def to_draft_request(self) -> "PolicyDraftRequest":
+        return PolicyDraftRequest(
+            team_type=self.team_type, team_name=self.team_name,
+            initial_budget=self.initial_budget, member_count=self.member_count,
+            description=self.description, dues=self.dues,
+        )
+
+
+class PolicyProposal(BaseModel):
+    """저장된 회칙 초안. 승인·거절은 PATCH /v1/proposals/{proposalId}로 기록한다."""
+
+    proposal_id: str
+    team_id: BigIntId
+    status: str          # proposed | accepted | dismissed
+    draft: PolicyDraft
+    # true면 새로 만들지 않고 저장돼 있던 초안을 돌려준 것이다. 화면에서 '방금 생성'과
+    # '이전에 만든 것'을 구분해 보여주실 때 쓰시면 된다.
+    reused: bool = False
 
 
 # ── ReportWriter + 예산 추천 (REQ-019) ───────────────────

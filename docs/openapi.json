@@ -704,6 +704,115 @@
         "title": "PolicyParamsSuggestion",
         "type": "object"
       },
+      "PolicyProposal": {
+        "description": "저장된 회칙 초안. 승인·거절은 PATCH /v1/proposals/{proposalId}로 기록한다.",
+        "properties": {
+          "draft": {
+            "$ref": "#/components/schemas/PolicyDraft"
+          },
+          "proposal_id": {
+            "title": "Proposal Id",
+            "type": "string"
+          },
+          "reused": {
+            "default": false,
+            "title": "Reused",
+            "type": "boolean"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "team_id": {
+            "description": "양의 백엔드 BIGINT 기본키",
+            "format": "int64",
+            "title": "Team Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "proposal_id",
+          "team_id",
+          "status",
+          "draft"
+        ],
+        "title": "PolicyProposal",
+        "type": "object"
+      },
+      "PolicyProposalRequest": {
+        "description": "회칙·정책 관리 화면의 초안 요청 (풀스택 협의 2026-08-04 7번).\n\n입력은 마법사 3단계와 같다 — 초안을 만드는 재료가 달라질 이유가 없다. 다른 것은\n결과를 `proposals`에 남긴다는 점과, 이미 있으면 재사용한다는 점이다.",
+        "properties": {
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "dues": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "1인당 회비. None·0 = 없음",
+            "title": "Dues"
+          },
+          "initial_budget": {
+            "description": "원 단위 총액",
+            "exclusiveMinimum": 0.0,
+            "title": "Initial Budget",
+            "type": "integer"
+          },
+          "member_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Member Count"
+          },
+          "regenerate": {
+            "default": false,
+            "title": "Regenerate",
+            "type": "boolean"
+          },
+          "team_id": {
+            "description": "양의 백엔드 BIGINT 기본키",
+            "format": "int64",
+            "title": "Team Id",
+            "type": "integer"
+          },
+          "team_name": {
+            "title": "Team Name",
+            "type": "string"
+          },
+          "team_type": {
+            "enum": [
+              "동아리/학생회",
+              "스터디",
+              "친목",
+              "동호회",
+              "회사"
+            ],
+            "title": "Team Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "team_type",
+          "team_name",
+          "initial_budget",
+          "team_id"
+        ],
+        "title": "PolicyProposalRequest",
+        "type": "object"
+      },
       "PrecedentCreate": {
         "properties": {
           "claim": {
@@ -1307,6 +1416,7 @@
     },
     "/v1/policy-draft": {
       "post": {
+        "description": "마법사 3단계 — 회칙 초안을 만들어 그 자리에서 돌려준다 (저장 없음).",
         "operationId": "create_policy_draft_v1_policy_draft_post",
         "requestBody": {
           "content": {
@@ -1388,6 +1498,97 @@
         "summary": "마법사 2단계 승인 정책이 심사에 어떻게 적용되는지 조회",
         "tags": [
           "policy"
+        ]
+      }
+    },
+    "/v1/policy-proposals": {
+      "get": {
+        "description": "아직 결정되지 않은 회칙 초안을 돌려준다. 없으면 `null`이다.\n\n회의록의 \"생성된 메시지가 있으면 반환, 없으면 없다고 반환\"이 이 동작이다.\n404가 아니라 200 + `null`인 이유: '초안이 아직 없음'은 오류가 아니라 정상 상태이고,\n화면은 그때 \"AI 초안 생성하기\" 버튼을 보여주면 된다.",
+        "operationId": "read_policy_proposal_v1_policy_proposals_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "title": "Team Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PolicyProposal"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Read Policy Proposal V1 Policy Proposals Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "저장된 회칙 초안 조회 (없으면 null)",
+        "tags": [
+          "drafts"
+        ]
+      },
+      "post": {
+        "description": "회칙 초안을 만들어 `proposals`에 남기고 돌려준다.\n\n아직 결정되지 않은 초안이 이미 있으면 **새로 만들지 않고 그것을 돌려준다**\n(`reused=true`). 관리자가 버튼을 다시 눌렀을 때 회칙이 바뀌면 안 되기 때문이다.\n일부러 새로 만들려면 `regenerate=true`를 주시면 된다 — 그때는 이전 초안을 그대로\n두고 새 제안을 하나 더 만든다(이력이 남는다).\n\n관리자가 확인한 뒤에는 `PATCH /v1/proposals/{proposalId}`로 `accepted`·`dismissed`를\n기록해 주시면 된다. 승인된 회칙을 백엔드가 저장하신 다음에는\n`POST /v1/context/refresh`를 보내 주셔야 심사에 반영된다 — 그 알림이 없으면\n회칙을 등록해도 AI는 계속 모르는 상태다.",
+        "operationId": "create_policy_proposal_v1_policy_proposals_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PolicyProposalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicyProposal"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "회칙 초안 생성·저장 (회칙·정책 관리 화면)",
+        "tags": [
+          "drafts"
         ]
       }
     },
