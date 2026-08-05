@@ -16,6 +16,7 @@ from app.config import get_settings
 from app.db.pool import apply_schema, close_pool, finish_job, get_pool, open_pool
 from app.graphs.indexing.graph import indexing_graph
 from app.graphs.review.graph import build_review_graph
+from app.graphs.review.nodes.callback import trace_meta
 from app.observability import langsmith_config, setup_langsmith
 from app.graphs.writers.briefing import briefing_graph
 
@@ -46,14 +47,18 @@ INDEXABLE_CHANGE_TYPES = {"rule", "category"}
 async def run_context_refresh_job(job: dict[str, Any]) -> tuple[dict[str, Any], None]:
     req = ContextRefreshRequest.model_validate(job["payload"])
     if req.change_type not in INDEXABLE_CHANGE_TYPES:
-        return {"status": "skipped",
-                "reason": f"non-indexable change_type: {req.change_type}"}, None
+        return {
+            "status": "skipped",
+            "reason": f"non-indexable change_type: {req.change_type}",
+        }, None
 
-    final_state = await indexing_graph.ainvoke({
-        "team_id": req.team_id,
-        "doc_type": req.change_type,
-        "version": req.version,
-    })
+    final_state = await indexing_graph.ainvoke(
+        {
+            "team_id": req.team_id,
+            "doc_type": req.change_type,
+            "version": req.version,
+        }
+    )
     # 인덱싱 그래프는 llm_meta가 없음 — 계측 대상 아님 → final_state 대신 None
     return {"status": "indexed", "chunks_indexed": final_state.get("chunks_indexed", 0)}, None
 
@@ -69,8 +74,8 @@ async def run_review_job(job: dict[str, Any]) -> tuple[dict[str, Any], dict[str,
     # pull 모델(§0-2) — 지출 상세는 여기 없다, load_context가 백엔드에 되물어 채운다.
     # 최초 시도와 B-7 무체크포인트 재시도 방어가 같은 초기 상태를 쓴다.
     initial_state = {
-        "job_id": job_id,                    # 내부 id — thread_id·체크포인트 키
-        "external_job_id": req.job_id,       # 백엔드 발급 jobId — 콜백 echo용
+        "job_id": job_id,  # 내부 id — thread_id·체크포인트 키
+        "external_job_id": req.job_id,  # 백엔드 발급 jobId — 콜백 echo용
         "expense_id": req.expense_id,
         "team_id": req.organization_id,
         "review_goal": req.review_goal,
@@ -87,6 +92,7 @@ async def run_review_job(job: dict[str, Any]) -> tuple[dict[str, Any], dict[str,
         final_state = await _review_graph.ainvoke(None if ckpt else initial_state, config=config)
 
     reasons = final_state.get("reasons")
+    meta = trace_meta(final_state)
     result = {
         "verdict": final_state.get("verdict"),
         "confidence": final_state.get("confidence"),
@@ -95,19 +101,38 @@ async def run_review_job(job: dict[str, Any]) -> tuple[dict[str, Any], dict[str,
         # classify_category가 채운 최종 카테고리 — UI에서 분류 결과 확인용
         "category": final_state["claim"].category,
         "category_source": final_state.get("category_source"),
+        # 아래는 콜백 정제(화면_대조_2026-08-03.md) 대비 관측 보관처. 지금까지 심사관
+        # 소견·불일치·모델 버전은 콜백 페이로드에만 있었고 우리 쪽엔 남지 않았다 —
+        # 콜백에서 덜어내도 GET /v1/jobs/{id}로 되짚을 수 있어야 한다.
+        "opinions": [o.model_dump() for o in final_state.get("opinions", {}).values()],
+        "mismatch": [m.model_dump() for m in final_state.get("mismatch", [])],
+        "model_version": meta["model_version"],
+        "prompt_version": meta["prompt_version"],
+        "latency_ms": meta["latency_ms"],
+        # jobs.cost_usd 컬럼에도 기록되지만(B-7) JobStatusResponse가 그 컬럼을 노출하지
+        # 않는다 — 콜백에서 뺀 이상 여기 없으면 API로는 조회할 방법이 사라진다.
+        "cost_usd": meta["cost_usd"],
     }
     return result, final_state
 
 
 async def run_report_job(job: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    """P1-1 — ReportWriter가 이제 실LLM을 호출하므로 C9 태깅."""
     req = ReportRequest.model_validate(job["payload"])
-    final = await report_graph.ainvoke({"request": req})
+    final = await report_graph.ainvoke(
+        {"request": req},
+        config=langsmith_config("report", str(job["id"]), req.team_id),
+    )
     return final["report"].model_dump(mode="json"), final
 
 
 async def run_briefing_job(job: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    """P1-2 — BriefingWriter가 이제 실LLM을 호출하므로 C9 태깅."""
     req = BriefingRequest.model_validate(job["payload"])
-    final = await briefing_graph.ainvoke({"request": req})
+    final = await briefing_graph.ainvoke(
+        {"request": req},
+        config=langsmith_config("briefing", str(job["id"]), req.team_id),
+    )
     return final["briefing"].model_dump(mode="json"), final
 
 
@@ -133,7 +158,8 @@ async def run_digest_job(job: dict[str, Any]) -> tuple[dict[str, Any], dict[str,
 
 
 async def run_proposal_rule_amendment_job(
-        job: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    job: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
     """B-6 — 회칙 개정 제안 (작성: 개발자 B, 레지스트리 이식은 병합 시 A). C9 태깅."""
     req = RuleAmendmentRequest.model_validate(job["payload"])
     final = await rule_amendment_graph.ainvoke(
@@ -161,7 +187,7 @@ JOB_HANDLERS: dict[str, Any] = {
 def _meta_totals(final_state: dict[str, Any] | None) -> tuple[float, int, int]:
     """그래프 final_state의 llm_meta(dict[str, LLMCallMeta]) 합산 — B-7 잡 비용 계측.
 
-    llm_meta를 싣지 않는 그래프(report·briefing·context_refresh)는 0.
+    llm_meta를 싣지 않는 그래프(context_refresh)는 0.
     콜백 payload 합산(callback.py)과 같은 패턴이지만 기록 대상이 jobs 테이블이라
     파일이 다르다 (A-5와 무충돌).
     """

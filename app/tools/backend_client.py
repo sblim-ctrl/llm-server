@@ -6,6 +6,7 @@
 
 import asyncio
 import logging
+from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
@@ -14,6 +15,8 @@ import httpx
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
+
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 _http_client: httpx.AsyncClient | None = None
 
@@ -74,8 +77,10 @@ async def get_budget_status(team_id: int, category: str | None = None) -> dict[s
     [팀 확인 2026-07-09] 예산 = 모임 전체 총액. 잔액 = total_budget − spent(승인 합계).
     category는 내역 조회용 선택 파라미터 (한도 검사 기준 아님).
 
-    백엔드 표기가 DB 컬럼(used_budget)인지 프론트 API 표기(usedBudget)인지 미확정이라
-    여기 경계에서만 흡수한다 — 심사관들의 내부 계약(total_budget/spent)은 그대로 둔다.
+    응답 키 정규화: 내부 계약은 {total_budget, spent}로 고정하고 여기서만 흡수한다
+    (budget_auditor·budget_calculator는 불변). 백엔드 DB 컬럼은 `used_budget`,
+    프론트 API-026 응답은 `usedBudget`인데 내부 Agent API는 아직 미문서화라 어느
+    표기로 올지 확정 불가 — 양쪽 다 받는다 (풀스택_문서_반영사항_2026-07-27.md §3-1).
     """
     s = get_settings()
     if s.mock_backend:
@@ -276,6 +281,10 @@ async def get_team_settings(organization_id: int) -> dict[str, Any]:
     실계약에서 auto_approve 기본값은 FALSE(꺼짐) — 꺼져 있으면 금액·판단과 무관하게
     무조건 ESCALATED. 값 자체는 백엔드 DB가 진실 원천이고 우리는 읽기만 한다.
 
+    escalation_threshold는 **금액**이다 — "이 금액 초과 시 무조건 관리자 검토"
+    (풀스택 DB 스키마 team_settings, 2026-07-27 수령분 확정). 우리 PolicyParams의
+    force_escalation_amount에 대응하며, confidence_threshold(θ)와는 무관하다.
+
     목 규약: organization_id에 "noauto" 포함 → auto_approve=False (게이트 검증용).
     그 외에는 True — 골든셋·데모의 자동판정 흐름을 보존하기 위한 목 전용 기본값이며
     실서비스 기본값(False)과 다르다는 점에 주의.
@@ -303,8 +312,19 @@ async def get_receipt_by_path(receipt_path: str) -> bytes | None:
     (bravo 설계서 4절 'Agent 전용 토큰'). 목 모드에서는 None을 반환하고
     intake_receipt가 청구 일치 영수증을 생성한다(mock://receipt?... 오버라이드는
     intake 쪽 규약 그대로).
-    TODO(실키 연결 후): 반환된 bytes를 Vision OCR(parse_receipt)에 전달.
+
+    file:// 스킴은 로컬 파일을 그대로 읽어 반환한다 — 골든셋 실키 검증용
+    (eval/golden/receipts/, scripts/generate_golden_receipts.py) 실제 이미지 fixture
+    경로. 외부 호스팅 없이 Vision이 실제 픽셀 데이터를 읽도록 하기 위함이며,
+    mock_backend 여부와 무관하게 적용된다(로컬 파일은 항상 실재하므로). 상대경로는
+    저장소 루트 기준(팀원 간 절대경로 불일치 방지) — 절대경로도 그대로 허용.
     """
+    if receipt_path.startswith("file://"):
+        rel = receipt_path[len("file://") :]
+        path = Path(rel)
+        if not path.is_absolute():
+            path = _PROJECT_ROOT / rel
+        return path.read_bytes()
     s = get_settings()
     if s.mock_backend:
         return None

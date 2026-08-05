@@ -1,25 +1,39 @@
 """ReportWriter + 예산 추천 — 정산 리포트 AI 요약 (REQ-019, §4.4-c).
 
-패턴: 수집 → 결정적 집계 → 생성(요약·추천) → 검증(수치 대조, 강의 12-03
-Generator-Evaluator). 집계 수치는 코드가 계산하고 LLM은 해석·추천만 —
+패턴: 수집 → 결정적 집계 → 생성(요약) → 검증(수치 대조, 강의 12-03
+Generator-Evaluator). 집계 수치는 코드가 계산하고 LLM은 해석만 —
 생성 결과의 figures가 집계와 다르면 verified=false로 강등(환각 수치 차단).
 
 '다음번 예산 활용 추천'은 이 리포트의 recommendations 섹션으로 제공한다:
-사용률 편중·저활용 카테고리를 규칙 기반으로 감지하고, LLM(실키 연결 후)이
-문구를 다듬는다.
+사용률 편중·저활용 카테고리를 규칙 기반으로 감지한다(_recommendations). LLM은
+summary 문단만 쓴다 — recommendations는 골든셋이 정확한 문구를 대조하므로
+결정성 유지를 위해 LLM 개입 없이 규칙 기반 그대로 둔다(digest.py의 anomalies와
+동일한 분리 원칙).
 """
+
 import logging
 
 from langgraph.graph import END, START, StateGraph
+from pydantic import BaseModel
 from typing_extensions import TypedDict
 
+from app.llm.client import chat_structured
+from app.llm.prompts import load_prompt
+from app.schemas.common import LLMCallMeta
 from app.schemas.writers import BudgetReport, CategoryStat, ReportFigures, ReportRequest
 from app.tools.backend_client import get_expense_history
 
 logger = logging.getLogger(__name__)
 
-HIGH_SHARE = 0.4   # 한 카테고리가 전체의 40% 이상이면 편중 경고
-LOW_SHARE = 0.05   # 5% 미만이면 저활용 → 재배분 후보
+HIGH_SHARE = 0.4  # 한 카테고리가 전체의 40% 이상이면 편중 경고
+LOW_SHARE = 0.05  # 5% 미만이면 저활용 → 재배분 후보
+
+
+class ReportText(BaseModel):
+    """LLM 산출은 summary만 — recommendations는 규칙 기반 그대로, figures는 코드가
+    붙인다 (report_writer/v1.yaml)."""
+
+    summary: str
 
 
 class ReportState(TypedDict, total=False):
@@ -27,6 +41,7 @@ class ReportState(TypedDict, total=False):
     expenses: list[dict]
     figures: ReportFigures
     report: BudgetReport
+    llm_meta: dict[str, LLMCallMeta]  # 작성 노드가 하나뿐 — reducer 불요 (B-7 합산용)
 
 
 async def fetch_expenses(state: ReportState) -> dict:
@@ -44,13 +59,24 @@ def aggregate_pure(period: str, expenses: list[dict]) -> ReportFigures:
         s = by_cat.setdefault(e["category"], {"spent": 0, "count": 0})
         s["spent"] += e["amount"]
         s["count"] += 1
-    stats = [CategoryStat(category=c, spent=s["spent"], count=s["count"],
-                          share=(s["spent"] / total) if total else 0.0)
-             for c, s in sorted(by_cat.items(), key=lambda kv: -kv[1]["spent"])]
+    stats = [
+        CategoryStat(
+            category=c,
+            spent=s["spent"],
+            count=s["count"],
+            share=(s["spent"] / total) if total else 0.0,
+        )
+        for c, s in sorted(by_cat.items(), key=lambda kv: -kv[1]["spent"])
+    ]
     top = max(expenses, key=lambda e: e["amount"], default={"title": "-", "amount": 0})
-    return ReportFigures(period=period, total_spent=total, expense_count=len(expenses),
-                         by_category=stats, top_expense_title=top["title"],
-                         top_expense_amount=top["amount"])
+    return ReportFigures(
+        period=period,
+        total_spent=total,
+        expense_count=len(expenses),
+        by_category=stats,
+        top_expense_title=top["title"],
+        top_expense_amount=top["amount"],
+    )
 
 
 async def aggregate(state: ReportState) -> dict:
@@ -63,28 +89,47 @@ def _recommendations(figures: ReportFigures) -> list[str]:
         if cat.share >= HIGH_SHARE:
             recs.append(
                 f"'{cat.category}' 지출이 전체의 {cat.share:.0%}로 편중 — 다음 달 한도 상향을 검토하거나 "
-                f"회당 상한을 정해 분산하는 것을 권장합니다.")
+                f"회당 상한을 정해 분산하는 것을 권장합니다."
+            )
         elif cat.share <= LOW_SHARE and cat.spent > 0:
             recs.append(
                 f"'{cat.category}'는 사용률이 낮습니다({cat.share:.0%}) — 예산 일부를 수요가 큰 카테고리로 "
-                f"재배분할 수 있습니다.")
+                f"재배분할 수 있습니다."
+            )
     if figures.top_expense_amount > 0:
         recs.append(
             f"최대 단건 지출은 '{figures.top_expense_title}' {figures.top_expense_amount:,}원 — "
-            f"유사 건은 사전 공유 후 집행하면 심사 지연을 줄일 수 있습니다.")
+            f"유사 건은 사전 공유 후 집행하면 심사 지연을 줄일 수 있습니다."
+        )
     return recs or ["지출 패턴에 특이사항이 없습니다. 현재 배분을 유지하세요."]
 
 
-async def generate_report(state: ReportState) -> dict:
-    """요약·추천 생성. 목 모드: 결정적 문장. TODO(실키): gpt-4o-mini가 문구 생성
-    (단, 수치는 figures에서만 인용하도록 프롬프트 강제 + verify가 대조)."""
-    f = state["figures"]
+def _mock_report_text(f: ReportFigures) -> ReportText:
+    """목 모드 결정적 문구 — 기존 하드코딩 문장과 동일 (verify가 요구하는 수치 전부 포함)."""
     cat_line = ", ".join(f"{c.category} {c.spent:,}원({c.share:.0%})" for c in f.by_category)
-    summary = (f"{f.period} 총 지출 {f.total_spent:,}원 ({f.expense_count}건). "
-               f"카테고리별: {cat_line}.")
-    report = BudgetReport(figures=f, summary=summary,
-                          recommendations=_recommendations(f), verified=False)
-    return {"report": report}
+    summary = (
+        f"{f.period} 총 지출 {f.total_spent:,}원 ({f.expense_count}건). 카테고리별: {cat_line}."
+    )
+    return ReportText(summary=summary)
+
+
+async def generate_report(state: ReportState) -> dict:
+    """요약 생성 — gpt-4o-mini가 summary 문구를 쓰되 수치는 figures에서만 인용
+    (프롬프트 강제) + verify가 대조. recommendations는 규칙 기반 그대로 유지."""
+    f = state["figures"]
+    spec = load_prompt("report_writer")
+    result, meta = await chat_structured(
+        agent="report_writer",
+        system=spec.system_with_few_shot(),
+        user=f.model_dump_json(),  # figures만 전달 — 수치 출처 강제
+        schema=ReportText,
+        mock_response=_mock_report_text(f),
+        prompt_version=spec.version,
+    )
+    report = BudgetReport(
+        figures=f, summary=result.summary, recommendations=_recommendations(f), verified=False
+    )
+    return {"report": report, "llm_meta": {"report_writer": meta}}
 
 
 def verify_report_pure(report: BudgetReport, figures: ReportFigures) -> bool:

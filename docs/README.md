@@ -27,6 +27,9 @@ BudgetOps LLM 서버 연동에 필요한 문서는 다섯 개입니다. 아래 �
 ```
 
 콜백 수신 엔드포인트(`POST /agent-callback`)는 백엔드에서 만들어 주셔야 합니다.
+**모든 요청에 인증이 필요합니다** — `Authorization: Bearer <SERVICE_TOKEN>`
+(면제는 `/healthz` · `/readyz` · `/docs` · `/redoc` · `/openapi.json` · `/ui` 6개뿐 —
+문서 1번 §1 참조)
 
 모든 요청에 `Authorization: Bearer <SERVICE_TOKEN>` 헤더가 필요합니다. `/healthz`,
 `/readyz`, `/docs`, `/ui`는 예외입니다.

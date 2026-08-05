@@ -6,8 +6,8 @@ CREATE EXTENSION IF NOT EXISTS vector;
 -- 비동기 잡 (ADR-4)
 CREATE TABLE IF NOT EXISTS jobs (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    -- 백엔드가 발급한 jobId (pull 모델) — 형식(UUID 여부) 미확정이라 TEXT 별도 컬럼으로
-    -- 매핑. 콜백은 이 값을 echo하고, 백엔드 폴링 조회(GET /v1/jobs/{id})도 이 값 허용.
+    -- 백엔드가 발급한 jobId (pull 모델, string UUID 확정) — TEXT 별도 컬럼으로 매핑.
+    -- 콜백은 이 값을 echo하고, 백엔드 폴링 조회(GET /v1/jobs/{id})도 이 값 허용.
     external_job_id TEXT,
     expense_id   BIGINT,
     team_id      BIGINT NOT NULL,
@@ -136,6 +136,8 @@ BEGIN
 END $$;
 CREATE INDEX IF NOT EXISTS idx_proposals_team_status ON proposals (team_id, status);
 
--- HNSW 인덱스는 데이터가 쌓인 뒤 생성 (2주차):
--- CREATE INDEX ON context_chunks USING hnsw (embedding vector_cosine_ops);
--- CREATE INDEX ON precedents USING hnsw (embedding vector_cosine_ops);
+-- HNSW 인덱스 (pgvector) — 빈 테이블에도 생성 가능하여 이제 적용
+CREATE INDEX IF NOT EXISTS idx_context_chunks_embedding_hnsw
+    ON context_chunks USING hnsw (embedding vector_cosine_ops);
+CREATE INDEX IF NOT EXISTS idx_precedents_embedding_hnsw
+    ON precedents USING hnsw (embedding vector_cosine_ops);

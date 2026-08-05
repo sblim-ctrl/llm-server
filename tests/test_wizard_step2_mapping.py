@@ -115,15 +115,17 @@ def test_limit_boundary_is_strictly_greater_than():
 async def test_status_endpoint_agrees_with_review_path():
     """GET /v1/policy-params/status와 심사 경로가 같은 해석을 내놓는다.
 
-    화면이 보는 값과 심사가 쓰는 값이 갈리면 2026-07-31 사고가 재현된다. 지금은
-    load_context가 자기 사본을 갖고 있어 해석이 두 벌이라(브랜치 통합 후 일원화 예정)
-    이 테스트가 유일한 안전장치다 — 한쪽만 바뀌면 여기서 잡힌다.
+    화면이 보는 값과 심사가 쓰는 값이 갈리면 2026-07-31 사고가 재현된다. 아직
+    load_context가 자기 사본을 갖고 있어 해석이 두 벌이므로 이 테스트가 안전장치다 —
+    한쪽만 바뀌면 여기서 잡힌다.
     """
     cases = [
         {"auto_approve": True, "auto_approve_limit": 50_000, "escalation_threshold": 200_000},
         {"auto_approve": True, "auto_approve_limit": None, "escalation_threshold": 200_000},
         {"auto_approve": False, "auto_approve_limit": 150_000, "escalation_threshold": 300_000},
         {"auto_approve": True, "auto_approve_limit": 90_000},          # 고액 기준 누락
+        {"auto_approve": True},                                        # 한도 키 자체가 없음
+        {},                                                            # 전부 없음
     ]
     for raw in cases:
         assert map_team_settings(raw) == await _policy_from(raw), f"해석이 갈렸다: {raw}"
@@ -132,27 +134,18 @@ async def test_status_endpoint_agrees_with_review_path():
     assert map_team_settings(None) == await _policy_from(RuntimeError("down"))
 
 
-async def test_missing_limit_key_currently_allows_auto_approval():
-    """알려진 분기 — `auto_approve_limit` 키가 아예 없을 때 두 경로가 다르다.
+async def test_missing_limit_key_is_safe_after_merge():
+    """`auto_approve_limit` 키가 아예 없으면 0 — 전건 관리자 확인.
 
-    현행 cowbro `load_context`는 `.get(key, 기본값 50_000)`이라 **키 자체가 없으면**
-    5만원까지 자동 승인한다. 키가 있고 값만 `null`인 경우(0으로 처리)와 다르게 동작한다.
-    백엔드가 이 필드를 빠뜨리면 조용히 자동 승인이 열리므로 §8("어떤 실패도 자동
-    승인으로 이어지지 않는다")에 어긋난다.
+    브랜치 통합 전 cowbro는 `.get(key, 기본값 50_000)`이라 **키 자체가 없으면**
+    5만원까지 자동 승인했다. 백엔드가 필드를 빠뜨리면 조용히 자동 승인이 열리므로
+    §8("어떤 실패도 자동 승인으로 이어지지 않는다")에 어긋났다.
 
-    sblim판 load_context는 누락과 null을 똑같이 0으로 본다. 브랜치 통합 시 sblim판이
-    채택되므로 이 분기는 머지로 해소된다 — `map_team_settings`는 이미 안전한 쪽이다.
-    지금 cowbro 쪽을 고치면 없던 머지 충돌이 생겨 손대지 않았다.
-
-    머지 후 이 테스트는 실패한다. 그때 위 동등성 테스트의 cases에 `{}`를 넣고 이
-    테스트를 지우면 된다.
+    2026-08-04 통합에서 sblim판 load_context(누락과 null을 똑같이 0으로 봄)가 채택돼
+    해소됐다. 되돌아가지 않도록 고정한다.
     """
-    safe = map_team_settings({"auto_approve": True})
-    current = await _policy_from({"auto_approve": True})
-
-    assert safe.auto_approve_limit == 0            # 안전 방향 (sblim·신규 모듈)
-    assert current.auto_approve_limit == 50_000    # 현행 cowbro 심사 경로
-    assert safe != current, "머지가 끝난 듯하다 — 이 테스트를 제거할 것"
+    assert (await _policy_from({"auto_approve": True})).auto_approve_limit == 0
+    assert (await _policy_from({})).auto_approve_limit == 0
 
 
 async def test_status_endpoint_exposes_effective_limit():

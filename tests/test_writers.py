@@ -8,7 +8,7 @@ from app.graphs.writers.policy_draft import (
     load_templates,
     verify_draft_pure,
 )
-from app.graphs.writers.report import aggregate_pure, verify_report_pure
+from app.graphs.writers.report import aggregate_pure, generate_report, verify_report_pure
 from app.schemas.writers import (
     BudgetReport,
     PolicyDraft,
@@ -250,3 +250,10 @@ def test_report_verification_passes_when_figures_match():
     text = f"총 지출 {f.total_spent:,}원 (2건). 식비 {80_000:,}원, 도서 {20_000:,}원"
     good = BudgetReport(figures=f, summary=text, recommendations=[], verified=False)
     assert verify_report_pure(good, f) is True
+
+
+async def test_generated_report_passes_verification():
+    f = aggregate_pure("2026-06", EXPENSES)
+    state = await generate_report({"figures": f})
+    assert verify_report_pure(state["report"], f) is True
+    assert state["llm_meta"]["report_writer"].mock is True  # 목 모드 계측 확인 (B-7 재료)

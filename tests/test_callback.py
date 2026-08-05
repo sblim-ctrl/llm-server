@@ -1,5 +1,5 @@
 """콜백 페이로드 — camelCase 직렬화 + suggestedCategory 매핑 (bravo_API명세서 정합)."""
-from app.graphs.review.nodes.callback import build_callback_payload
+from app.graphs.review.nodes.callback import build_callback_payload, trace_meta
 from app.schemas.common import ExpenseClaim
 
 
@@ -48,18 +48,20 @@ def test_internal_job_id_fallback_without_external():
     assert build_callback_payload(_state()).job_id == "job-1"
 
 
-# ── llm_meta 실측치 반영 (B2→B4) ─────────────────────────
+# ── llm_meta 실측치 (B2→B4) ─────────────────────────
+# 2026-08-03부터 콜백이 아니라 jobs.result에 실린다 (화면_대조_2026-08-03 §4) —
+# 계산 자체는 trace_meta가 그대로 하므로 검증 대상을 그쪽으로 옮겼다.
 
 
-def test_meta_fields_default_when_adjudicate_skipped():
+def test_trace_meta_defaults_when_adjudicate_skipped():
     """escalate 직행 경로(가드레일 차단 등) — llm_meta에 adjudicator 없음 → 기본값, 크래시 금지."""
-    payload = build_callback_payload(_state())
-    assert payload.model_version == "mock"
-    assert payload.prompt_version == "review/v1"
-    assert payload.cost_usd == 0.0
+    meta = trace_meta(_state())
+    assert meta["model_version"] == "mock"
+    assert meta["prompt_version"] == "review/v1"
+    assert meta["cost_usd"] == 0.0
 
 
-def test_meta_fields_filled_from_llm_meta():
+def test_trace_meta_filled_from_llm_meta():
     from app.schemas.common import LLMCallMeta
     state = _state()
     state["llm_meta"] = {
@@ -68,11 +70,18 @@ def test_meta_fields_filled_from_llm_meta():
                                    cost_usd=0.002),
     }
     state["started_at"] = 100.0  # time.time() 대비 과거 → latency_ms > 0
-    payload = build_callback_payload(state)
-    assert payload.model_version == "gpt-4o"
-    assert payload.prompt_version == "adjudicator/v1"
-    assert payload.cost_usd == 0.003  # 전체 호출 합산
-    assert payload.latency_ms > 0
+    meta = trace_meta(state)
+    assert meta["model_version"] == "gpt-4o"
+    assert meta["prompt_version"] == "adjudicator/v1"
+    assert meta["cost_usd"] == 0.003  # 전체 호출 합산
+    assert meta["latency_ms"] > 0
+
+
+def test_observability_fields_are_not_sent_to_backend():
+    """관측 4종은 어느 화면에도 안 쓰여 콜백에서 뺐다 — 다시 새어나가지 않도록 고정."""
+    dumped = build_callback_payload(_state()).model_dump(mode="json", by_alias=True)
+    for key in ("modelVersion", "promptVersion", "costUsd", "latencyMs"):
+        assert key not in dumped
 
 
 # ── processedBy = '최종 처리를 누가 했는가' (팀 결정 2026-07-31) ──

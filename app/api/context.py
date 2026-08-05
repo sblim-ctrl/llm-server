@@ -9,6 +9,7 @@
 심사는 회칙 없이(기본 정책 모드로) 돌아가고, 아무도 눈치채지 못한다. 조용한 실패라
 더 나쁘다.
 """
+
 from fastapi import APIRouter
 
 from app.db.pool import get_context_status, insert_job

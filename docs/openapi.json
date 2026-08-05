@@ -981,6 +981,12 @@
         "title": "ValidationError",
         "type": "object"
       }
+    },
+    "securitySchemes": {
+      "ServiceToken": {
+        "scheme": "bearer",
+        "type": "http"
+      }
     }
   },
   "info": {
@@ -1003,6 +1009,7 @@
             "description": "Successful Response"
           }
         },
+        "security": [],
         "summary": "Healthz",
         "tags": [
           "health"
@@ -1044,6 +1051,7 @@
             "description": "Validation Error"
           }
         },
+        "security": [],
         "summary": "Readyz",
         "tags": [
           "health"
@@ -1854,5 +1862,10 @@
         "summary": "Resume Review"
       }
     }
-  }
+  },
+  "security": [
+    {
+      "ServiceToken": []
+    }
+  ]
 }

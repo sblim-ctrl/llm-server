@@ -6,17 +6,21 @@ from app.llm.prompts import DEFAULT_VERSIONS, load_prompt
 
 AGENTS = [
     "adjudicator",
+    "briefing_writer",
     "budget_planner",
     "classifier",
+    "dashboard_writer",
+    "default_policy",
     "digest_writer",
     "intake",
     "judge",
     "policy_drafter",
     "precedent_auditor",
     "query_rewriter",
+    "report_writer",
     "rule_amendment",
     "rule_auditor",
-]  # 11종 union — B-5 크로스 수정(C3) + A-7 digest_writer + judge + query_rewriter(CRAG)
+]  # 15종 전수 — prompts/ 하위 에이전트 디렉터리와 1:1 (브랜치 통합 합집합)
 
 
 @pytest.mark.parametrize("agent", AGENTS)
@@ -44,6 +48,24 @@ def test_empty_few_shot_returns_system_unchanged():
 
 def test_load_prompt_is_cached():
     assert load_prompt("adjudicator") is load_prompt("adjudicator")
+
+
+def test_every_prompt_yaml_loads_and_is_consistent():
+    """prompts/*/*.yaml 전수 — 미승격 신규 버전 파일도 로드·C3 계약(4키·version 정합) 검증."""
+    import yaml
+
+    from app.llm.prompts import _PROMPTS_DIR
+
+    files = sorted(_PROMPTS_DIR.glob("*/*.yaml"))
+    assert files, "prompts/ 하위에 YAML이 없음"
+    for path in files:
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        assert data["version"] == f"{path.parent.name}/{path.stem}", path
+        assert data["system"].strip(), path
+        few_shot = data.get("few_shot") or []
+        assert isinstance(few_shot, list), path
+        for ex in few_shot:
+            assert "input" in ex and "output" in ex, path
 
 
 def test_env_override_selects_version(monkeypatch, tmp_path):
