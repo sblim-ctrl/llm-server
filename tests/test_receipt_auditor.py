@@ -21,8 +21,8 @@ async def _run(receipt: ReceiptData | None) -> dict:
 
 async def test_matching_receipt_gives_pass_opinion():
     result = await _run(ReceiptData(amount=32_000, date="2026-07-01", parse_ok=True))
-    op = result["opinions"]["receipt"]
-    assert op.auditor == "receipt"
+    op = result["opinions"]["evidence"]
+    assert op.auditor == "evidence"
     assert op.verdict == "pass"
     assert "32,000원" in op.summary
     assert op.figures == {"claimed_amount": 32_000, "receipt_amount": 32_000}
@@ -35,7 +35,7 @@ async def test_merchant_appears_in_summary_and_evidence():
     """상호명을 읽었으면 소견에 드러난다 — 관리자가 무엇을 보고 판단했는지 알 수 있게."""
     result = await _run(ReceiptData(amount=32_000, date="2026-07-01", merchant="교보문고 광화문점",
                                     items=["알고리즘 교재"], parse_ok=True))
-    op = result["opinions"]["receipt"]
+    op = result["opinions"]["evidence"]
     assert "교보문고 광화문점" in op.summary
     read = " ".join(op.evidence)
     assert "교보문고 광화문점" in read
@@ -46,7 +46,7 @@ async def test_merchant_appears_in_summary_and_evidence():
 async def test_no_merchant_still_reads_cleanly():
     """상호명을 못 읽어도 문장이 어색해지지 않는다."""
     result = await _run(ReceiptData(amount=32_000, date="2026-07-01", parse_ok=True))
-    op = result["opinions"]["receipt"]
+    op = result["opinions"]["evidence"]
     assert op.summary.endswith("일치합니다 (금액 32,000원).")
     assert "상호" not in " ".join(op.evidence)
 
@@ -55,7 +55,7 @@ async def test_mismatch_keeps_both_reason_and_read_values():
     """불일치일 때도 읽은 값이 함께 남아야 관리자가 대조할 수 있다."""
     result = await _run(ReceiptData(amount=25_000, date="2026-07-01",
                                     merchant="○○마트", parse_ok=True))
-    op = result["opinions"]["receipt"]
+    op = result["opinions"]["evidence"]
     assert op.verdict == "fail"
     joined = " ".join(op.evidence)
     assert "청구 32000" in joined and "영수증 25000" in joined   # 불일치 사유
@@ -65,7 +65,7 @@ async def test_mismatch_keeps_both_reason_and_read_values():
 async def test_amount_mismatch_gives_fail_opinion_with_both_numbers():
     """관리자가 화면에서 '무엇이 어긋났는지' 바로 읽을 수 있어야 한다."""
     result = await _run(ReceiptData(amount=25_000, date="2026-07-01", parse_ok=True))
-    op = result["opinions"]["receipt"]
+    op = result["opinions"]["evidence"]
     assert op.verdict == "fail"
     assert "금액" in op.summary and "32000" in op.summary and "25000" in op.summary
     assert op.figures["claimed_amount"] == 32_000
@@ -76,7 +76,7 @@ async def test_amount_mismatch_gives_fail_opinion_with_both_numbers():
 async def test_unreadable_receipt_gives_warn_not_fail():
     """판독 불능은 '불일치'가 아니다 — mismatch 리스트는 비어 있어야 한다 (§8 경로 유지)."""
     result = await _run(ReceiptData(amount=None, date=None, parse_ok=False))
-    op = result["opinions"]["receipt"]
+    op = result["opinions"]["evidence"]
     assert op.verdict == "warn"
     assert "판독" in op.summary
     assert result["mismatch"] == []
@@ -84,7 +84,7 @@ async def test_unreadable_receipt_gives_warn_not_fail():
 
 async def test_missing_receipt_says_not_attached():
     result = await _run(None)
-    op = result["opinions"]["receipt"]
+    op = result["opinions"]["evidence"]
     assert op.verdict == "warn"
     assert "첨부" in op.summary
     assert result["mismatch"] == []
@@ -92,7 +92,7 @@ async def test_missing_receipt_says_not_attached():
 
 async def test_date_mismatch_is_detected():
     result = await _run(ReceiptData(amount=32_000, date="2026-06-30", parse_ok=True))
-    assert result["opinions"]["receipt"].verdict == "fail"
+    assert result["opinions"]["evidence"].verdict == "fail"
     assert [m.field for m in result["mismatch"]] == ["date"]
 
 
@@ -116,7 +116,7 @@ def test_receipt_opinion_is_not_a_required_auditor():
     누락 심사관 검사(REQUIRED_AUDITORS)에도 들어가지 않아야 한다 — 판정 권한 없음.
     """
     with_receipt = {**OTHERS,
-                    "receipt": Opinion(auditor="receipt", verdict="fail", summary="불일치")}
+                    "evidence": Opinion(auditor="evidence", verdict="fail", summary="불일치")}
     gate = evaluate_guardrails(opinions=with_receipt, mismatch=[], policy=POLICY, amount=32_000)
     assert gate.decision == "proceed"          # 소견만으로는 아무 일도 없다
 

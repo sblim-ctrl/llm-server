@@ -75,7 +75,7 @@ class Opinion(BaseModel):
     # 증빙 심사관 추가). **판정 권한은 없다** — 가드레일은 기존대로 mismatch 리스트를
     # 보고 escalate를 결정하고, 이 소견은 화면에 근거를 보여주기 위한 표현이다.
     # 그래서 REQUIRED_AUDITORS(누락 시 에스컬레이션)에도 넣지 않는다.
-    auditor: Literal["rule", "budget", "precedent", "receipt"]
+    auditor: Literal["rule", "budget", "precedent", "evidence"]
     verdict: AuditorVerdict
     summary: str
     evidence: list[str] = []  # rule: 근거 조항

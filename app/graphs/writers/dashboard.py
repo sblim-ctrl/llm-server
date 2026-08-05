@@ -168,8 +168,21 @@ async def generate(state: DashboardState) -> dict:
 
 # ── 검증 (순수 함수) ──────────────────────────────────────────────────────
 
-_MONEY_RE = re.compile(r"[\d,]*\d원")
+# 앞의 마이너스를 포함해 잡는다. 없으면 예산 초과(잔액 음수) 시 본문의 "-99,000원"에서
+# "99,000원"만 뽑혀 허용 목록("-99,000원")과 어긋나고, **요약이 항상 verified=false로
+# 강등된다**. 예산 초과는 관리자가 대시보드를 가장 봐야 할 때인데 그때 화면이 비는
+# 셈이라 실사용에서 가장 나쁜 방향이었다 (2026-08-05 발견).
+_MONEY_RE = re.compile(r"-?[\d,]*\d원")
 _PERCENT_RE = re.compile(r"\d+(?:\.\d+)?%")
+
+# 잔액이 남았는데 "다 썼다"고 하는 과장 표현. 가정·미래형(`~하면`·`~할 것`)은 정상
+# 문장이므로 부정 선읽기로 제외한다 — "예산을 모두 사용하면 알려드릴게요"가 걸리면
+# 안 된다. 후보 패턴을 정상 문장 10개·과장 문장 7개로 재서 오탐 0·놓침 0 확인했다.
+_OVERSTATE_RE = re.compile(
+    r"(모두|전부|전체|전액|다)\s*(사용|썼|소진)(?!\s*(하면|되면|할|될|하시면))"
+    r"|예산이\s*(없|바닥)"
+    r"|남은\s*(예산|금액)이\s*없"
+)
 
 
 def allowed_money(f: DashboardFigures) -> set[str]:
@@ -178,7 +191,15 @@ def allowed_money(f: DashboardFigures) -> set[str]:
               f.largest_expense_amount}
     values |= {c.spent for c in f.categories}
     values |= {c.prev_spent for c in f.categories}
-    return {f"{v:,}원" for v in values if v}
+    # 0은 기본적으로 넣지 않는다 — '0원'은 어느 문장에나 자연스럽게 붙어서, 허용하면
+    # 검증기가 사실상 그 표현을 못 막는다(예: 잔액이 48만인데 "남은 예산은 0원").
+    allowed = {f"{v:,}원" for v in values if v}
+    # 다만 **잔액이 정확히 0인 달**은 예외다. 예산을 딱 맞춰 쓴 경우 본문에 "0원"이
+    # 나올 수밖에 없는데, 그때 허용 목록에 없어 요약이 통째로 폐기됐다
+    # (2026-08-05 발견, 음수 잔액과 한 쌍). 실제로 0인 경우만 열어 가드는 유지한다.
+    if f.remaining == 0:
+        allowed.add("0원")
+    return allowed
 
 
 def allowed_percent(f: DashboardFigures) -> set[str]:
@@ -211,15 +232,55 @@ def verify_summary_pure(doc: DashboardSummaryDoc) -> bool:
     ok_money, ok_pct = allowed_money(doc.figures), allowed_percent(doc.figures)
     if any(tok not in ok_money for tok in _MONEY_RE.findall(doc.message)):
         return False
-    return all(tok in ok_pct for tok in _PERCENT_RE.findall(doc.message))
+    if not all(tok in ok_pct for tok in _PERCENT_RE.findall(doc.message)):
+        return False
+    # 잔액이 남아 있는데 "다 썼다"고 말하는 과장 — 숫자가 틀린 게 아니라 서술이 틀린
+    # 경우라 위 토큰 대조로는 안 잡힌다. v1 실측에서 95% 사용·1만원 잔여를 "전체
+    # 예산을 모두 사용했어요"로 쓴 사례가 있고, 프롬프트 규칙만으로는 2회 다 안
+    # 지켜져 few_shot으로 눌렀다(dashboard_writer/v2 헤더). 그 방어가 프롬프트에만
+    # 있어 깨져도 아무도 모르는 상태였다.
+    #
+    # 한계를 분명히 해둔다 — **열거한 표현만 잡는 휴리스틱이다.** "남은 게 얼마 없어요"
+    # 처럼 달리 쓰면 못 잡는다. 완전한 방어가 아니라 재발 감지용 최소 그물이다.
+    # 오탐 대가가 작아서(검증 실패 시 verify가 집계 기반 문장으로 교체) 넣을 수 있다.
+    if doc.figures.remaining != 0 and _OVERSTATE_RE.search(doc.message):
+        return False
+    return True
 
 
 async def verify(state: DashboardState) -> dict:
+    """검증 실패 시 **집계로 조립한 안전한 문장으로 교체**한다 (verified=false는 유지).
+
+    종전에는 실패해도 AI 문장을 그대로 두고 `verified=false`만 내렸다. 명세는 그때
+    "화면에 띄우지 마시거나 '확인 필요'로 표시"하라고 했는데, 어느 쪽이든 나쁘다 —
+    숨기면 대시보드가 비고, 경고를 붙이면 멀쩡한 달에도 '확인 필요'가 달린다.
+    2026-08-05에 검증기 결함 2건(음수 잔액·잔액 0원)으로 실제로 그 상태가 됐다.
+
+    교체용 문장은 `_mock_message`가 만든다 — 집계값만으로 조립하므로 **정의상 검증을
+    통과한다**(10개 시나리오로 확인). 그래서 화면에는 항상 정확한 문장이 나간다.
+
+    **`verified`는 정직하게 false로 남긴다.** 백엔드에 나간 계약상 그 값의 뜻은
+    "본문 수치와 집계값의 대조 통과 여부"다. 폴백을 썼다고 true로 올리면 필드가
+    의미를 잃고 AI 품질 저하가 영영 안 보이게 된다. 대신 거부된 원문을 로그에 남겨
+    나중에 폐기율을 셀 수 있게 한다.
+
+    → 프론트에는 "verified=false여도 message는 항상 안전한 값이니 띄워도 된다"를
+      명세로 알려야 한다(통보 필요).
+    """
     doc = state["doc"]
-    ok = verify_summary_pure(doc)
-    if not ok:
-        logger.error("dashboard 요약 검증 실패 — 수치 불일치, verified=false로 강등")
-    return {"doc": doc.model_copy(update={"verified": ok})}
+    if verify_summary_pure(doc):
+        return {"doc": doc.model_copy(update={"verified": True})}
+
+    logger.error(
+        "dashboard 요약 검증 실패 — 집계 기반 문장으로 교체(verified=false 유지). 거부된 원문: %r",
+        doc.message,
+    )
+    safe = _mock_message(doc.figures).message
+    fallback = doc.model_copy(update={"message": safe, "verified": False})
+    if not verify_summary_pure(fallback):
+        # 폴백까지 실패하면 집계 자체가 이상한 것이다 — 조용히 넘기지 않는다.
+        logger.critical("폴백 문장도 검증 실패 — 집계값 점검 필요: %r", safe)
+    return {"doc": fallback}
 
 
 def build_dashboard_graph():

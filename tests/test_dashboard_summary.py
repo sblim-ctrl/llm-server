@@ -134,15 +134,131 @@ def test_verifier_rejects_empty_message():
     assert verify_summary_pure(_doc("   ")) is False
 
 
+def test_verifier_accepts_negative_remaining_when_budget_exceeded():
+    """예산 초과(잔액 음수) — 2026-08-05에 발견한 회귀.
+
+    금액 정규식이 앞의 마이너스를 안 잡아서, 본문의 "-99,000원"에서 "99,000원"만
+    뽑히고 허용 목록("-99,000원")과 어긋나 **요약이 항상 폐기**됐다. 예산을 넘긴
+    달은 관리자가 대시보드를 가장 봐야 할 때인데 그때 화면이 비는 방향이라
+    실사용에서 가장 나빴다.
+    """
+    over = _figures(
+        expenses=[{"title": "행사비", "amount": 399000, "category": "행사_활동",
+                   "date": "2026-07-10", "status": "APPROVED"}],
+        budget={"total_budget": 300000, "spent": 399000},
+    )
+    assert over.remaining == -99000, "이 케이스는 잔액이 음수여야 의미가 있다"
+    doc = DashboardSummaryDoc(
+        figures=over, verified=False,
+        message="이번 달 지출은 399,000원으로 남은 예산은 -99,000원입니다.")
+    assert verify_summary_pure(doc) is True
+
+
+def test_verifier_still_rejects_invented_negative_money():
+    """마이너스를 허용했다고 아무 음수나 통과하면 안 된다 — 환각 방어는 그대로."""
+    over = _figures(budget={"total_budget": 300000, "spent": 399000})
+    doc = DashboardSummaryDoc(
+        figures=over, verified=False, message="남은 예산은 -12,345원입니다.")
+    assert verify_summary_pure(doc) is False
+
+
 def test_verifier_allows_category_amounts():
     assert verify_summary_pure(_doc(
         "IT/인프라가 180,000원으로 가장 큽니다.")) is True
 
 
 def test_allowed_money_excludes_zero():
-    """0원은 허용 목록에 넣지 않는다 — '0원'이 아무 데나 붙는 걸 막는다."""
+    """0원은 허용 목록에 넣지 않는다 — '0원'이 아무 데나 붙는 걸 막는다.
+
+    잔액이 남아 있는데 "남은 예산은 0원"이라고 쓰는 것을 막는 가드다. 아래
+    test_allowed_money_includes_zero_only_when_balance_is_zero와 한 쌍으로 본다.
+    """
     f = _figures([], {"total_budget": 500_000, "spent": 0})
+    assert f.remaining == 500_000
     assert "0원" not in allowed_money(f)
+
+
+def test_allowed_money_includes_zero_only_when_balance_is_zero():
+    """예산을 딱 맞춰 쓴 달만 '0원'을 허용한다 — 2026-08-05에 발견한 회귀.
+
+    잔액이 정확히 0이면 본문에 "남은 예산은 0원입니다"가 나올 수밖에 없는데,
+    0을 일괄로 걸러내던 탓에 그 요약이 통째로 폐기됐다. 음수 잔액 건과 한 쌍이다.
+
+    처음엔 0을 전부 허용하도록 고쳤다가 위 가드를 깨뜨렸다 — 0은 어느 문장에나
+    자연스럽게 붙어서 일괄 허용하면 검증기가 사실상 그 표현을 못 막는다.
+    그래서 **실제로 잔액이 0인 경우만** 연다.
+    """
+    exact = _figures(
+        expenses=[{"title": "행사", "amount": 300000, "category": "행사_활동",
+                   "date": "2026-07-10", "status": "APPROVED"}],
+        budget={"total_budget": 300000, "spent": 300000},
+    )
+    assert exact.remaining == 0
+    assert "0원" in allowed_money(exact)
+    doc = DashboardSummaryDoc(
+        figures=exact, verified=False,
+        message="이번 달 지출은 300,000원으로 예산의 100%를 썼어요. 남은 예산은 0원입니다.")
+    assert verify_summary_pure(doc) is True
+
+
+# ── 과장 표현 차단 ────────────────────────────────────────────────────────
+
+def test_verifier_rejects_overstatement_when_balance_remains():
+    """잔액이 남았는데 "다 썼다"고 하는 과장 — 숫자가 아니라 서술이 틀린 경우.
+
+    v1 실측에서 95% 사용·1만원 잔여를 "전체 예산을 모두 사용했어요"로 썼다. 숫자가
+    맞아서 토큰 대조로는 안 잡혔고, 프롬프트 규칙으로 막으려 했으나 2회 다 실패해
+    few_shot으로 눌렀다. 그 방어가 프롬프트에만 있어 깨져도 아무도 몰랐다.
+    """
+    f = _figures(
+        expenses=[{"title": "행사", "amount": 190000, "category": "행사_활동",
+                   "date": "2026-07-10", "status": "APPROVED"}],
+        budget={"total_budget": 200000, "spent": 190000})
+    assert f.remaining == 10000, "잔액이 남아 있어야 과장이 성립한다"
+    for msg in ("전체 예산을 모두 사용했어요.",
+                "예산을 전부 사용했습니다.",
+                "남은 예산이 없습니다.",
+                "예산이 바닥났어요."):
+        doc = DashboardSummaryDoc(figures=f, message=msg, verified=False)
+        assert verify_summary_pure(doc) is False, f"과장을 놓쳤다: {msg}"
+
+
+def test_verifier_allows_conditional_and_normal_phrasing():
+    """가정·미래형은 과장이 아니다 — 오탐이 나면 멀쩡한 요약이 폴백으로 밀린다."""
+    f = _figures()
+    for msg in ("예산을 모두 사용하면 알려드릴게요.",
+                "이번 달 지출은 320,000원으로 예산의 40%를 썼고 480,000원이 남았어요.",
+                "카테고리별로 고르게 사용 중이에요."):
+        doc = DashboardSummaryDoc(figures=f, message=msg, verified=False)
+        assert verify_summary_pure(doc) is True, f"정상 문장을 걸렀다: {msg}"
+
+
+# ── 폴백 (검증 실패 시 화면이 비지 않는다) ────────────────────────────────
+
+async def test_failed_verification_falls_back_to_safe_message():
+    """검증 실패 시 집계 기반 문장으로 교체 — `verified`는 정직하게 false로 남긴다.
+
+    종전에는 AI 문장을 그대로 두고 verified=false만 내렸다. 명세는 그때 "띄우지
+    말거나 '확인 필요'로 표시"하라 했는데 어느 쪽이든 나쁘다. 2026-08-05에 검증기
+    결함 2건으로 멀쩡한 달이 실제로 그 상태가 됐다.
+    """
+    from app.graphs.writers.dashboard import dashboard_graph
+    from app.schemas.dashboard import DashboardSummary
+
+    with patch("app.graphs.writers.dashboard.get_expense_history",
+               AsyncMock(return_value=EXPENSES)), \
+         patch("app.graphs.writers.dashboard.get_budget_status",
+               AsyncMock(return_value=BUDGET)), \
+         patch("app.graphs.writers.dashboard.chat_structured",
+               AsyncMock(return_value=(DashboardSummary(message="지출은 999,999원입니다."), None))):
+        final = await dashboard_graph.ainvoke(
+            {"request": DashboardSummaryRequest(team_id=9001, period="2026-07")})
+
+    doc = final["doc"]
+    assert doc.verified is False, "폴백을 썼다고 verified를 올리면 필드가 의미를 잃는다"
+    assert "999,999" not in doc.message, "지어낸 금액이 화면으로 나가면 안 된다"
+    assert doc.message.strip(), "화면이 비면 안 된다 — 이 폴백의 존재 이유"
+    assert verify_summary_pure(doc) is True, "폴백 문장 자체는 검증을 통과해야 한다"
 
 
 # ── API (목 모드) ─────────────────────────────────────────────────────────

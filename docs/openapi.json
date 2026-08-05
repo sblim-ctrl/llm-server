@@ -359,9 +359,16 @@
       "DashboardSummaryRequest": {
         "properties": {
           "period": {
-            "description": "대상 월 YYYY-MM",
-            "title": "Period",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "대상 월 YYYY-MM (미지정 시 당월)",
+            "title": "Period"
           },
           "team_id": {
             "description": "양의 백엔드 BIGINT 기본키",
@@ -371,8 +378,7 @@
           }
         },
         "required": [
-          "team_id",
-          "period"
+          "team_id"
         ],
         "title": "DashboardSummaryRequest",
         "type": "object"
