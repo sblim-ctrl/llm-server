@@ -7,6 +7,11 @@ classify_category(지출 분류)와 PolicyDrafter(카테고리 추천), GET /v1/
 expenses.category ENUM과 교집합이 0이라 저장이 안 됐고, 협의로 전역 9종에 맞췄다.
 유형은 회칙 초안 템플릿(policy_templates.yaml)에서는 여전히 쓰이므로 없어진 게
 아니라 **카테고리 선택에서만 빠진 것**이다.
+
+**카탈로그 name = ENUM 저장값**이다(2026-08-05 확정). 백엔드가 ENUM에 2종을 더해
+9종으로 확장해 주기로 하면서 양쪽 목록이 같아졌다. 슬래시를 ENUM에 넣을 수 없어
+`IT_인프라`·`장소_대관`·`행사_활동`은 밑줄로 적고, 화면의 슬래시 표기는 프론트가
+출력할 때 만든다 — 서버·프롬프트·콜백은 전부 밑줄 값 하나만 쓴다.
 """
 from functools import lru_cache
 from pathlib import Path

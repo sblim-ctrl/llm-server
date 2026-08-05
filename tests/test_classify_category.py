@@ -12,7 +12,7 @@ from app.tools.category_catalog import (
     load_catalog,
 )
 
-EXPECTED = ["식비", "교통", "IT/인프라", "교육", "회의", "장소/대관", "행사/활동", "비품", "기타"]
+EXPECTED = ["식비", "교통", "IT_인프라", "교육", "회의", "장소_대관", "행사_활동", "비품", "기타"]
 
 
 def test_catalog_is_the_agreed_nine():
@@ -36,12 +36,12 @@ def test_other_category_has_no_keywords():
 @pytest.mark.parametrize("text,expected", [
     ("정기 모임 뒤풀이 치킨", "식비"),
     ("야근 택시비", "교통"),
-    ("노션 팀 구독", "IT/인프라"),
+    ("노션 팀 구독", "IT_인프라"),
     ("알고리즘 교재 2권", "교육"),
-    ("스터디룸 4시간 대관", "장소/대관"),
-    ("펜션 2박 예약", "장소/대관"),
-    ("축제 부스 현수막 제작", "행사/활동"),
-    ("지역 리그 참가비", "행사/활동"),
+    ("스터디룸 4시간 대관", "장소_대관"),
+    ("펜션 2박 예약", "장소_대관"),
+    ("축제 부스 현수막 제작", "행사_활동"),
+    ("지역 리그 참가비", "행사_활동"),
     ("셔틀콕 1박스", "비품"),
     ("사무용품 구입", "비품"),
 ])
@@ -50,9 +50,9 @@ def test_keyword_classification(text, expected):
 
 
 def test_meeting_room_goes_to_meeting_not_venue():
-    """'회의실 대관'은 회의로 본다 — 회의가 장소/대관보다 위에 있기 때문 (의도된 순서)."""
+    """'회의실 대관'은 회의로 본다 — 회의가 장소_대관보다 위에 있기 때문 (의도된 순서)."""
     assert classify_by_keywords("회의실 대관") == "회의"
-    assert classify_by_keywords("스터디룸 대관") == "장소/대관"
+    assert classify_by_keywords("스터디룸 대관") == "장소_대관"
 
 
 @pytest.mark.parametrize("text", ["기술 서적", "미술 재료", "예술 공연 관람"])
@@ -79,11 +79,11 @@ def test_meeting_keyword_does_not_steal_supplies():
 def test_personal_gifts_are_other_not_activity():
     """선물·경조사는 기타다 — 모임 활동이 아니라 개인 대상 지출이라서.
 
-    카탈로그가 행사/활동으로 두고 있었는데 실모드 분류기는 독립적으로 기타로 판단했다.
+    카탈로그가 행사_활동으로 두고 있었는데 실모드 분류기는 독립적으로 기타로 판단했다.
     둘이 어긋나 있던 것을 맞췄다.
     """
     assert classify_by_keywords("회원 경조사 조화") == "기타"
-    assert classify_by_keywords("정기전 참가 등록비") == "행사/활동"   # 활동은 그대로
+    assert classify_by_keywords("정기전 참가 등록비") == "행사_활동"   # 활동은 그대로
 
 
 def test_no_match_falls_back_to_other():
@@ -107,12 +107,12 @@ def _state(category: str) -> dict:
 async def test_empty_category_gets_classified():
     result = await classify_category(_state(""))
     assert result["category_source"] == "ai"
-    assert result["claim"].category == "장소/대관"
+    assert result["claim"].category == "장소_대관"
     assert result["claim"].category in all_categories()
 
 
 async def test_user_category_is_respected():
-    result = await classify_category(_state("장소/대관"))
+    result = await classify_category(_state("장소_대관"))
     assert result["category_source"] == "user"
     assert "claim" not in result  # claim 미변경
 
@@ -123,7 +123,7 @@ async def test_confident_disagreement_flags_mismatch():
     assert result["category_source"] == "user"
     assert "claim" not in result                     # 라벨은 사용자 것 유지
     assert result["category_mismatch"] is True
-    assert result["ai_suggested_category"] == "장소/대관"
+    assert result["ai_suggested_category"] == "장소_대관"
 
 
 async def test_agreeing_category_is_not_flagged():

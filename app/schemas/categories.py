@@ -8,8 +8,12 @@ from pydantic import BaseModel
 
 
 class CategoryCatalog(BaseModel):
-    # 전역 9종 고정 — AI가 새 값을 만들지 않는다. 백엔드 expenses.category ENUM과
-    # 같은 값이며, 정렬 순서는 분류 우선순위(카탈로그 정의 순서)다.
+    # 전역 9종 고정 — AI가 새 값을 만들지 않는다. 백엔드 expenses.category ENUM
+    # **저장값과 같은 값**이며, 정렬 순서는 분류 우선순위(카탈로그 정의 순서)다.
+    #
+    # 값은 밑줄 표기다(`IT_인프라`·`장소_대관`·`행사_활동`) — ENUM에 슬래시를 넣을 수
+    # 없어서다(2026-08-05 확정). 화면에 보이는 `IT/인프라` 같은 표기는 **프론트가 출력
+    # 시점에** `_`를 `/`로 바꿔 만든다. 서버는 표시 표현을 들고 있지 않는다.
     categories: list[str]
     # 분류가 어느 카테고리에도 안 걸릴 때 쓰는 값. 항상 '기타'이며 categories 안에 있다.
     fallback: str

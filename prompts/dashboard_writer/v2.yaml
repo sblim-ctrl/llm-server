@@ -65,14 +65,14 @@ few_shot:
   - input: |
       {"period":"2026-07","total_budget":800000,"spent":320000,"remaining":480000,
        "usage_ratio":0.4,"pending_count":2,"pending_amount":60000,
-       "categories":[{"category":"IT/인프라","spent":180000,"share":0.5625,"prev_spent":146000,"change_ratio":0.2329},
+       "categories":[{"category":"IT_인프라","spent":180000,"share":0.5625,"prev_spent":146000,"change_ratio":0.2329},
                      {"category":"교육","spent":90000,"share":0.28125,"prev_spent":90000,"change_ratio":0.0},
                      {"category":"식비","spent":50000,"share":0.15625,"prev_spent":40000,"change_ratio":0.25}],
-       "top_category":{"category":"IT/인프라","spent":180000,"share":0.5625,"prev_spent":146000,"change_ratio":0.2329},
+       "top_category":{"category":"IT_인프라","spent":180000,"share":0.5625,"prev_spent":146000,"change_ratio":0.2329},
        "fastest_growing":{"category":"식비","spent":50000,"share":0.15625,"prev_spent":40000,"change_ratio":0.25},
        "largest_expense_title":"AWS 서버 운영비","largest_expense_amount":180000}
     output: |
-      {"message": "이번 달 지출은 320,000원으로 예산의 40%를 썼고 480,000원이 남았어요. 식비가 전월 대비 25% 늘었고, 비중은 IT/인프라가 180,000원으로 가장 큽니다. 승인 대기가 2건 60,000원 있어 확인이 필요해요."}
+      {"message": "이번 달 지출은 320,000원으로 예산의 40%를 썼고 480,000원이 남았어요. 식비가 전월 대비 25% 늘었고, 비중은 IT_인프라가 180,000원으로 가장 큽니다. 승인 대기가 2건 60,000원 있어 확인이 필요해요."}
   - input: |
       {"period":"2026-07","total_budget":500000,"spent":0,"remaining":500000,
        "usage_ratio":0.0,"pending_count":0,"pending_amount":0,
@@ -83,22 +83,22 @@ few_shot:
   - input: |
       {"period":"2026-07","total_budget":200000,"spent":190000,"remaining":10000,
        "usage_ratio":0.95,"pending_count":1,"pending_amount":45000,
-       "categories":[{"category":"행사/활동","spent":150000,"share":0.7894,"prev_spent":0,"change_ratio":null},
+       "categories":[{"category":"행사_활동","spent":150000,"share":0.7894,"prev_spent":0,"change_ratio":null},
                      {"category":"식비","spent":40000,"share":0.2105,"prev_spent":35000,"change_ratio":0.1428}],
-       "top_category":{"category":"행사/활동","spent":150000,"share":0.7894,"prev_spent":0,"change_ratio":null},
+       "top_category":{"category":"행사_활동","spent":150000,"share":0.7894,"prev_spent":0,"change_ratio":null},
        "fastest_growing":{"category":"식비","spent":40000,"share":0.2105,"prev_spent":35000,"change_ratio":0.1428},
        "largest_expense_title":"체육대회 운영비","largest_expense_amount":150000}
     output: |
-      {"message": "이번 달 지출이 190,000원으로 예산의 95%에 이르렀고 남은 예산은 10,000원입니다. 행사/활동이 150,000원으로 대부분을 차지했어요. 승인 대기 1건 45,000원이 남아 있어 잔여 예산으로는 처리가 어려울 수 있습니다."}
+      {"message": "이번 달 지출이 190,000원으로 예산의 95%에 이르렀고 남은 예산은 10,000원입니다. 행사_활동이 150,000원으로 대부분을 차지했어요. 승인 대기 1건 45,000원이 남아 있어 잔여 예산으로는 처리가 어려울 수 있습니다."}
   # 한 카테고리가 이번 달 지출의 전부인 경우. 그래도 예산은 남아 있으므로 "예산을
   # 다 썼다"고 쓰지 않는다 — 지출 비중과 예산 소진은 다른 이야기다. 규칙만으로는
   # 이 구분이 안 지켜져서(v1 실측) 예시로 못박는다.
   - input: |
       {"period":"2026-07","total_budget":200000,"spent":190000,"remaining":10000,
        "usage_ratio":0.95,"pending_count":0,"pending_amount":0,
-       "categories":[{"category":"행사/활동","spent":190000,"share":1.0,"prev_spent":0,"change_ratio":null}],
-       "top_category":{"category":"행사/활동","spent":190000,"share":1.0,"prev_spent":0,"change_ratio":null},
+       "categories":[{"category":"행사_활동","spent":190000,"share":1.0,"prev_spent":0,"change_ratio":null}],
+       "top_category":{"category":"행사_활동","spent":190000,"share":1.0,"prev_spent":0,"change_ratio":null},
        "fastest_growing":null,
        "largest_expense_title":"체육대회 운영비","largest_expense_amount":190000}
     output: |
-      {"message": "이번 달 지출이 190,000원으로 예산의 95%를 썼고 10,000원이 남았습니다. 지출이 행사/활동 한 항목에 몰려 있고, 체육대회 운영비 190,000원이 그 전부예요. 승인 대기 건은 없습니다."}
+      {"message": "이번 달 지출이 190,000원으로 예산의 95%를 썼고 10,000원이 남았습니다. 지출이 행사_활동 한 항목에 몰려 있고, 체육대회 운영비 190,000원이 그 전부예요. 승인 대기 건은 없습니다."}
