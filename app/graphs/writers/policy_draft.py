@@ -22,6 +22,7 @@ from app.llm.client import chat_structured
 from app.llm.prompts import load_prompt
 from app.schemas.writers import PolicyDraft, PolicyDraftRequest, PolicyParamsSuggestion
 from app.tools.category_catalog import all_categories
+
 # 템플릿 로더는 심사 쪽 기본 정책 모드와 공유한다 (app/tools/policy_defaults.py) —
 # 같은 YAML을 두 군데서 따로 읽지 않기 위해서다. 재수출이라 기존 import 경로도 유효.
 from app.tools.policy_defaults import load_templates
@@ -69,8 +70,12 @@ def dedupe_rules(base: list[str], extra: list[str]) -> list[str]:
 
 
 PER_MEAL_LIMIT = 30_000  # 1인당 식비 기본 한도 — 추후 팀 규모 기반 조정
-# 강제 에스컬레이션 = 자동승인 한도 × 이 배수. 마법사 2단계 화면의 구간표
-# (소액 5만 미만 / 중간 5~20만 / 고액 20만 이상)에 맞춘 값 — 5만 × 4 = 20만.
+# 추천 한도의 하한. 마법사 2단계 화면이 "최소 금액은 50,000원이에요"로 그보다 작은
+# 값을 거부하므로(2026-08-05 개편), 하한이 더 낮으면 초기예산이 작은 모임에 화면이
+# 받아주지 않는 값을 추천하게 된다.
+MIN_AUTO_APPROVE_LIMIT = 50_000
+# 강제 에스컬레이션 = 자동승인 한도 × 이 배수. 화면 금액 칸이 하나로 합쳐진 뒤로는
+# 화면이 쓰지 않는 값이며, 회칙 초안의 금액 검증(verify_draft_pure)에만 쓰인다.
 FORCE_ESCALATION_MULTIPLE = 4
 # 회비가 입력된 경우에만 붙는 조항 (유형 무관이라 템플릿이 아닌 코드 상수).
 DUES_RULE = "회비는 1인당 {dues}원으로 하며, 회비 수입 범위 내에서 지출을 집행한다."
@@ -140,7 +145,8 @@ async def generate_draft(state: DraftState) -> dict:
     req, template = state["request"], state["template"]
 
     auto_limit = max(
-        10_000, (int(req.initial_budget * template["auto_approve_ratio"]) // 10000) * 10000
+        MIN_AUTO_APPROVE_LIMIT,
+        (int(req.initial_budget * template["auto_approve_ratio"]) // 10000) * 10000,
     )
     params = PolicyParamsSuggestion(
         auto_approve_limit=auto_limit,
@@ -246,8 +252,10 @@ def verify_draft_pure(draft: PolicyDraft) -> str | None:
             continue
         bad = [a for a in _amounts_in(rule) if a not in allowed]
         if bad:
-            return (f"자동 심사 한도 조항의 금액이 제안값과 불일치: {bad[0]:,}원 "
-                    f"(제안 {p.auto_approve_limit:,}원 / {p.force_escalation_amount:,}원)")
+            return (
+                f"자동 심사 한도 조항의 금액이 제안값과 불일치: {bad[0]:,}원 "
+                f"(제안 {p.auto_approve_limit:,}원 / {p.force_escalation_amount:,}원)"
+            )
 
     # 회비 조항과 notes 표기는 같은 입력(req.dues)에서 나온다 — 한쪽만 있으면 조립 버그
     if any(r.startswith(_DUES_PREFIX) for r in draft.rules) != (_DUES_NOTE_MARK in draft.notes):

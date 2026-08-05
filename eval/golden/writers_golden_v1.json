@@ -17,37 +17,37 @@
     },
     {
       "id": "pd-study-base",
-      "scenario": "스터디 기본 — 예산 60만 → 자동승인 3만",
+      "scenario": "스터디 기본 — 예산 60만×5%=3만이나 화면 최소 5만에 걸려 5만",
       "input": {"team_type": "스터디", "team_name": "알고리즘 스터디", "initial_budget": 600000},
       "expect": {
         "verified": true,
         "rules_count": 5,
-        "auto_approve_limit": 30000,
-        "force_escalation_amount": 120000,
+        "auto_approve_limit": 50000,
+        "force_escalation_amount": 200000,
         "categories_count": 6
       }
     },
     {
       "id": "pd-social-base",
-      "scenario": "친목 기본 — 비율 6%, 기본 조항 4개",
+      "scenario": "친목 기본 — 비율 6%, 기본 조항 4개. 50만×6%=3만이나 최소 5만에 걸림",
       "input": {"team_type": "친목", "team_name": "금요 친목회", "initial_budget": 500000},
       "expect": {
         "verified": true,
         "rules_count": 4,
-        "auto_approve_limit": 30000,
-        "force_escalation_amount": 120000,
+        "auto_approve_limit": 50000,
+        "force_escalation_amount": 200000,
         "categories_count": 6
       }
     },
     {
       "id": "pd-hobby-base",
-      "scenario": "동호회 기본 — 50만×5%=2.5만 → 만원 단위 내림 2만",
+      "scenario": "동호회 기본 — 50만×5%=2.5만, 내림 2만이나 화면 최소 5만에 걸려 5만",
       "input": {"team_type": "동호회", "team_name": "자전거 동호회", "initial_budget": 500000},
       "expect": {
         "verified": true,
         "rules_count": 5,
-        "auto_approve_limit": 20000,
-        "force_escalation_amount": 80000,
+        "auto_approve_limit": 50000,
+        "force_escalation_amount": 200000,
         "categories_count": 6
       }
     },
@@ -65,12 +65,12 @@
     },
     {
       "id": "pd-floor",
-      "scenario": "경계 — 소액 예산(10만)이라도 자동승인 한도는 최저 1만원 보장",
+      "scenario": "경계 — 소액 예산(10만)이라도 마법사 2단계 화면 최소값인 5만원 보장",
       "input": {"team_type": "동아리/학생회", "team_name": "소모임", "initial_budget": 100000},
       "expect": {
         "verified": true,
-        "auto_approve_limit": 10000,
-        "force_escalation_amount": 40000
+        "auto_approve_limit": 50000,
+        "force_escalation_amount": 200000
       }
     },
     {

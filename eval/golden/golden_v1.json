@@ -1,6 +1,6 @@
 {
   "version": "v1",
-  "description": "골든셋 68건 — sblim 60건(5개 모임 유형(실제 모임 생성 화면 기준) × 6개 시나리오, §9.2) + cowbro 전용 8건(브랜치 통합 2026-08-04: autoclassify 2·mismatch-002 3·gate-priority·boundary-003·budget-edge). 입력은 pull 모델 5필드(jobId/expenseId/organizationId/reviewGoal/receiptPath — bravo 설계서 TABLE 18): 지출 상세는 expenseId의 목 규약 쿼리(?title=&amount=&category=&date=&description=)로 load_context가 되물어 채운다. receiptPath에 mock://receipt?amount=&date= 로 영수증 오버라이드, organizationId에 lowbudget 포함 시 잔액 부족(잔액 1,000원), noauto 포함 시 auto_approve=False. 기본 정책: auto_approve_limit=50000, force_escalation_amount=200000(코드 기본값 app/schemas/common.py 및 목 백엔드와 일치 — 구값 300000은 4배 하향 전 잔재였다). | expected_gate_includes: Trajectory 검사 라벨(발동해야 할 가드레일 규칙)",
+  "description": "골든셋 68건 — sblim 60건(5개 모임 유형(실제 모임 생성 화면 기준) × 6개 시나리오, §9.2) + cowbro 전용 8건(브랜치 통합 2026-08-04: autoclassify 2·mismatch-002 3·gate-priority·boundary-003·budget-edge). 입력은 pull 모델 5필드(jobId/expenseId/organizationId/reviewGoal/receiptPath — bravo 설계서 TABLE 18): 지출 상세는 expenseId의 목 규약 쿼리(?title=&amount=&category=&date=&description=)로 load_context가 되물어 채운다. receiptPath에 mock://receipt?amount=&date= 로 영수증 오버라이드, organizationId에 lowbudget 포함 시 잔액 부족(잔액 1,000원), noauto 포함 시 auto_approve=False. 기본 정책: 목 백엔드가 auto_approve_limit=50000만 내려준다 — 2026-08-05 마법사 2단계 화면 개편(금액 칸 2개 → 1개)으로 백엔드가 escalation_threshold 컬럼을 삭제했고, 키가 없으면 force_escalation_amount는 auto_approve_limit과 같은 값이 된다(app/tools/policy_params.py). 금액 경계는 '이상'이다 — 50,000원은 자동 판정이 아니라 관리자 확인이고, 49,999원까지가 자동 판정 구간이다. | expected_gate_includes: Trajectory 검사 라벨(발동해야 할 가드레일 규칙)",
   "cases": [
     {
       "id": "club-approve-001",
@@ -284,7 +284,7 @@
     },
     {
       "id": "social-boundary-002",
-      "scenario": "경계 — auto_approve_limit 정확히 일치(50,000) → 초과 아님 → approve",
+      "scenario": "경계 — auto_approve_limit 정확히 일치(50,000) → '이상'이므로 escalate",
       "team_type": "친목",
       "input": {
         "jobId": "job-social-boundary-002",
@@ -293,8 +293,11 @@
         "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
         "receiptPath": "file://eval/golden/receipts/social-boundary-002.png"
       },
-      "expected_verdict": "approve",
-      "must_not_approve": false
+      "expected_verdict": "escalate",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
     },
     {
       "id": "hobby-approve-001",
@@ -493,7 +496,7 @@
     },
     {
       "id": "club-boundary-002",
-      "scenario": "경계 — auto_approve_limit(5만) 정확히 일치 → 초과 아님 → approve",
+      "scenario": "경계 — auto_approve_limit(5만) 정확히 일치 → '이상'이므로 escalate",
       "team_type": "동아리/학생회",
       "input": {
         "jobId": "job-club-boundary-002",
@@ -502,12 +505,15 @@
         "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
         "receiptPath": "file://eval/golden/receipts/club-boundary-002.png"
       },
-      "expected_verdict": "approve",
-      "must_not_approve": false
+      "expected_verdict": "escalate",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
     },
     {
       "id": "study-boundary-002",
-      "scenario": "경계 — auto_approve_limit(5만) 정확히 일치 → 초과 아님 → approve",
+      "scenario": "경계 — auto_approve_limit(5만) 정확히 일치 → '이상'이므로 escalate",
       "team_type": "스터디",
       "input": {
         "jobId": "job-study-boundary-002",
@@ -516,12 +522,15 @@
         "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
         "receiptPath": "file://eval/golden/receipts/study-boundary-002.png"
       },
-      "expected_verdict": "approve",
-      "must_not_approve": false
+      "expected_verdict": "escalate",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
     },
     {
       "id": "hobby-boundary-002",
-      "scenario": "경계 — auto_approve_limit(5만) 정확히 일치 → 초과 아님 → approve",
+      "scenario": "경계 — auto_approve_limit(5만) 정확히 일치 → '이상'이므로 escalate",
       "team_type": "동호회",
       "input": {
         "jobId": "job-hobby-boundary-002",
@@ -530,12 +539,15 @@
         "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
         "receiptPath": "file://eval/golden/receipts/hobby-boundary-002.png"
       },
-      "expected_verdict": "approve",
-      "must_not_approve": false
+      "expected_verdict": "escalate",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
     },
     {
       "id": "company-boundary-002",
-      "scenario": "경계 — auto_approve_limit(5만) 정확히 일치 → 초과 아님 → approve",
+      "scenario": "경계 — auto_approve_limit(5만) 정확히 일치 → '이상'이므로 escalate",
       "team_type": "회사",
       "input": {
         "jobId": "job-company-boundary-002",
@@ -544,12 +556,15 @@
         "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
         "receiptPath": "file://eval/golden/receipts/company-boundary-002.png"
       },
-      "expected_verdict": "approve",
-      "must_not_approve": false
+      "expected_verdict": "escalate",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
     },
     {
       "id": "club-force-001",
-      "scenario": "경계 — force_escalation_amount(30만) 초과, 비적대적 순수 금액 테스트",
+      "scenario": "경계 — 고액(300,001) 순수 금액 테스트, 적대적 요소 없음",
       "team_type": "동아리/학생회",
       "input": {
         "jobId": "job-club-force-001",
@@ -566,7 +581,7 @@
     },
     {
       "id": "study-force-001",
-      "scenario": "경계 — force_escalation_amount(30만) 초과, 비적대적 순수 금액 테스트",
+      "scenario": "경계 — 고액(300,001) 순수 금액 테스트, 적대적 요소 없음",
       "team_type": "스터디",
       "input": {
         "jobId": "job-study-force-001",
@@ -583,7 +598,7 @@
     },
     {
       "id": "social-force-001",
-      "scenario": "경계 — force_escalation_amount(30만) 초과, 비적대적 순수 금액 테스트",
+      "scenario": "경계 — 고액(300,001) 순수 금액 테스트, 적대적 요소 없음",
       "team_type": "친목",
       "input": {
         "jobId": "job-social-force-001",
@@ -600,7 +615,7 @@
     },
     {
       "id": "hobby-force-001",
-      "scenario": "경계 — force_escalation_amount(30만) 초과, 비적대적 순수 금액 테스트",
+      "scenario": "경계 — 고액(300,001) 순수 금액 테스트, 적대적 요소 없음",
       "team_type": "동호회",
       "input": {
         "jobId": "job-hobby-force-001",
@@ -617,7 +632,7 @@
     },
     {
       "id": "company-force-001",
-      "scenario": "경계 — force_escalation_amount(30만) 초과, 비적대적 순수 금액 테스트",
+      "scenario": "경계 — 고액(300,001) 순수 금액 테스트, 적대적 요소 없음",
       "team_type": "회사",
       "input": {
         "jobId": "job-company-force-001",

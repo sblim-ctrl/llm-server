@@ -12,7 +12,7 @@
     - "1인당 식비는 회당 {per_meal_limit}원을 초과할 수 없다."
     - "개인 용도 물품 구입은 회비 지출로 인정하지 않는다."
     - "행사비는 행사 계획을 사전 공유한 건에 한해 집행한다."
-    - "{auto_approve_limit}원 이하의 지출은 AI 자동 심사로 처리하고, 초과 건은 관리자 승인을 받는다."
+    - "{auto_approve_limit}원 미만의 지출은 AI 자동 심사로 처리하고, {auto_approve_limit}원 이상은 관리자 승인을 받는다."
 
 스터디:
   auto_approve_ratio: 0.05
@@ -21,7 +21,7 @@
     - "도서·강의 구입은 스터디 주제와 관련된 항목만 인정한다."
     - "다과비는 회당 {per_meal_limit}원 한도로 집행한다."
     - "구독형 서비스는 스터디 기간 내 결제분만 인정한다."
-    - "{auto_approve_limit}원 이하 지출은 AI 자동 심사, 초과 시 관리자 승인."
+    - "{auto_approve_limit}원 미만 지출은 AI 자동 심사, {auto_approve_limit}원 이상은 관리자 승인."
 
 친목:
   auto_approve_ratio: 0.06
@@ -29,7 +29,7 @@
     - "모든 지출은 영수증을 첨부해야 한다."
     - "1인당 회식비는 회당 {per_meal_limit}원을 초과할 수 없다."
     - "모임 인원 과반이 참여하지 않은 활동 비용은 인정하지 않는다."
-    - "{auto_approve_limit}원 이하 지출은 AI 자동 심사, 초과 시 관리자 승인."
+    - "{auto_approve_limit}원 미만 지출은 AI 자동 심사, {auto_approve_limit}원 이상은 관리자 승인."
 
 동호회:
   auto_approve_ratio: 0.05
@@ -38,7 +38,7 @@
     - "공용 장비 구입은 총무 사전 협의 후 집행한다."
     - "개인 장비 구입은 회비 지출로 인정하지 않는다."
     - "대관료는 정기 모임 일정에 등록된 일자만 인정한다."
-    - "{auto_approve_limit}원 이하 지출은 AI 자동 심사, 초과 시 관리자 승인."
+    - "{auto_approve_limit}원 미만 지출은 AI 자동 심사, {auto_approve_limit}원 이상은 관리자 승인."
 
 회사:
   auto_approve_ratio: 0.03
@@ -47,4 +47,4 @@
     - "1인당 회식비는 회당 {per_meal_limit}원을 초과할 수 없다."
     - "경조사비·접대비는 별도 승인 절차를 따른다."
     - "법인카드 사용 건도 지출 등록·심사를 거친다."
-    - "{auto_approve_limit}원 이하 지출은 AI 자동 심사, 초과 시 관리자 승인."
+    - "{auto_approve_limit}원 미만 지출은 AI 자동 심사, {auto_approve_limit}원 이상은 관리자 승인."

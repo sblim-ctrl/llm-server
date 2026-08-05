@@ -14,6 +14,7 @@ from app.graphs.review.nodes.load_context import load_context
 from app.schemas.analyze import AnalyzeRequest
 from app.schemas.common import ExpenseClaim
 from app.tools.backend_client import get_budget_status, get_expense_detail, get_team_settings
+from app.tools.policy_params import effective_auto_approve_limit
 
 
 def test_analyze_request_accepts_camel_case():
@@ -45,9 +46,7 @@ def test_analyze_request_rejects_string_entity_ids():
     from pydantic import ValidationError
 
     with pytest.raises(ValidationError):
-        AnalyzeRequest.model_validate(
-            {"jobId": "be-3", "expenseId": "103", "organizationId": "13"}
-        )
+        AnalyzeRequest.model_validate({"jobId": "be-3", "expenseId": "103", "organizationId": "13"})
 
 
 def test_analyze_request_rejects_old_push_contract():
@@ -183,17 +182,22 @@ async def test_budget_status_normalizes_camel_case_key():
     assert result == {"total_budget": 300_000, "spent": 118_000}
 
 
-async def test_escalation_threshold_absent_uses_default():
-    """응답에 escalation_threshold가 없으면 PolicyParams 기본값(20만원)을 쓴다.
+async def test_escalation_threshold_absent_follows_admin_limit():
+    """응답에 escalation_threshold가 없으면 관리자가 설정한 한도를 그대로 따른다.
 
-    마법사 2단계 화면의 '고액 지출 20만원 이상'과 같은 값이다.
+    2026-08-05 마법사 2단계 화면 개편으로 금액 칸이 하나('관리자 승인 필수 금액')가
+    되면서 백엔드가 escalation_threshold 컬럼을 삭제했다. 이때 모델 기본값 200,000을
+    쓰면 min(한도, 200,000)이 되어 **관리자가 50만을 설정해도 20만부터 관리자 확인**이
+    된다 — 2026-07-31 사고("관리자가 30만을 골라도 심사는 20만으로 동작")와 같은 유형이다.
     """
     with patch(
         "app.graphs.review.nodes.load_context.get_team_settings",
-        return_value={"auto_approve": True, "auto_approve_limit": 50_000},
+        return_value={"auto_approve": True, "auto_approve_limit": 500_000},
     ):
         updates = await load_context({"team_id": "org-1", "expense_id": "exp-1"})
-    assert updates["policy_params"].force_escalation_amount == 200_000
+    policy = updates["policy_params"]
+    assert policy.force_escalation_amount == 500_000
+    assert effective_auto_approve_limit(policy) == 500_000  # 200,000으로 축소되지 않는다
 
 
 async def test_budget_status_skips_explicit_null_alias():

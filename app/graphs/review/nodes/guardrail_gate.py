@@ -3,6 +3,7 @@
 evaluate_guardrails는 순수 함수 — 단위 테스트 100% 커버 대상 (§4.2).
 대원칙: 어떤 실패도 자동 승인으로 이어지지 않는다 (§8).
 """
+
 from app.graphs.review.state import ReviewState
 from app.schemas.common import GateResult, Mismatch, Opinion, PolicyParams
 
@@ -61,10 +62,13 @@ def evaluate_guardrails(
     if prec_op is not None and prec_op.verdict in ("warn", "fail"):
         triggered.append("precedent_suspicion")
 
-    # 4. 금액 가드레일
-    if amount > policy.force_escalation_amount:
+    # 4. 금액 가드레일 — 경계는 '이상'이다(2026-08-05 마법사 2단계 화면 개편으로 확정).
+    #    화면이 "N원 이상은 관리자 승인 필수"로 표시하므로 한도와 같은 금액도 관리자
+    #    확인이다. 그전에는 '초과'라 한도와 같은 금액이 자동 판정으로 갈라져 화면과
+    #    1원 어긋났다 (docs/마법사_API_명세.md '경계는 이상이다').
+    if amount >= policy.force_escalation_amount:
         triggered.append("over_force_escalation_amount")
-    if amount > policy.auto_approve_limit:
+    if amount >= policy.auto_approve_limit:
         triggered.append("over_auto_approve_limit")
 
     budget_op = opinions.get("budget")
@@ -76,8 +80,9 @@ def evaluate_guardrails(
     # 안전 방향이다(§8 유지). 최종 판단은 adjudicate가 백스톱(저신뢰면 escalate).
     # 다른 규칙(불일치·판례 의심·한도 초과 등)이 함께 걸리면 기존대로 escalate.
     if triggered == ["rule_ambiguous"] and budget_fail:
-        return GateResult(decision="reject_candidate",
-                          triggered_rules=["budget_insufficient", "rule_ambiguous"])
+        return GateResult(
+            decision="reject_candidate", triggered_rules=["budget_insufficient", "rule_ambiguous"]
+        )
 
     if triggered:
         return GateResult(decision="escalate", triggered_rules=triggered)
@@ -91,14 +96,16 @@ def evaluate_guardrails(
 
 async def guardrail_gate(state: ReviewState) -> dict:
     receipt = state.get("receipt_data")
-    return {"gate_result": evaluate_guardrails(
-        opinions=state.get("opinions", {}),
-        mismatch=state.get("mismatch", []),
-        policy=state["policy_params"],
-        amount=state["claim"].amount,
-        receipt_parse_ok=(receipt is not None and receipt.parse_ok),
-        category_mismatch=bool(state.get("category_mismatch")),
-    )}
+    return {
+        "gate_result": evaluate_guardrails(
+            opinions=state.get("opinions", {}),
+            mismatch=state.get("mismatch", []),
+            policy=state["policy_params"],
+            amount=state["claim"].amount,
+            receipt_parse_ok=(receipt is not None and receipt.parse_ok),
+            category_mismatch=bool(state.get("category_mismatch")),
+        )
+    }
 
 
 def route_after_guardrail(state: ReviewState) -> str:

@@ -50,7 +50,7 @@ SCENARIOS = [
         "approve",
     ),
     (
-        "auto_approve_limit(5만원) 초과",
+        "auto_approve_limit(5만원) 이상",
         ExpenseClaim(
             title="MT 대관료",
             amount=180_000,
@@ -61,10 +61,10 @@ SCENARIOS = [
         "https://example.com/r2",
         "escalate",
     ),
-    # 잔액(mock 18.2만원) 초과라 reject를 기대했던 건이지만, 강제 에스컬레이션
-    # 기준(20만원)에 먼저 걸려서 reject 경로까지 가지 않는다.
+    # 잔액(mock 18.2만원) 초과라 reject를 기대했던 건이지만, 금액 가드레일에 먼저
+    # 걸려서 reject 경로까지 가지 않는다.
     (
-        "force_escalation_amount(20만원) 초과",
+        "고액 지출 — 금액 가드레일 두 규칙 동시 발동",
         ExpenseClaim(
             title="회식비",
             amount=250_000,
@@ -92,13 +92,17 @@ SCENARIOS = [
 
 async def main() -> None:
     for i, (label, claim, receipt_url) in enumerate(SCENARIOS, 1):
-        state = await review_graph.ainvoke({
-            "job_id": f"smoke-{i}",
-            "expense_id": i,
-            "team_id": 1,
-            "claim": claim,
-            "receipt_url": receipt_url,
-        })
+        state = await review_graph.ainvoke(
+            {
+                "job_id": f"smoke-{i}",
+                "expense_id": i,
+                "team_id": 1,
+                "claim": claim,
+                "receipt_url": receipt_url,
+            }
+        )
+
+
 def stub_rag() -> None:
     """회칙·판례 검색을 '결과 없음'으로 대체 (무DB 모드).
 

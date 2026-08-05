@@ -12,12 +12,13 @@ load_context를 거쳐 PolicyParams가 되고 guardrail_gate 판정을 가른다
 
 PR #8이 고친 그 매핑을 여기서 잠근다. 명세: docs/마법사_API_명세.md '2단계 승인 정책'.
 """
+
 from unittest.mock import AsyncMock, patch
 
 from app.graphs.review.nodes.guardrail_gate import evaluate_guardrails
 from app.graphs.review.nodes.load_context import load_context
 from app.schemas.common import ExpenseClaim, Opinion, PolicyParams
-from app.tools.policy_params import map_team_settings
+from app.tools.policy_params import effective_auto_approve_limit, map_team_settings
 
 CLEAN = {
     "rule": Opinion(auditor="rule", verdict="pass", summary="이상 없음"),
@@ -28,19 +29,32 @@ CLEAN = {
 
 async def _policy_from(settings: dict | Exception) -> PolicyParams:
     """team_settings 응답 하나만 바꿔가며 load_context가 만드는 PolicyParams를 얻는다."""
-    settings_mock = (AsyncMock(side_effect=settings) if isinstance(settings, Exception)
-                     else AsyncMock(return_value=settings))
-    with patch("app.graphs.review.nodes.load_context.get_team_settings", settings_mock), \
-         patch("app.graphs.review.nodes.load_context.get_team_profile",
-               AsyncMock(return_value={"team_type": "스터디"})), \
-         patch("app.graphs.review.nodes.load_context.get_team_members",
-               AsyncMock(return_value=[])):
-        updates = await load_context({
-            "team_id": 9001,
-            "expense_id": 90001,
-            "claim": ExpenseClaim(title="교재", amount=32_000, category="교재/자료비",
-                                  date="2026-07-01", description=""),
-        })
+    settings_mock = (
+        AsyncMock(side_effect=settings)
+        if isinstance(settings, Exception)
+        else AsyncMock(return_value=settings)
+    )
+    with (
+        patch("app.graphs.review.nodes.load_context.get_team_settings", settings_mock),
+        patch(
+            "app.graphs.review.nodes.load_context.get_team_profile",
+            AsyncMock(return_value={"team_type": "스터디"}),
+        ),
+        patch("app.graphs.review.nodes.load_context.get_team_members", AsyncMock(return_value=[])),
+    ):
+        updates = await load_context(
+            {
+                "team_id": 9001,
+                "expense_id": 90001,
+                "claim": ExpenseClaim(
+                    title="교재",
+                    amount=32_000,
+                    category="교재/자료비",
+                    date="2026-07-01",
+                    description="",
+                ),
+            }
+        )
     return updates["policy_params"]
 
 
@@ -49,20 +63,26 @@ async def test_escalation_threshold_is_an_amount_not_a_confidence():
 
     θ(confidence_threshold)에 들어가면 실연동에서 전건 에스컬레이션이 된다.
     """
-    policy = await _policy_from({
-        "auto_approve": True, "auto_approve_limit": 50_000,
-        "escalation_threshold": 300_000,
-    })
+    policy = await _policy_from(
+        {
+            "auto_approve": True,
+            "auto_approve_limit": 50_000,
+            "escalation_threshold": 300_000,
+        }
+    )
     assert policy.force_escalation_amount == 300_000
-    assert policy.confidence_threshold == 0.8   # θ는 백엔드에서 받지 않는다
+    assert policy.confidence_threshold == 0.8  # θ는 백엔드에서 받지 않는다
 
 
 async def test_admin_chosen_amount_actually_reaches_the_gate():
     """관리자가 2단계에서 고른 금액이 판정을 바꾼다 — 모델 기본값에 묻히지 않는다."""
-    policy = await _policy_from({
-        "auto_approve": True, "auto_approve_limit": 150_000,
-        "escalation_threshold": 200_000,
-    })
+    policy = await _policy_from(
+        {
+            "auto_approve": True,
+            "auto_approve_limit": 150_000,
+            "escalation_threshold": 200_000,
+        }
+    )
     assert policy.auto_approve_limit == 150_000
     # 12만원은 한도 15만 이내라 자동 진행 — 기본값 5만이었다면 대기로 갔을 금액
     gate = evaluate_guardrails(opinions=CLEAN, mismatch=[], policy=policy, amount=120_000)
@@ -71,10 +91,13 @@ async def test_admin_chosen_amount_actually_reaches_the_gate():
 
 async def test_null_auto_approve_limit_becomes_zero_full_manual():
     """DB상 null이 정상 케이스 — 0으로 읽어 전건 관리자 확인(안전 방향)."""
-    policy = await _policy_from({
-        "auto_approve": True, "auto_approve_limit": None,
-        "escalation_threshold": 200_000,
-    })
+    policy = await _policy_from(
+        {
+            "auto_approve": True,
+            "auto_approve_limit": None,
+            "escalation_threshold": 200_000,
+        }
+    )
     assert policy.auto_approve_limit == 0
     gate = evaluate_guardrails(opinions=CLEAN, mismatch=[], policy=policy, amount=1_000)
     assert gate.decision == "escalate"
@@ -83,10 +106,13 @@ async def test_null_auto_approve_limit_becomes_zero_full_manual():
 
 async def test_toggle_on_means_auto_approve_false_and_blocks_every_amount():
     """'모든 지출을 직접 확인할래요' 토글 = auto_approve false (문구와 값이 반대 방향)."""
-    policy = await _policy_from({
-        "auto_approve": False, "auto_approve_limit": 50_000,
-        "escalation_threshold": 200_000,
-    })
+    policy = await _policy_from(
+        {
+            "auto_approve": False,
+            "auto_approve_limit": 50_000,
+            "escalation_threshold": 200_000,
+        }
+    )
     assert policy.auto_approve is False
     gate = evaluate_guardrails(opinions=CLEAN, mismatch=[], policy=policy, amount=1_000)
     assert gate.decision == "escalate"
@@ -99,33 +125,40 @@ async def test_settings_lookup_failure_is_fail_safe():
     assert policy.auto_approve is False
 
 
-def test_limit_boundary_is_strictly_greater_than():
-    """경계는 '초과'다 — 한도와 같은 금액은 자동 승인 대상.
+def test_limit_boundary_includes_the_limit_itself():
+    """경계는 '이상'이다 — 한도와 같은 금액부터 관리자 확인.
 
-    화면 문구가 '50,000원 미만 자동 승인'이면 1원 어긋난다(회의 확정 항목 1번).
+    2026-08-05 화면 개편으로 확정됐다. 화면 표가 "N원 미만 → 자동 승인/검토 요청",
+    "N원 이상 → 관리자 승인 항상"이므로 한도와 같은 금액은 관리자 확인이어야 한다.
+    그전에는 '초과'라 한도와 같은 금액이 자동 판정으로 갈라져 화면과 1원 어긋났다.
     """
-    policy = PolicyParams(auto_approve=True, auto_approve_limit=50_000,
-                          force_escalation_amount=200_000)
-    assert evaluate_guardrails(opinions=CLEAN, mismatch=[], policy=policy,
-                               amount=50_000).decision == "proceed"
-    assert evaluate_guardrails(opinions=CLEAN, mismatch=[], policy=policy,
-                               amount=50_001).decision == "escalate"
+    policy = PolicyParams(
+        auto_approve=True, auto_approve_limit=50_000, force_escalation_amount=200_000
+    )
+    assert (
+        evaluate_guardrails(opinions=CLEAN, mismatch=[], policy=policy, amount=49_999).decision
+        == "proceed"
+    )
+    gate = evaluate_guardrails(opinions=CLEAN, mismatch=[], policy=policy, amount=50_000)
+    assert gate.decision == "escalate"
+    assert "over_auto_approve_limit" in gate.triggered_rules
 
 
 async def test_status_endpoint_agrees_with_review_path():
     """GET /v1/policy-params/status와 심사 경로가 같은 해석을 내놓는다.
 
-    화면이 보는 값과 심사가 쓰는 값이 갈리면 2026-07-31 사고가 재현된다. 아직
-    load_context가 자기 사본을 갖고 있어 해석이 두 벌이므로 이 테스트가 안전장치다 —
-    한쪽만 바뀌면 여기서 잡힌다.
+    화면이 보는 값과 심사가 쓰는 값이 갈리면 2026-07-31 사고가 재현된다. 2026-08-05
+    통합으로 load_context가 map_team_settings를 쓰게 됐지만, 사본이 다시 생기는 것을
+    막기 위해 이 테스트는 남긴다.
     """
     cases = [
         {"auto_approve": True, "auto_approve_limit": 50_000, "escalation_threshold": 200_000},
         {"auto_approve": True, "auto_approve_limit": None, "escalation_threshold": 200_000},
         {"auto_approve": False, "auto_approve_limit": 150_000, "escalation_threshold": 300_000},
-        {"auto_approve": True, "auto_approve_limit": 90_000},          # 고액 기준 누락
-        {"auto_approve": True},                                        # 한도 키 자체가 없음
-        {},                                                            # 전부 없음
+        {"auto_approve": True, "auto_approve_limit": 90_000},  # 컬럼 삭제 후의 표준 형태
+        {"auto_approve": True, "auto_approve_limit": 500_000},  # 한도 > 모델 기본값
+        {"auto_approve": True},  # 한도 키 자체가 없음
+        {},  # 전부 없음
     ]
     for raw in cases:
         assert map_team_settings(raw) == await _policy_from(raw), f"해석이 갈렸다: {raw}"
@@ -149,36 +182,62 @@ async def test_missing_limit_key_is_safe_after_merge():
 
 
 async def test_status_endpoint_exposes_effective_limit():
-    """화면이 두 칸을 보여줘도 실제로 자동/대기를 가르는 값은 하나 — 그걸 노출한다."""
+    """두 값이 다르게 저장된 팀(컬럼 삭제 전 잔존)에서도 실효 한도 하나를 노출한다.
+
+    `auto_approved_up_to`는 경계가 '이상'이라 실효 한도보다 1원 낮다 — 화면 표의
+    "50,000원 미만 → 자동 승인/검토 요청"과 같은 구간을 가리킨다.
+    """
     from app.api.policy import read_policy_params_status
 
-    with patch("app.api.policy.get_team_settings", AsyncMock(return_value={
-        "auto_approve": True, "auto_approve_limit": 50_000, "escalation_threshold": 300_000,
-    })):
+    with patch(
+        "app.api.policy.get_team_settings",
+        AsyncMock(
+            return_value={
+                "auto_approve": True,
+                "auto_approve_limit": 50_000,
+                "escalation_threshold": 300_000,
+            }
+        ),
+    ):
         status = await read_policy_params_status(organization_id=9001)
 
     assert status.available is True
     assert status.auto_approve_limit == 50_000
     assert status.force_escalation_amount == 300_000
-    assert status.effective_auto_approve_limit == 50_000    # min(둘)
-    assert status.auto_approved_up_to == 50_000
-    assert "50,000원 이하" in status.summary
+    assert status.effective_auto_approve_limit == 50_000  # min(둘)
+    assert status.auto_approved_up_to == 49_999
+    assert "49,999원까지" in status.summary
+    assert "50,000원부터" in status.summary
 
 
 async def test_status_endpoint_reports_full_manual_modes():
     """토글 켬·한도 0 — 자동 승인 구간이 없으면 auto_approved_up_to는 null."""
     from app.api.policy import read_policy_params_status
 
-    with patch("app.api.policy.get_team_settings", AsyncMock(return_value={
-        "auto_approve": False, "auto_approve_limit": 50_000, "escalation_threshold": 200_000,
-    })):
+    with patch(
+        "app.api.policy.get_team_settings",
+        AsyncMock(
+            return_value={
+                "auto_approve": False,
+                "auto_approve_limit": 50_000,
+                "escalation_threshold": 200_000,
+            }
+        ),
+    ):
         toggled = await read_policy_params_status(organization_id=9001)
     assert toggled.auto_approved_up_to is None
     assert "모든 지출을 관리자가 확인" in toggled.summary
 
-    with patch("app.api.policy.get_team_settings", AsyncMock(return_value={
-        "auto_approve": True, "auto_approve_limit": None, "escalation_threshold": 200_000,
-    })):
+    with patch(
+        "app.api.policy.get_team_settings",
+        AsyncMock(
+            return_value={
+                "auto_approve": True,
+                "auto_approve_limit": None,
+                "escalation_threshold": 200_000,
+            }
+        ),
+    ):
         zero = await read_policy_params_status(organization_id=9001)
     assert zero.auto_approved_up_to is None
 
@@ -195,13 +254,44 @@ async def test_status_endpoint_fail_safe_when_backend_down():
     assert status.auto_approved_up_to is None
 
 
-def test_force_escalation_above_limit_changes_nothing():
-    """고액 기준이 소액 한도보다 크면 판정을 바꾸지 않는다 — 화면 두 칸이 사실상 하나.
+async def test_deleted_escalation_column_does_not_shrink_admin_limit():
+    """escalation_threshold 컬럼이 없어도 관리자가 설정한 한도가 그대로 실효 한도다.
 
-    회의 확정 항목 2번의 근거. min(한도, 고액기준) 초과가 실제 규칙이다.
+    2026-08-05 화면 개편(금액 칸 2개 → 1개)으로 백엔드가 이 컬럼을 삭제했다. 그때
+    모델 기본값 200,000을 채워 넣으면 min(500,000, 200,000)이 되어 **화면에는 50만인데
+    심사는 20만부터 관리자 확인**이 된다 — 화면에 드러나지 않는 조용한 축소라 2026-07-31
+    사고와 같은 유형이다. 심사 경로와 status 엔드포인트 양쪽에서 잠근다.
     """
-    base = PolicyParams(auto_approve=True, auto_approve_limit=50_000,
-                        force_escalation_amount=200_000)
+    raw = {"auto_approve": True, "auto_approve_limit": 500_000}
+
+    policy = await _policy_from(raw)
+    assert effective_auto_approve_limit(policy) == 500_000
+    assert (
+        evaluate_guardrails(opinions=CLEAN, mismatch=[], policy=policy, amount=499_999).decision
+        == "proceed"
+    )
+    assert (
+        evaluate_guardrails(opinions=CLEAN, mismatch=[], policy=policy, amount=500_000).decision
+        == "escalate"
+    )
+
+    from app.api.policy import read_policy_params_status
+
+    with patch("app.api.policy.get_team_settings", AsyncMock(return_value=raw)):
+        status = await read_policy_params_status(organization_id=9001)
+    assert status.effective_auto_approve_limit == 500_000
+    assert status.auto_approved_up_to == 499_999
+
+
+def test_force_escalation_above_limit_changes_nothing():
+    """고액 기준이 소액 한도보다 크면 판정을 바꾸지 않는다 — 두 칸이 사실상 하나.
+
+    화면이 한 칸으로 합쳐진 근거. min(한도, 고액기준) 이상이 실제 규칙이라, 컬럼
+    삭제 전 두 값이 다르게 저장된 팀에서도 작은 쪽만 판정을 가른다.
+    """
+    base = PolicyParams(
+        auto_approve=True, auto_approve_limit=50_000, force_escalation_amount=200_000
+    )
     raised = base.model_copy(update={"force_escalation_amount": 300_000})
     amounts = [10_000, 50_000, 50_001, 120_000, 199_999, 200_001, 500_000]
     for amt in amounts:

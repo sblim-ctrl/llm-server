@@ -281,16 +281,16 @@ async def get_team_settings(organization_id: int) -> dict[str, Any]:
     실계약에서 auto_approve 기본값은 FALSE(꺼짐) — 꺼져 있으면 금액·판단과 무관하게
     무조건 ESCALATED. 값 자체는 백엔드 DB가 진실 원천이고 우리는 읽기만 한다.
 
-    escalation_threshold는 **금액**이다 — "이 금액 초과 시 무조건 관리자 검토"
-    (풀스택 DB 스키마 team_settings, 2026-07-27 수령분 확정). 우리 PolicyParams의
-    force_escalation_amount에 대응하며, confidence_threshold(θ)와는 무관하다.
+    auto_approve_limit은 마법사 2단계 화면의 '관리자 승인 필수 금액' 한 칸이다 —
+    "이 금액 이상은 무조건 관리자 검토". 2026-08-05 화면 개편으로 금액 칸이 2개에서
+    1개로 줄면서 escalation_threshold 컬럼은 백엔드에서 삭제하기로 했고, 목 응답도
+    실제 형태에 맞춰 그 키를 빼둔다 — 목이 실제와 다르면 목 모드에서 드러나지 않는
+    버그가 생긴다(2026-07-31 θ 오염이 목의 0.8에 가려졌던 것과 같은 구조).
+    키가 없을 때의 해석은 map_team_settings가 담당한다.
 
     목 규약: organization_id에 "noauto" 포함 → auto_approve=False (게이트 검증용).
     그 외에는 True — 골든셋·데모의 자동판정 흐름을 보존하기 위한 목 전용 기본값이며
     실서비스 기본값(False)과 다르다는 점에 주의.
-
-    escalation_threshold는 금액이다 (2026-07-27 DB 스키마 team_settings로 확정 —
-    우리 force_escalation_amount와 1:1). 확신도 θ(0~1)와 혼동 금지.
     """
     s = get_settings()
     if s.mock_backend:
@@ -298,7 +298,6 @@ async def get_team_settings(organization_id: int) -> dict[str, Any]:
         return {
             "auto_approve": "noauto" not in organization_key.lower(),
             "auto_approve_limit": 50_000,
-            "escalation_threshold": 200_000,
         }
     r = await _client().get(f"/internal/agent/organizations/{organization_id}/team-settings")
     r.raise_for_status()
