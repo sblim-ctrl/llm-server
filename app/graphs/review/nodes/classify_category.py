@@ -1,22 +1,27 @@
-"""classify_category — 유형별 카테고리 자동 분류 (팀 확정 2026-07-10).
+"""classify_category — 지출 카테고리 자동 분류 (전역 9종, 풀스택 협의 2026-08-04).
 
-사용자가 지출 등록 시 카테고리를 선택하지 않으면, **그 모임 유형에 지정된
-6개 카테고리 안에서만** AI가 골라 채운다. 카테고리 동적 추가 금지(백엔드 협의) —
+카테고리는 **AI가 고정 9종 안에서 골라 채운다.** 카테고리 동적 추가 금지 —
 후보 목록 밖의 값은 절대 만들지 않는다.
 
+풀스택 협의 2026-08-04로 **지출 등록 화면의 카테고리 직접 입력이 없어졌다.** 그래서
+평상시 `claim.category`는 비어 오고 AI 분류가 **유일한 카테고리 출처**가 된다. 이게
+설계에 두 가지 영향을 준다.
+
+1. 오분류가 곧 통계 오염이다. 되물어볼 사람이 없으므로 확신 없는 추측을 그대로 확정값
+   으로 쓰면 안 된다 — 아래 `CLASSIFY_MIN_CONFIDENCE` 폴백이 그 장치다.
+2. 사용자 지정 카테고리와의 불일치 대조(`_check_category_mismatch`)는 평상시 돌지
+   않는다. **코드는 남겨둔다** — 백엔드가 어떤 경로로든 카테고리를 실어 보내면 그때
+   검증이 있는 편이 안전하고, 되살리는 비용보다 두는 비용이 싸다.
+
 - 카탈로그: templates/category_catalog.yaml (tools/category_catalog.py가 로드)
-- 사용자가 직접 고른 카테고리는 존중한다 — 라벨은 바꾸지 않는다. 단(2026-07-28
-  결정) AI 분류가 **확신을 갖고 다르게 판단**하면 category_mismatch를 세워
-  가드레일이 관리자 확인으로 보류시킨다 — 카테고리 위장으로 카테고리별 회칙
-  한도를 회피하거나 지출 통계를 오염시키는 경로 차단. AI가 라벨을 고치는 게
-  아니라(추천만 원칙, C2) 사람 확인으로 넘기는 것. AI 의견은 콜백
-  suggestedCategory로 관리자에게 전달된다.
-- 분류 실패는 심사를 막지 않는다: 유형별 fallback 카테고리로 채우고 진행,
-  불일치 검사 실패는 비교 생략(사용자 분류 유지)
+- 사용자 카테고리가 오면 존중한다 — 라벨은 바꾸지 않는다. 단 AI가 **확신을 갖고 다르게
+  판단**하면 category_mismatch를 세워 가드레일이 관리자 확인으로 보류시킨다. AI가
+  라벨을 고치는 게 아니라(추천만 원칙) 사람 확인으로 넘기는 것이다.
+- 분류 실패는 심사를 막지 않는다: '기타'로 채우고 진행한다.
 
 목 모드: 카탈로그의 키워드 규칙 기반 결정적 분류.
-실모드: gpt-4o-mini 구조화 출력 — 후보 6개를 프롬프트에 강제하고,
-        목록 밖 답변은 코드가 키워드 분류로 교정 (환각 카테고리 차단).
+실모드: gpt-4o-mini 구조화 출력 — 후보 9종을 프롬프트에 강제하고, 목록 밖 답변은
+        코드가 키워드 분류로 교정 (환각 카테고리 차단).
 """
 import logging
 
@@ -34,6 +39,19 @@ logger = logging.getLogger(__name__)
 # 사용자 카테고리와의 불일치를 인정하는 최소 확신도 — 이 미만이면 사용자가 맥락을
 # 더 안다고 보고 비교하지 않는다 (과잉 보류 방지, adjudicate θ와 같은 값)
 CATEGORY_MISMATCH_MIN_CONFIDENCE = 0.8
+
+# 분류 결과를 그대로 확정값으로 쓰기 위한 최소 확신도. 미만이면 키워드 규칙으로
+# 폴백한다(미적중이면 '기타').
+#
+# 카테고리 직접 입력이 없어지면서 AI가 유일한 출처가 됐기 때문에 넣었다. 저확신
+# 추측을 확정값으로 쓰면 통계가 조용히 오염되는데, 그 시점엔 되물어볼 사람이 없다.
+# 키워드 규칙을 폴백으로 고른 이유는 **결정적**이라서다 — 같은 지출이 매번 같은
+# 카테고리로 가야 카테고리별 집계가 의미를 갖는다. 실측 정확도도 낮지 않다
+# (17케이스 키워드 단독 88.2%, scripts/ab_classifier.py).
+#
+# 에스컬레이션은 하지 않는다. 카테고리는 안전 문제가 아니라 분류 문제이고, 이것 때문에
+# 관리자를 부르면 과잉 보류가 된다.
+CLASSIFY_MIN_CONFIDENCE = 0.8
 
 
 class CategoryPrediction(BaseModel):
@@ -104,8 +122,18 @@ async def classify_category(state: ReviewState) -> dict:
             prompt_version=spec.version,
         )
         llm_meta = {"classifier": meta}
-        category = pred.category if pred.category in candidates \
-            else classify_by_keywords(text)
+        if pred.category not in candidates:
+            # 환각 카테고리 — 코드가 키워드 규칙으로 교정한다
+            logger.warning("classifier가 후보 밖 값을 냈다: %r — 키워드로 교정", pred.category)
+            category = classify_by_keywords(text)
+        elif pred.confidence < CLASSIFY_MIN_CONFIDENCE:
+            # 저확신 — 결정적 규칙으로 폴백. AI가 유일한 출처라 추측을 확정값으로
+            # 쓰지 않는다(위 상수 주석 참조).
+            category = classify_by_keywords(text)
+            logger.info("classifier 저확신(%.2f) — 키워드 폴백: %s → %s",
+                        pred.confidence, pred.category, category)
+        else:
+            category = pred.category
     except Exception:
         logger.exception("classify_category failed — '기타'로 폴백")
         category = fallback_category()
