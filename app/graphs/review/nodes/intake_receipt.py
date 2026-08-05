@@ -25,7 +25,7 @@ from urllib.parse import parse_qs, urlparse
 
 from app.config import get_settings
 from app.graphs.review.state import ReviewState
-from app.llm.client import chat_structured_vision
+from app.llm.client import chat_structured, chat_structured_vision
 from app.llm.prompts import load_prompt
 from app.schemas.common import ReceiptData
 from app.tools.backend_client import get_receipt_by_path
@@ -37,10 +37,11 @@ _DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 
 def parse_receipt_text(text: str) -> ReceiptData:
-    """백엔드가 추출해 준 영수증 텍스트에서 금액·날짜를 뽑는다.
+    """백엔드가 추출해 준 영수증 텍스트에서 금액·날짜를 뽑는다 (정규식·결정적).
 
-    [팀 방향 2026-07-09] 저장 방식 확정 전 — 텍스트 수신 경로 우선 지원.
-    TODO(실키 연결 후): 정규식 대신 gpt-4o-mini 구조화 추출로 교체 (상호·품목 포함).
+    실모드에서는 `_intake_from_text`가 LLM 구조화 추출을 먼저 시도하고, 실패하면
+    이 함수로 떨어진다. 목 모드·테스트는 이 경로만 쓴다 — 결정적이라 재현이 쉽다.
+    상호·품목은 정규식으로 안정적으로 뽑기 어려워 비운다(LLM 경로가 채운다).
     """
     amounts = [int(m.replace(",", "")) for m in _AMOUNT_RE.findall(text)]
     date_match = _DATE_RE.search(text)
@@ -51,6 +52,36 @@ def parse_receipt_text(text: str) -> ReceiptData:
         parse_ok=bool(amounts),
         parse_error=None if amounts else "텍스트에서 금액을 찾지 못함",
     )
+
+
+async def _intake_from_text(text: str) -> dict:
+    """추출 텍스트 → ReceiptData. 실모드면 LLM 구조화 추출, 아니면 정규식.
+
+    풀스택 협의 2026-08-04(8번)에서 OCR 추출값에 **상호명**이 필요하다고 정해졌다.
+    정규식으로는 상호명을 안정적으로 못 뽑는다 — 영수증 텍스트 형식이 제각각이고
+    상호는 위치·표기가 일정하지 않다. 그래서 Vision 경로와 같은 `intake` 프롬프트로
+    텍스트도 구조화 추출한다(이미지 대신 텍스트를 넣는 것뿐이라 프롬프트는 공용).
+
+    실패는 정규식으로 떨어뜨린다 — 금액·날짜만이라도 살리는 편이 판독 불능보다 낫다.
+    그마저 실패하면 parse_ok=False가 되고 가드레일이 관리자 확인으로 보낸다(§8).
+    """
+    s = get_settings()
+    if s.mock_llm or not s.openai_api_key:
+        return {"receipt_data": parse_receipt_text(text)}
+    try:
+        spec = load_prompt("intake")
+        data, meta = await chat_structured(
+            agent="intake",
+            system=spec.system_with_few_shot(),
+            user=f"(영수증 추출 텍스트) {text}",
+            schema=ReceiptData,
+            mock_response=parse_receipt_text(text),
+            prompt_version=spec.version,
+        )
+        return {"receipt_data": data, "llm_meta": {"intake": meta}}
+    except Exception:
+        logger.exception("영수증 텍스트 구조화 추출 실패 — 정규식으로 폴백")
+        return {"receipt_data": parse_receipt_text(text)}
 
 
 def _mock_receipt_from_url(url: str, default_amount: int, default_date: str) -> ReceiptData:
@@ -64,10 +95,10 @@ async def intake_receipt(state: ReviewState) -> dict:
     claim = state["claim"]
     receipt_ref = state.get("receipt_path") or state.get("receipt_url")
 
-    # 백엔드가 추출 텍스트를 주면 Vision 없이 그대로 파싱 (우선 경로)
+    # 백엔드가 추출 텍스트를 주면 Vision 없이 처리 (우선 경로)
     receipt_text = state.get("receipt_text")
     if receipt_text:
-        return {"receipt_data": parse_receipt_text(receipt_text)}
+        return await _intake_from_text(receipt_text)
 
     if not receipt_ref:
         # 영수증 미첨부 — guardrail_gate가 에스컬레이션 판단 근거로 사용

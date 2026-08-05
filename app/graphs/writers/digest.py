@@ -18,6 +18,7 @@ expenses 기준 — 두 수치를 한 문장에 섞지 않는다.
 import asyncio
 import calendar
 import logging
+import re
 from datetime import date, timedelta
 
 from langgraph.graph import END, START, StateGraph
@@ -58,16 +59,23 @@ class DigestFigures(BaseModel):
 
 
 class DigestText(BaseModel):
-    """LLM 산출은 문구만 — 수치 figures는 코드가 붙인다 (digest_writer/v1.yaml)."""
+    """LLM 산출은 문구만 — 수치 figures는 코드가 붙인다 (digest_writer 프롬프트).
+
+    advice(총무 코멘트): 이상 징후·소진 전망에 근거한 다음 주 권고 — 여기가 LLM이
+    실질 가치를 내는 자리다. 단, 새 금액 생성은 금지(수치는 summary 몫)이며
+    verify_digest_pure가 advice 속 금액 토큰을 허용 목록과 대조해 강제한다.
+    """
 
     summary: str
     highlights: list[str]
+    advice: str
 
 
 class DigestDoc(BaseModel):
     figures: DigestFigures
     summary: str
     highlights: list[str]
+    advice: str = ""          # 총무 코멘트 (기본값은 구버전 호환용)
     verified: bool
 
 
@@ -88,7 +96,7 @@ def week_bounds(week_of: str) -> tuple[str, str]:
     return monday.isoformat(), (monday + timedelta(days=6)).isoformat()
 
 
-async def _fetch_week_precedents(team_id: str, week_start: str, week_end: str) -> list[dict]:
+async def _fetch_week_precedents(team_id: int, week_start: str, week_end: str) -> list[dict]:
     # 주간 판례 — briefing.py fetch_precedents 패턴 + created_at 주간 필터 (A-4 명세)
     async with get_pool().connection() as conn:
         rows = await (
@@ -213,6 +221,25 @@ async def aggregate(state: DigestState) -> dict:
     }
 
 
+def _mock_advice(f: DigestFigures) -> str:
+    """목 모드 총무 코멘트 — 이상 징후·소진 전망 기반 결정적 권고 (금액 숫자 없음)."""
+    tips: list[str] = []
+    for a in f.anomalies:
+        if "주간 지출이" in a:
+            cat = a.split(" ")[0]
+            tips.append(f"{cat} 지출이 급증했습니다 — 다음 주 관련 일정을 조정하거나 "
+                        "사전 협의 후 집행을 권장합니다.")
+        elif a.startswith("에스컬레이션"):
+            tips.append("에스컬레이션이 연속 발생했습니다 — 회칙에 판단 기준을 보완하면 "
+                        "자동 처리율을 높일 수 있습니다.")
+    if f.forecast.depletion_date:
+        tips.append("현재 속도면 기간 내 잔액 소진이 예상됩니다 — 지출 우선순위 점검을 "
+                    "권장합니다.")
+    if not tips:
+        tips.append("지출 흐름이 안정적입니다 — 현재 기준을 유지하셔도 좋습니다.")
+    return " ".join(tips)
+
+
 def _mock_digest_text(f: DigestFigures) -> DigestText:
     """목 모드 결정적 문구 — verify가 요구하는 수치를 전부 포함해서 생성."""
     fc = f.forecast
@@ -233,7 +260,7 @@ def _mock_digest_text(f: DigestFigures) -> DigestText:
         f"주간 지출 {f.weekly_spent:,}원 · 기간 말 예상 {fc.projected_period_end_spent:,}원",
     ]
     highlights += f.anomalies or ["이상 징후 없음"]
-    return DigestText(summary=summary, highlights=highlights)
+    return DigestText(summary=summary, highlights=highlights, advice=_mock_advice(f))
 
 
 async def generate_digest(state: DigestState) -> dict:
@@ -248,9 +275,13 @@ async def generate_digest(state: DigestState) -> dict:
         prompt_version=spec.version,
     )
     digest = DigestDoc(
-        figures=f, summary=result.summary, highlights=result.highlights, verified=False
+        figures=f, summary=result.summary, highlights=result.highlights,
+        advice=result.advice, verified=False,
     )
     return {"digest": digest, "llm_meta": {"digest_writer": meta}}
+
+
+_MONEY_RE = re.compile(r"[\d,]*\d원")
 
 
 def verify_digest_pure(doc: DigestDoc, f: DigestFigures) -> bool:
@@ -258,6 +289,10 @@ def verify_digest_pure(doc: DigestDoc, f: DigestFigures) -> bool:
 
     이상 징후는 문장 그대로 강제하지 않고(실모드 LLM이 다듬을 수 있음) 핵심 표지
     (카테고리명·'에스컬레이션')가 본문에 남아 있는지만 본다.
+
+    advice(총무 코멘트)는 LLM의 자유 서술 영역이지만 **금액 토큰은 예외** —
+    figures에서 유도된 허용 목록에 없는 '□□원'이 등장하면 환각으로 보고 폐기한다
+    (실측에서 LLM이 없는 수치를 지어낸 전례 — 조언은 자유롭게, 돈 얘기는 정확하게).
     """
     body = doc.summary + " " + " ".join(doc.highlights)
     checks = [
@@ -271,7 +306,17 @@ def verify_digest_pure(doc: DigestDoc, f: DigestFigures) -> bool:
         checks.append(f.forecast.depletion_date)
     # 이상 징후 표지: "X 주간 지출이…" → 카테고리명 X, 에스컬레이션 연속 → '에스컬레이션'
     checks += [a.split(" ")[0] for a in f.anomalies]
-    return all(v in body for v in checks) and doc.figures == f
+    if not (all(v in body for v in checks) and doc.figures == f):
+        return False
+
+    if not doc.advice.strip():
+        return False                      # 코멘트 누락도 불합격 — 스키마상 필수 산출물
+    allowed_money = {
+        f"{f.weekly_spent:,}원", f"{f.forecast.projected_period_end_spent:,}원",
+        f"{f.forecast.total_budget:,}원", f"{f.forecast.spent:,}원",
+        f"{f.forecast.total_budget - f.forecast.spent:,}원",   # 잔액 표현 허용
+    }
+    return all(tok in allowed_money for tok in _MONEY_RE.findall(doc.advice))
 
 
 async def verify_digest(state: DigestState) -> dict:

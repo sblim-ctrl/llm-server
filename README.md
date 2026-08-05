@@ -50,6 +50,10 @@ uv run --active python -m app.worker
 디버깅·시연에 사용할 수 있다. 승인/반려 같은 쓰기 툴은 노출하지 않는다(가드레일
 우회 방지). 접속 확인: `uv run --active python scripts/smoke_mcp.py`
 
+`/mcp`도 다른 엔드포인트와 동일하게 서비스 토큰이 필요하다. Claude Desktop·MCP
+Inspector로 붙을 때는 `Authorization: Bearer <SERVICE_TOKEN>` 헤더를 설정해야 하며,
+없으면 `401 invalid service token`이 돌아온다.
+
 ## 동작 확인
 
 ```powershell
@@ -70,11 +74,15 @@ curl http://localhost:8000/v1/jobs/{job_id} -H "Authorization: Bearer dev-servic
 
 ```powershell
 uv run pytest -q                                       # 단위 테스트 전체 (가드레일 100% 커버 등)
-uv run python eval/run_eval.py                          # 골든셋 30건 회귀 — 정확도·오승인율·Trajectory
+uv run python eval/run_eval.py                          # 골든셋 회귀 (목 모드) — 정확도·오승인율·Trajectory
+$env:MOCK_LLM="false"; uv run python eval/run_eval_real.py  # 골든셋 실모드 실측 (실키·과금 ~$0.3, 판정 P/R·자동처리율 포함)
+uv run python eval/upload_langsmith_dataset.py             # 골든셋 → LangSmith Dataset (멱등)
+$env:MOCK_LLM="false"; $env:LANGSMITH_TRACING="true"; uv run python eval/run_eval_langsmith.py  # LangSmith Experiment (웹 기록·프롬프트 A/B)
 uv run python scripts/smoke_review.py                   # 심사 그래프 E2E 스모크 (DB 불필요)
 uv run python scripts/smoke_mcp.py                       # MCP 서버 접속 확인 (API 필요)
 uv run python scripts/seed_reference_corpus.py           # PolicyDrafter RAG 참고 문서 인덱싱 (DB 필요, 재실행 가능)
 uv run python scripts/seed_demo.py                       # 판례 학습 데모 데이터 4주 시뮬레이션 (DB 필요, 재실행 가능)
+uv run python scripts/verify_realmode_proposals.py       # B-8 실모드 검증 하네스 (실키·DB 필요, CI 밖 — 아래 참고)
 ```
 
 `eval/run_eval.py` 실행 시 `eval/results/golden_run.csv`(엑셀 호환)가 매번 갱신된다.
@@ -93,6 +101,19 @@ uv run python scripts/seed_demo.py                       # 판례 학습 데모 
 | `MOCK_BACKEND` | 백엔드 API 대신 고정값 반환 + 콜백은 로그로만 출력 |
 
 실연동 시 `.env`만 바꾸면 됨 — 노드 코드는 불변 (`app/tools/backend_client.py`가 경계).
+
+## API 계약 (OpenAPI)
+
+풀스택 팀 공유용 — 우리 API의 엔드포인트·요청/응답 스키마 전체가
+[`docs/openapi.json`](docs/openapi.json)에 고정돼 있다(코드 실행 없이 확인 가능).
+API를 바꾸면 스펙도 갱신해야 하며, CI가 불일치를 잡는다:
+
+```powershell
+uv run python scripts/dump_openapi.py           # API 변경 후 스펙 갱신·커밋
+uv run python scripts/dump_openapi.py --check    # 최신성 검사 (CI가 자동 수행)
+```
+
+서버 기동 시 대화형 문서도 제공된다: `/docs`(Swagger UI) · `/redoc`.
 
 ## 실모드 수동 체크리스트 (A-9/B-8 — 비용 문제로 CI 밖)
 
@@ -116,8 +137,14 @@ uv run python scripts/seed_demo.py                       # 판례 학습 데모 
       심사 → LangSmith API로 트레이스 역조회 — C9 형식(run_name=review:{job_id},
       tags=[team_id]) 확인, **LLM 전송 프롬프트에 실명 부재·역할 치환 확인**
       (검증도 .env는 LANGSMITH_TRACING=false 유지, 프로세스 주입 방식)
-- [ ] 개발자 B 몫(B-8): BudgetPlanner·rule_amendment 실모드, 군집 실키 확인,
-      jobs cost/tokens 실기록, C9 태깅 트레이스
+- [x] 개발자 B 몫(B-8, 2026-07-22 실행 — 전 항목 통과): `scripts/verify_realmode_proposals.py`
+      실행(exit 0) — ① BudgetPlanner 실모드(cost $0.00019, tokens 781/119, proposal_id 발급)
+      ② rule_amendment 실모드(cost $0.00252, tokens 616/98, 제안 1건) +
+      `detect_repeated_overrides` 의미 유사 군집 실키 확인(count=4 — 실 임베딩 거리
+      0.236~0.355 vs 목 해시 거리 0.669~1.151, **목으론 불가함을 실측으로 증명**)
+      ③ jobs 테이블 cost/tokens 실기록 확인 ④ LangSmith API 역조회로
+      `proposal_budget:{job_id}`·`proposal_rule_amendment:{job_id}` 둘 다
+      `tags=[b8-verify]` 확인. 총 실측 비용 $0.002710
 
 실측에서 나온 수정 3건(전부 이 리포에 반영됨): ① `with_structured_output`은
 `method="function_calling"` 필수 — 기본 strict 모드가 `Opinion.figures`(자유 dict)를
@@ -162,9 +189,12 @@ eval/golden/                # 골든셋 30건 (5개 유형 × 6개 시나리오)
 
 ## 다음 작업
 
-- [ ] 실 OpenAI 키 연결 (`MOCK_LLM=false` + `OPENAI_API_KEY` 설정) — 프롬프트 튜닝
-- [ ] 백엔드 API 계약 확정 반영 (필드명·엔드포인트)
-- [ ] LangSmith 트레이싱·CI 게이트 연동
+- [x] 실 OpenAI 키 연결 (`MOCK_LLM=false` + `OPENAI_API_KEY` 설정) — 프롬프트 튜닝
+      (2026-07-20 완료, 골든셋 실모드 100%·30/30. 아래 '실모드 수동 체크리스트' 참고)
+- [ ] 백엔드 API 계약 확정 반영 (필드명·엔드포인트) — 대기 항목 전체 정리는
+      `docs/백엔드_대기항목_정리.md` 참고 (데모 필수 경로 아님)
+- [x] LangSmith 트레이싱 연동 (완료, B-4)
+- [ ] LangSmith CI 게이트 연동 (Sprint 2)
 - [ ] 참고 문서 코퍼스 확장 (유형당 2~3개, 실키로 검색 품질 실측 후 판단)
 - [ ] 카테고리 오선택 시 관리자 참고 메모 추가 여부 (팀 논의 중)
 - 코드 내 `TODO` 주석이 세부 작업 지점 표시

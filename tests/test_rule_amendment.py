@@ -77,7 +77,7 @@ async def test_detect_empty_returns_reason(monkeypatch):
         return []
 
     monkeypatch.setattr(ra, "detect_repeated_overrides", _none)
-    out = await detect({"request": RuleAmendmentRequest(team_id="t")})
+    out = await detect({"request": RuleAmendmentRequest(team_id=1)})
     assert out == {"clusters": [], "reason": NO_CLUSTER_REASON}
 
 
@@ -122,7 +122,7 @@ async def test_save_persists_per_cluster_when_verified(monkeypatch):
     d = _mock_amendment(c)
     out = await ra.save(
         {
-            "request": RuleAmendmentRequest(team_id="t"),
+            "request": RuleAmendmentRequest(team_id=1),
             "clusters": [c],
             "drafts": [d],
             "verified": True,
@@ -130,6 +130,6 @@ async def test_save_persists_per_cluster_when_verified(monkeypatch):
     )
     assert out["proposal_ids"] == ["pid-1"]
     assert len(calls) == 1
-    assert calls[0][0] == "t"
+    assert calls[0][0] == 1
     assert calls[0][1] == "rule_amendment"
     assert calls[0][2]["precedent_ids"] == c["precedent_ids"]  # 근거 판례 id 배열

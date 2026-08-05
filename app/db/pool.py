@@ -52,10 +52,10 @@ async def apply_schema() -> None:
 # ── jobs 헬퍼 ─────────────────────────────────────────────
 
 async def insert_job(
-    team_id: str,
+    team_id: int,
     job_type: str,
     payload: dict[str, Any],
-    expense_id: str | None = None,
+    expense_id: int | None = None,
     max_attempts: int = 3,
     dedupe_active: bool = False,
     external_job_id: str | None = None,
@@ -139,6 +139,26 @@ async def get_job(job_id: str) -> dict[str, Any] | None:
                 (job_id, job_id),
             )
         ).fetchone()
+
+
+async def get_context_status(team_id: int) -> dict[str, Any]:
+    """팀의 활성 회칙 인덱스 요약 — 조항 수·버전·인덱싱 시각.
+
+    인덱싱 이력이 없으면 chunk_count 0에 나머지는 None으로 돌려준다(예외 아님).
+    회칙이 없는 것은 정상 상태이며, 그 팀은 유형별 기본 정책으로 심사된다.
+    """
+    async with get_pool().connection() as conn:
+        row = await (
+            await conn.execute(
+                """SELECT COUNT(*) AS chunk_count,
+                          MAX(version) AS version,
+                          MAX(created_at) AS indexed_at
+                   FROM context_chunks
+                   WHERE team_id = %s AND active AND doc_type = 'rule'""",
+                (team_id,),
+            )
+        ).fetchone()
+    return row or {"chunk_count": 0, "version": None, "indexed_at": None}
 
 
 async def claim_next_job() -> dict[str, Any] | None:

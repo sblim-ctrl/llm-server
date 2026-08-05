@@ -49,6 +49,18 @@ async def main() -> int:
     if summary["trajectory_total"]:
         print(f"Trajectory(가드레일 발동 일치): {summary['trajectory_correct']}"
               f"/{summary['trajectory_total']} = {summary['trajectory_accuracy']:.1%}")
+
+    m = summary["metrics"]
+    def _pct(v: float | None) -> str:
+        return "N/A" if v is None else f"{v:.0%}"
+    print(f"\n자동 처리율: {m['automation_rate']:.0%} (승인·반려로 자동 종결)")
+    print("판정별 Precision/Recall/F1:")
+    for label in ("approve", "reject", "escalate"):
+        p = m["per_class"][label]
+        print(f"  {VERDICT_LABELS[label]:2s}(n={p['support']:2d}): "
+              f"P={_pct(p['precision'])} R={_pct(p['recall'])} F1={_pct(p['f1'])}")
+    print(f"  → 에스컬레이션 Recall(놓침 없음) = {_pct(m['escalation_recall'])} "
+          "(안전 핵심 지표)")
     print(f"결과 CSV: {summary['csv_path']}")
 
     if summary["false_approve_count"]:

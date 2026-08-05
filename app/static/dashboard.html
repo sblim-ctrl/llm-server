@@ -170,7 +170,7 @@
     <button data-tab="review" class="active">지출 심사</button>
     <button data-tab="draft">회칙·예산 초안</button>
     <button data-tab="report">정산 리포트</button>
-    <button data-tab="proposal">예산 제안</button>
+    <!-- [MVP 제외] budget_planner — 복원 시 아래 버튼 주석 해제 --><!-- <button data-tab="proposal">예산 제안</button> -->
     <button data-tab="digest">AI 총무 브리핑</button>
     <button data-tab="eval">골든셋 평가</button>
   </nav>
@@ -189,7 +189,7 @@
       </div>
       <div class="row">
         <div class="field"><label>팀 ID</label><input id="rv-team" value="demo-team-1"></div>
-        <div class="field"><label>카테고리 (비우면 AI 자동 분류)</label><input id="rv-category" value="식비" placeholder="AI 자동 분류"></div>
+        <div class="field"><label>카테고리 (비우면 AI 자동 분류)</label><input id="rv-category" value="" placeholder="AI 자동 분류"></div>
         <div class="field"><label>금액(원)</label><input id="rv-amount" type="number" value="32000"></div>
         <div class="field"><label>날짜</label><input id="rv-date" type="date" value="2026-07-08"></div>
       </div>
@@ -203,8 +203,42 @@
         <div class="field grow"><label>영수증 조회 경로 receiptPath (비우면 미첨부 / mock://receipt?amount=&date= 로 불일치 생성)</label>
           <input id="rv-receipt" value="https://example.com/r/demo-1"></div>
       </div>
-      <button class="btn" id="rv-submit">심사 요청 보내기</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" id="rv-submit">심사 요청 보내기</button>
+        <button class="btn" id="rv-stream">실시간 심사 (스트리밍)</button>
+      </div>
       <div class="status-line" id="rv-status"></div>
+
+      <!-- 실시간 심사 타임라인 — SSE(POST /v1/reviews/stream), 데모·관측 전용 -->
+      <style>
+        .tl{display:none;margin-top:12px;border-left:2px solid var(--line);padding-left:14px}
+        .tl.show{display:block}
+        .tl-row{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;padding:3px 0;
+                font-size:13px;color:var(--ink-faint)}
+        .tl-row .ic{width:16px;text-align:center}
+        .tl-row.done{color:var(--ink)}
+        .tl-row.done .ic{color:var(--ok)}
+        .tl-row.skip{opacity:.4;text-decoration:line-through}
+        .tl-row .ms{margin-left:auto;font-size:11px;color:var(--ink-faint);font-family:var(--mono)}
+        .tl-row .op-sum{flex-basis:100%;padding-left:24px;font-size:11.5px;color:var(--ink-dim)}
+        .tl-row.par .lb::after{content:" ∥ 병렬";font-size:10px;color:var(--accent)}
+      </style>
+      <div class="tl" id="rv-timeline"></div>
+
+      <!-- HITL 관리자 결정 카드 — paused 이벤트 시 표시 (그래프는 체크포인트에 멈춰 대기) -->
+      <div id="rv-hitl" style="display:none;margin-top:10px;padding:12px;border:1px solid var(--warn);
+           border-radius:8px;background:var(--warn-bg)">
+        <div style="font-weight:600;margin-bottom:4px">⏸ 그래프 일시정지 — 관리자 결정 대기</div>
+        <div class="status-line" id="hitl-reason" style="margin-bottom:8px"></div>
+        <div class="row">
+          <div class="field grow"><label>결정 사유 (선택 — 판례에 기록됨)</label>
+            <input id="hitl-note" placeholder="예: 영수증 원본 확인 완료"></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn" id="hitl-approve">승인하고 재개</button>
+          <button class="btn" id="hitl-reject">반려하고 재개</button>
+        </div>
+      </div>
 
       <div class="result empty" id="rv-result">
         <div id="rv-badge"></div>
@@ -272,7 +306,8 @@
     </div>
   </section>
 
-  <!-- ④ 예산 제안 (A-8) -->
+  <!-- [MVP 제외] budget_planner — 복원 시 아래 패널 주석 해제 (원본 라벨: ④ 예산 제안 (A-8)) -->
+  <!--
   <section class="panel" id="panel-proposal">
     <div class="card">
       <h2>예산 조정 제안 (BudgetPlanner)</h2>
@@ -298,6 +333,7 @@
       </div>
     </div>
   </section>
+  -->
 
   <!-- ⑤ AI 총무 브리핑 (A-8) -->
   <section class="panel" id="panel-digest">
@@ -321,6 +357,8 @@
         </div>
         <p style="margin:10px 0 0;font-size:13px" id="dg-summary"></p>
         <ul class="recs" id="dg-highlights"></ul>
+        <div class="r" style="margin-top:10px"><b>총무 코멘트 (AI 권고)</b>
+          <span id="dg-advice" style="font-size:13px"></span></div>
         <span class="raw-toggle" data-target="dg-raw">원본 JSON 보기 ▾</span>
         <pre class="raw" id="dg-raw"></pre>
       </div>
@@ -331,7 +369,7 @@
   <section class="panel" id="panel-eval">
     <div class="card">
       <h2>골든셋 회귀 평가</h2>
-      <div class="desc">GET /v1/eval/golden — 30건 전체를 심사 그래프에 실행해 정확도·오승인율을 확인합니다 (§9.1 하드 게이트와 동일 기준).</div>
+      <div class="desc">GET /v1/eval/golden — 골든셋 전체(v1.1 기준 42건)를 심사 그래프에 실행해 정확도·오승인율을 확인합니다 (§9.1 하드 게이트와 동일 기준).</div>
       <button class="btn" id="ev-submit">평가 실행 (수 초 소요)</button>
       <div class="status-line" id="ev-status"></div>
 
@@ -339,8 +377,14 @@
         <div class="summary-strip">
           <div class="stat" id="ev-stat-acc"><div class="label">정확도</div><div class="value">-</div></div>
           <div class="stat" id="ev-stat-fa"><div class="label">오승인 (하드 게이트)</div><div class="value">-</div></div>
+          <div class="stat"><div class="label">자동 처리율</div><div class="value" id="ev-automation">-</div></div>
+          <div class="stat" id="ev-stat-esc"><div class="label">에스컬레이션 Recall</div><div class="value">-</div></div>
           <div class="stat"><div class="label">전체 케이스</div><div class="value" id="ev-total">-</div></div>
         </div>
+        <table class="wrap-x" style="margin-top:10px">
+          <thead><tr><th>판정</th><th class="num">건수</th><th class="num">Precision</th><th class="num">Recall</th><th class="num">F1</th></tr></thead>
+          <tbody id="ev-prf"></tbody>
+        </table>
         <div id="ev-cases"></div>
         <span class="raw-toggle" data-target="ev-raw">원본 JSON 보기 ▾</span>
         <pre class="raw" id="ev-raw"></pre>
@@ -436,6 +480,43 @@ document.querySelectorAll("[data-preset]").forEach(btn => {
   });
 });
 
+function buildReviewPayload(idPrefix) {
+  // pull 모델 (bravo 설계서 TABLE 18) — 백엔드처럼 5필드만 보낸다. 지출 상세는
+  // 목 규약(expenseId의 ?title=&amount=... 쿼리)으로 load_context가 되물어 채움.
+  const q = `title=${encodeURIComponent($("rv-title").value)}`
+    + `&amount=${Number($("rv-amount").value)}`
+    + `&category=${encodeURIComponent($("rv-category").value)}`
+    + `&date=${$("rv-date").value}`
+    + `&description=${encodeURIComponent($("rv-desc").value)}`;
+  return {
+    jobId: idPrefix + "-job-" + Date.now(),
+    expenseId: `${idPrefix}-${Date.now()}?${q}`,
+    organizationId: $("rv-team").value,
+    reviewGoal: "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+    receiptPath: $("rv-receipt").value || null,
+  };
+}
+
+function renderReviewResult(r, rawObj) {
+  // 워커 폴링 결과(r.opinions 배열)와 스트리밍 결과(변환 후) 공용 렌더러
+  $("rv-badge").innerHTML = verdictBadge(r.verdict, r.confidence);
+  $("rv-category-result").innerHTML = r.category
+    ? `<span class="badge pending">카테고리: ${r.category}
+         ${r.category_source === "ai" ? "· AI 자동 분류" : "· 사용자 입력"}</span>`
+    : "";
+  $("rv-opinions").innerHTML = (r.opinions || []).map(op => `
+    <div class="op">
+      <div class="who">${op.auditor}</div>
+      <span class="v ${op.verdict}">${op.verdict}</span>
+      <div class="summary">${op.summary || ""}</div>
+    </div>`).join("") || "<div class='status-line'>소견 없음</div>";
+  $("rv-reasons").innerHTML = r.reasons ? `
+    <div class="r"><b>요청자용</b>${r.reasons.requester}</div>
+    <div class="r"><b>관리자용</b>${r.reasons.admin}</div>` : "";
+  $("rv-raw").textContent = JSON.stringify(rawObj, null, 2);
+  $("rv-result").classList.remove("empty");
+}
+
 $("rv-submit").addEventListener("click", async () => {
   const btn = $("rv-submit");
   btn.disabled = true;
@@ -443,21 +524,7 @@ $("rv-submit").addEventListener("click", async () => {
   $("rv-status").className = "status-line";
   $("rv-result").classList.add("empty");
   try {
-    // pull 모델 (bravo 설계서 TABLE 18) — 백엔드처럼 5필드만 보낸다. 지출 상세는
-    // 목 규약(expenseId의 ?title=&amount=... 쿼리)으로 load_context가 되물어 채움.
-    const q = `title=${encodeURIComponent($("rv-title").value)}`
-      + `&amount=${Number($("rv-amount").value)}`
-      + `&category=${encodeURIComponent($("rv-category").value)}`
-      + `&date=${$("rv-date").value}`
-      + `&description=${encodeURIComponent($("rv-desc").value)}`;
-    const payload = {
-      jobId: "ui-job-" + Date.now(),
-      expenseId: `ui-${Date.now()}?${q}`,
-      organizationId: $("rv-team").value,
-      reviewGoal: "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
-      receiptPath: $("rv-receipt").value || null,
-    };
-    const res = await fetch("/v1/analyze", { method: "POST", headers: authHeaders(), body: JSON.stringify(payload) });
+    const res = await fetch("/v1/analyze", { method: "POST", headers: authHeaders(), body: JSON.stringify(buildReviewPayload("ui")) });
     if (!res.ok) throw new Error(`analyze 실패 (${res.status}): ${await res.text()}`);
     const { job_id } = await res.json();
     $("rv-status").textContent = `job_id=${job_id} — 워커 처리 대기 중…`;
@@ -467,24 +534,8 @@ $("rv-submit").addEventListener("click", async () => {
     });
     if (final.status !== "succeeded") throw new Error(`잡 실패: status=${final.status}`);
 
-    const r = final.result;
     $("rv-status").textContent = `완료 (attempts=${final.attempts})`;
-    $("rv-badge").innerHTML = verdictBadge(r.verdict, r.confidence);
-    $("rv-category-result").innerHTML = r.category
-      ? `<span class="badge pending">카테고리: ${r.category}
-           ${r.category_source === "ai" ? "· AI 자동 분류" : "· 사용자 입력"}</span>`
-      : "";
-    $("rv-opinions").innerHTML = (r.opinions || []).map(op => `
-      <div class="op">
-        <div class="who">${op.auditor}</div>
-        <span class="v ${op.verdict}">${op.verdict}</span>
-        <div class="summary">${op.summary || ""}</div>
-      </div>`).join("") || "<div class='status-line'>소견 없음</div>";
-    $("rv-reasons").innerHTML = r.reasons ? `
-      <div class="r"><b>요청자용</b>${r.reasons.requester}</div>
-      <div class="r"><b>관리자용</b>${r.reasons.admin}</div>` : "";
-    $("rv-raw").textContent = JSON.stringify(final, null, 2);
-    $("rv-result").classList.remove("empty");
+    renderReviewResult(final.result, final);
   } catch (e) {
     $("rv-status").textContent = "오류: " + e.message;
     $("rv-status").className = "status-line err";
@@ -492,6 +543,121 @@ $("rv-submit").addEventListener("click", async () => {
     btn.disabled = false;
   }
 });
+
+// ── ①-b 실시간 심사 (SSE 스트리밍 — POST /v1/reviews/stream, 데모·관측 전용) ──
+const TL_PARALLEL = new Set(["rule_auditor", "budget_auditor", "precedent_auditor"]);
+
+async function readSSE(res, onEvent) {
+  // EventSource는 Authorization 헤더를 못 실어 fetch 스트리밍으로 SSE를 직접 파싱
+  const reader = res.body.getReader(), dec = new TextDecoder();
+  let buf = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let i;
+    while ((i = buf.indexOf("\n\n")) >= 0) {
+      const block = buf.slice(0, i); buf = buf.slice(i + 2);
+      let ev = "message", data = "";
+      for (const line of block.split("\n")) {
+        if (line.startsWith("event: ")) ev = line.slice(7).trim();
+        else if (line.startsWith("data: ")) data += line.slice(6);
+      }
+      if (data) onEvent(ev, JSON.parse(data));
+    }
+  }
+}
+
+let hitlJobId = null;   // paused 상태의 스레드 — 결정 버튼이 이 잡을 재개한다
+
+function handleStreamEvent(ev, d) {
+  const tl = $("rv-timeline");
+  if (ev === "start") {
+    tl.innerHTML = d.nodes.map(n => `
+      <div class="tl-row${TL_PARALLEL.has(n.id) ? " par" : ""}" id="tl-${n.id}">
+        <span class="ic">○</span><span class="lb">${n.label}</span><span class="ms"></span>
+      </div>`).join("");
+    $("rv-status").textContent = `jobId=${d.jobId} — 심사 그래프 실행 중…`;
+  } else if (ev === "node") {
+    const row = document.getElementById("tl-" + d.node);
+    if (!row) return;
+    row.classList.add("done");
+    row.querySelector(".ic").textContent = "✓";
+    row.querySelector(".ms").textContent = d.ms + "ms";
+    if (d.opinion) row.insertAdjacentHTML("beforeend",
+      `<div class="op-sum">${d.opinion.verdict} — ${d.opinion.summary}</div>`);
+  } else if (ev === "paused") {
+    // 그래프가 escalate 노드의 interrupt()에서 멈춤 — 관리자 결정 대기
+    hitlJobId = d.jobId;
+    const row = document.getElementById("tl-escalate");
+    if (row) { row.classList.add("done"); row.querySelector(".ic").textContent = "⏸"; }
+    $("hitl-reason").textContent =
+      `${d.reason}${d.claim ? ` · ${d.claim.title} ${Number(d.claim.amount).toLocaleString()}원` : ""}`;
+    $("rv-hitl").style.display = "block";
+    $("rv-status").textContent = "⏸ 관리자 결정 대기 중 — 그래프가 체크포인트에 멈춰 있습니다";
+  } else if (ev === "result") {
+    tl.querySelectorAll(".tl-row:not(.done)").forEach(r => {
+      r.classList.add("skip");
+      r.querySelector(".ic").textContent = "–";
+    });
+    renderReviewResult({
+      verdict: d.verdict, confidence: d.confidence,
+      category: d.category, category_source: d.categorySource,
+      opinions: Object.entries(d.opinions || {}).map(([k, v]) => ({ auditor: k, ...v })),
+      reasons: d.reasons,
+    }, d);
+    const who = d.adminDecision ? ` · 관리자 결정(${d.adminDecision.decision})` : "";
+    $("rv-status").textContent = `스트리밍 완료 — 그래프 ${d.totalMs}ms${who}`;
+  } else if (ev === "error") {
+    throw new Error(d.detail);
+  }
+}
+
+$("rv-stream").addEventListener("click", async () => {
+  const btn = $("rv-stream");
+  btn.disabled = true;
+  const tl = $("rv-timeline");
+  tl.innerHTML = ""; tl.classList.add("show");
+  $("rv-result").classList.add("empty");
+  $("rv-hitl").style.display = "none";
+  hitlJobId = null;
+  $("rv-status").textContent = "스트리밍 연결 중…";
+  $("rv-status").className = "status-line";
+  try {
+    const res = await fetch("/v1/reviews/stream", {
+      method: "POST", headers: authHeaders(),
+      body: JSON.stringify(buildReviewPayload("stream")),
+    });
+    if (!res.ok) throw new Error(`stream 실패 (${res.status}): ${await res.text()}`);
+    await readSSE(res, handleStreamEvent);
+  } catch (e) {
+    $("rv-status").textContent = "오류: " + e.message;
+    $("rv-status").className = "status-line err";
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+async function sendHitlDecision(decision) {
+  if (!hitlJobId) return;
+  const jobId = hitlJobId;
+  hitlJobId = null;
+  $("rv-hitl").style.display = "none";
+  $("rv-status").textContent = `관리자 결정(${decision}) 전송 — 그래프 재개 중…`;
+  try {
+    const res = await fetch(`/v1/reviews/${jobId}/decision`, {
+      method: "POST", headers: authHeaders(),
+      body: JSON.stringify({ decision, reason: $("hitl-note").value }),
+    });
+    if (!res.ok) throw new Error(`재개 실패 (${res.status}): ${await res.text()}`);
+    await readSSE(res, handleStreamEvent);   // 재개분 이벤트도 같은 타임라인에 이어짐
+  } catch (e) {
+    $("rv-status").textContent = "오류: " + e.message;
+    $("rv-status").className = "status-line err";
+  }
+}
+$("hitl-approve").addEventListener("click", () => sendHitlDecision("approve"));
+$("hitl-reject").addEventListener("click", () => sendHitlDecision("reject"));
 
 // ── ② 회칙·예산 초안 ─────────────────────────────────────
 $("pd-submit").addEventListener("click", async () => {
@@ -566,7 +732,8 @@ $("rp-submit").addEventListener("click", async () => {
   }
 });
 
-// ── ④ 예산 제안 (A-8) ────────────────────────────────────
+// [MVP 제외] budget_planner — 복원 시 아래 블록 주석 해제 (원본 라벨: ④ 예산 제안 (A-8))
+/*
 let ppProposalId = null;
 
 $("pp-submit").addEventListener("click", async () => {
@@ -629,6 +796,7 @@ async function decideProposal(status) {
 }
 $("pp-accept").addEventListener("click", () => decideProposal("accepted"));
 $("pp-dismiss").addEventListener("click", () => decideProposal("dismissed"));
+*/
 
 // ── ⑤ AI 총무 브리핑 (A-8) ───────────────────────────────
 $("dg-submit").addEventListener("click", async () => {
@@ -660,6 +828,7 @@ $("dg-submit").addEventListener("click", async () => {
     $("dg-spent").textContent = r.figures.weekly_spent.toLocaleString() + "원";
     $("dg-summary").textContent = r.summary;
     $("dg-highlights").innerHTML = r.highlights.map(x => `<li>${x}</li>`).join("");
+    $("dg-advice").textContent = r.advice || "(없음)";
     $("dg-raw").textContent = JSON.stringify(final, null, 2);
     $("dg-result").classList.remove("empty");
   } catch (e) {
@@ -674,7 +843,7 @@ $("dg-submit").addEventListener("click", async () => {
 $("ev-submit").addEventListener("click", async () => {
   const btn = $("ev-submit");
   btn.disabled = true;
-  $("ev-status").textContent = "30건 실행 중… (수 초 소요)";
+  $("ev-status").textContent = "골든셋 전체 실행 중… (수 초 소요)";
   $("ev-status").className = "status-line";
   $("ev-result").classList.add("empty");
   try {
@@ -690,6 +859,21 @@ $("ev-submit").addEventListener("click", async () => {
     faStat.className = "stat " + (s.false_approve_count === 0 ? "ok" : "bad");
     faStat.querySelector(".value").textContent = s.false_approve_count + "건";
     $("ev-total").textContent = s.total + "건";
+
+    // §4 Sprint 2 판정 지표 — 자동 처리율·에스컬레이션 Recall·판정별 P/R/F1
+    const m = s.metrics || {};
+    const pct = (v) => (v == null) ? "N/A" : `${(v * 100).toFixed(0)}%`;
+    $("ev-automation").textContent = pct(m.automation_rate);
+    const escStat = $("ev-stat-esc");
+    escStat.className = "stat " + (m.escalation_recall === 1 ? "ok" : "");
+    escStat.querySelector(".value").textContent = pct(m.escalation_recall);
+    const LBL = { approve: "승인", reject: "반려", escalate: "보류" };
+    $("ev-prf").innerHTML = ["approve", "reject", "escalate"].map(k => {
+      const p = (m.per_class || {})[k] || {};
+      return `<tr><td>${LBL[k]}</td><td class="num">${p.support ?? "-"}</td>
+        <td class="num">${pct(p.precision)}</td><td class="num">${pct(p.recall)}</td>
+        <td class="num">${pct(p.f1)}</td></tr>`;
+    }).join("");
 
     $("ev-cases").innerHTML = s.results.map(r => `
       <div class="case-row">

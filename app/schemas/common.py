@@ -70,11 +70,16 @@ class PolicyParams(BaseModel):
 class Opinion(BaseModel):
     """심사관 1명의 소견 — opinions 딕셔너리의 값."""
 
-    auditor: Literal["rule", "budget", "precedent"]
+    # receipt(증빙 심사관)는 영수증-청구 대조 결과를 다른 심사관과 같은 형식으로
+    # 내보내기 위한 것이다 (풀스택 협의 2026-08-04 — 지출 상세 'AI 심사결과'에
+    # 증빙 심사관 추가). **판정 권한은 없다** — 가드레일은 기존대로 mismatch 리스트를
+    # 보고 escalate를 결정하고, 이 소견은 화면에 근거를 보여주기 위한 표현이다.
+    # 그래서 REQUIRED_AUDITORS(누락 시 에스컬레이션)에도 넣지 않는다.
+    auditor: Literal["rule", "budget", "precedent", "receipt"]
     verdict: AuditorVerdict
     summary: str
     evidence: list[str] = []  # rule: 근거 조항
-    figures: dict[str, int | float] = {}  # budget: 잔액·한도 등 수치
+    figures: dict[str, int | float] = {}  # budget: 잔액·한도 등 수치 / receipt: 청구·영수증 금액
     similar_cases: list[str] = []  # precedent: 유사 판례 요약
 
 

@@ -66,18 +66,19 @@ async def load_context(state: ReviewState) -> dict:
         updates["policy_params"] = PolicyParams(auto_approve=False)
     else:
         defaults = PolicyParams()
-        # auto_approve_limit은 DB상 NULL 허용("자동 승인 사용 시에만 값 존재")이고 실서비스
-        # 기본이 auto_approve=FALSE라 NULL이 정상 케이스다. None은 0으로 — 한도 0이면 모든
-        # 금액이 over_auto_approve_limit에 걸려 에스컬레이션되므로 안전 방향(§8).
-        raw_limit = settings_r.get("auto_approve_limit", defaults.auto_approve_limit)
-        # escalation_threshold는 금액이다 (2026-07-27 DB 스키마) — force_escalation_amount와
-        # 1:1. 확신도 θ는 LLM 내부 파라미터로 분리해 백엔드 값에서 받지 않는다 (Q4④).
-        raw_force = settings_r.get("escalation_threshold")
+        # escalation_threshold는 금액이다 — "이 금액 초과 시 무조건 관리자 검토"
+        # (풀스택 DB 스키마 team_settings, 2026-07-27 수령분에서 확정 / Q4①).
+        # confidence_threshold(θ)는 백엔드가 모르는 LLM 내부 파라미터라 분리 유지(Q4④).
+        # auto_approve_limit은 NULL 허용 — 자동승인 미사용 팀(실서비스 기본)은 값이 없다.
+        # None이면 0으로 둔다: 한도 0이면 모든 금액이 걸려 에스컬레이션되므로 §8
+        # "어떤 실패도 자동 승인으로 이어지지 않는다"에 부합하는 안전 방향이다.
+        limit = settings_r.get("auto_approve_limit")
+        force = settings_r.get("escalation_threshold")
         updates["policy_params"] = PolicyParams(
             auto_approve=bool(settings_r.get("auto_approve", False)),
-            auto_approve_limit=0 if raw_limit is None else int(raw_limit),
+            auto_approve_limit=int(limit) if limit is not None else 0,
             force_escalation_amount=(
-                defaults.force_escalation_amount if raw_force is None else int(raw_force)
+                int(force) if force is not None else defaults.force_escalation_amount
             ),
         )
 

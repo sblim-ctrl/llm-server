@@ -75,7 +75,7 @@ async def _run_report_case(case: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-async def _seed_briefing_precedents(team_id: str, precedents: list[dict[str, Any]]) -> None:
+async def _seed_briefing_precedents(team_id: int, precedents: list[dict[str, Any]]) -> None:
     """케이스 판례를 DB에 시드 — 팀 단위 삭제 후 재삽입이라 재실행해도 결과 동일."""
     async with get_pool().connection() as conn:
         await conn.execute("DELETE FROM precedents WHERE team_id = %s", (team_id,))

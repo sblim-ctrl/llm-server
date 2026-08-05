@@ -27,10 +27,10 @@ def test_request_rejects_invalid_date():
 
     from app.schemas.writers import DigestRequest
     with pytest.raises(ValidationError):
-        DigestRequest(team_id="t", week_of="2026-99-99")
+        DigestRequest(team_id=1, week_of="2026-99-99")
     with pytest.raises(ValidationError):
-        DigestRequest(team_id="t", week_of="다음주")
-    assert DigestRequest(team_id="t", week_of="2026-06-26").week_of == "2026-06-26"
+        DigestRequest(team_id=1, week_of="다음주")
+    assert DigestRequest(team_id=1, week_of="2026-06-26").week_of == "2026-06-26"
 
 
 PRECEDENTS = [
@@ -88,3 +88,42 @@ async def test_verification_detects_figure_mismatch():
     bad = DigestDoc(figures=f, summary="자동 승인 999건뿐입니다.", highlights=[],
                     verified=False)
     assert verify_digest_pure(bad, f) is False
+
+
+# ── 총무 코멘트(advice) — LLM 권고 + 금액 환각 차단 ──────
+
+
+async def _valid_doc():
+    from app.graphs.writers.digest import generate_digest
+    budget = await get_budget_status("digest-test-team")
+    expenses = await get_expense_history("digest-test-team")
+    f = aggregate_digest_pure(PRECEDENTS, expenses, budget, WEEK_OF)
+    state = await generate_digest({"figures": f})
+    return state["digest"], f
+
+
+async def test_advice_present_and_passes_verification():
+    doc, f = await _valid_doc()
+    assert doc.advice.strip()                      # 코멘트는 필수 산출물
+    assert "식비" in doc.advice                    # 이상 징후 기반 권고 (목 규약)
+    assert verify_digest_pure(doc, f) is True
+
+
+async def test_advice_with_fabricated_money_is_rejected():
+    """조언은 자유, 돈 얘기는 정확하게 — 허용 목록 밖 금액이 advice에 있으면 폐기."""
+    doc, f = await _valid_doc()
+    bad = doc.model_copy(update={"advice": "다음 주 예산으로 999,999원을 배정하세요."})
+    assert verify_digest_pure(bad, f) is False
+
+
+async def test_advice_may_cite_known_figures():
+    """figures에 있는 금액 그대로는 advice에 인용 가능 (허용 목록)."""
+    doc, f = await _valid_doc()
+    ok = doc.model_copy(update={
+        "advice": f"주간 지출 {f.weekly_spent:,}원 수준을 유지하시길 권합니다."})
+    assert verify_digest_pure(ok, f) is True
+
+
+async def test_empty_advice_is_rejected():
+    doc, f = await _valid_doc()
+    assert verify_digest_pure(doc.model_copy(update={"advice": "  "}), f) is False

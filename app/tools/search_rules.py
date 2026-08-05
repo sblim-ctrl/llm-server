@@ -14,7 +14,7 @@ from app.llm.client import embed_texts
 from app.tools.vector_utils import to_vector_literal
 
 
-async def search_rules(team_id: str, query: str, version: int, top_k: int = 3) -> list[dict]:
+async def search_rules(team_id: int, query: str, version: int, top_k: int = 3) -> list[dict]:
     query_vec = (await embed_texts([query]))[0]
     async with get_pool().connection() as conn:
         rows = await (await conn.execute(

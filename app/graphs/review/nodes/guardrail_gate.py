@@ -15,6 +15,7 @@ def evaluate_guardrails(
     policy: PolicyParams,
     amount: int,
     receipt_parse_ok: bool = True,
+    category_mismatch: bool = False,
 ) -> GateResult:
     triggered: list[str] = []
 
@@ -37,6 +38,13 @@ def evaluate_guardrails(
         triggered.append("receipt_unreadable")
     if mismatch:
         triggered.append("receipt_mismatch")
+
+    # 2.5 사용자 지정 카테고리 vs AI 분류의 확신 있는 불일치 (2026-07-28 결정) —
+    #     카테고리 위장으로 카테고리별 회칙 한도를 회피하거나 통계를 오염시키는
+    #     경로 차단. 라벨 변경·반려가 아니라 관리자 확인(escalate)이다 — AI가
+    #     틀렸을 수 있으므로 실행 권한은 사람에게 (C2 추천만 원칙).
+    if category_mismatch:
+        triggered.append("category_mismatch")
 
     # 3. 회칙 위반·해석 애매 또는 중복 의심 → 금액 무관 ESCALATED
     rule_op = opinions.get("rule")
@@ -89,6 +97,7 @@ async def guardrail_gate(state: ReviewState) -> dict:
         policy=state["policy_params"],
         amount=state["claim"].amount,
         receipt_parse_ok=(receipt is not None and receipt.parse_ok),
+        category_mismatch=bool(state.get("category_mismatch")),
     )}
 
 

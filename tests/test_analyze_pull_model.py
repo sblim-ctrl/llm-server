@@ -4,36 +4,50 @@
 - get_expense_detail 목 규약: expense_id의 ?쿼리로 지출 상세 오버라이드
 - load_context: claim pull 채움 / 직접 주입 시 조회 생략 / team_settings 실패 시
   auto_approve=False fail-safe
+- team_settings·budget 응답 필드 계약 (풀스택 DB 스키마 2026-07-27 수령분)
 """
 
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from app.graphs.review.nodes.load_context import load_context
 from app.schemas.analyze import AnalyzeRequest
 from app.schemas.common import ExpenseClaim
-from app.tools.backend_client import get_expense_detail, get_team_settings
+from app.tools.backend_client import get_budget_status, get_expense_detail, get_team_settings
 
 
 def test_analyze_request_accepts_camel_case():
     req = AnalyzeRequest.model_validate(
         {
             "jobId": "be-1",
-            "expenseId": "exp-1",
-            "organizationId": "org-1",
+            "expenseId": 101,
+            "organizationId": 11,
             "reviewGoal": "심사하라",
             "receiptPath": "/api/internal/receipts/1",
         }
     )
     assert req.job_id == "be-1"
-    assert req.organization_id == "org-1"
+    assert req.expense_id == 101
+    assert req.organization_id == 11
     assert req.receipt_path == "/api/internal/receipts/1"
 
 
 def test_analyze_request_accepts_snake_case_too():
     """populate_by_name — 내부 도구·테스트의 snake_case 호출 호환."""
-    req = AnalyzeRequest(job_id="be-2", expense_id="exp-2", organization_id="org-2")
+    req = AnalyzeRequest(job_id="be-2", expense_id=102, organization_id=12)
     assert req.review_goal == ""  # 선택 필드 기본값
     assert req.receipt_path is None
+
+
+def test_analyze_request_rejects_string_entity_ids():
+    """백엔드 BIGINT 계약 — 숫자처럼 보이는 문자열도 허용하지 않는다."""
+    import pytest
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        AnalyzeRequest.model_validate(
+            {"jobId": "be-3", "expenseId": "103", "organizationId": "13"}
+        )
 
 
 def test_analyze_request_rejects_old_push_contract():
@@ -44,8 +58,8 @@ def test_analyze_request_rejects_old_push_contract():
     with pytest.raises(ValidationError):
         AnalyzeRequest.model_validate(
             {
-                "expense_id": "exp-1",
-                "team_id": "team-1",
+                "expense_id": 101,
+                "team_id": 11,
                 "claim": {"title": "교재", "amount": 32000, "date": "2026-07-01"},
             }
         )
@@ -103,44 +117,104 @@ async def test_load_context_fail_safe_on_settings_error():
     assert updates["policy_params"].auto_approve is False
 
 
-# ── team_settings 값 매핑 (escalation_threshold = 금액, 2026-07-27 DB 스키마) ──
+# ── team_settings·budget 응답 필드 계약 (풀스택 DB 스키마 2026-07-27) ──
 
 
-async def _policy_params_with(settings: dict):
-    with patch("app.graphs.review.nodes.load_context.get_team_settings", return_value=settings):
-        updates = await load_context({"team_id": "org-1", "expense_id": "exp-1"})
-    return updates["policy_params"]
+async def test_escalation_threshold_is_amount_not_confidence():
+    """team_settings.escalation_threshold는 금액 → force_escalation_amount.
 
-
-async def test_escalation_threshold_maps_to_amount_not_confidence():
-    """마법사 2단계 '관리자 확인 설정 금액'이 심사에 그대로 도달해야 한다.
-
-    이 값을 confidence_threshold(0~1 θ)에 대입하면 adjudicate의 임계 비교가
-    상시 거짓이 되어 전건 에스컬레이션된다.
+    θ(confidence_threshold)는 백엔드가 모르는 LLM 내부 파라미터라 기본값을 유지한다.
     """
-    p = await _policy_params_with(
-        {
+    with patch(
+        "app.graphs.review.nodes.load_context.get_team_settings",
+        return_value={
             "auto_approve": True,
             "auto_approve_limit": 50_000,
             "escalation_threshold": 300_000,
-        }
-    )
-    assert p.force_escalation_amount == 300_000
-    assert p.confidence_threshold == 0.8  # θ는 백엔드 값에 오염되지 않는다
+        },
+    ):
+        updates = await load_context({"team_id": "org-1", "expense_id": "exp-1"})
+    policy = updates["policy_params"]
+    assert policy.force_escalation_amount == 300_000
+    assert policy.confidence_threshold == 0.8
+
+
+async def test_auto_approve_limit_null_means_no_auto_approval():
+    """auto_approve_limit은 NULL 허용(자동승인 미사용 팀) — 예외 없이 0으로 처리."""
+    with patch(
+        "app.graphs.review.nodes.load_context.get_team_settings",
+        return_value={
+            "auto_approve": False,
+            "auto_approve_limit": None,
+            "escalation_threshold": 300_000,
+        },
+    ):
+        updates = await load_context({"team_id": "org-1", "expense_id": "exp-1"})
+    assert updates["policy_params"].auto_approve_limit == 0
+
+
+async def _budget_with_response(body: dict) -> dict:
+    """mock_backend=False 경로로 get_budget_status를 호출하고 정규화 결과를 돌려준다."""
+    response = SimpleNamespace(raise_for_status=lambda: None, json=lambda: body)
+
+    class _Stub:
+        async def get(self, *args, **kwargs):
+            return response
+
+    with (
+        patch(
+            "app.tools.backend_client.get_settings",
+            return_value=SimpleNamespace(mock_backend=False),
+        ),
+        patch("app.tools.backend_client._client", return_value=_Stub()),
+    ):
+        return await get_budget_status("org-1")
+
+
+async def test_budget_status_normalizes_used_budget_key():
+    """백엔드 DB 컬럼 표기(used_budget)를 내부 계약(spent)으로 흡수."""
+    result = await _budget_with_response({"total_budget": 300_000, "used_budget": 118_000})
+    assert result == {"total_budget": 300_000, "spent": 118_000}
+
+
+async def test_budget_status_normalizes_camel_case_key():
+    """프론트 API-026 표기(totalBudget/usedBudget)로 와도 동일 결과."""
+    result = await _budget_with_response({"totalBudget": 300_000, "usedBudget": 118_000})
+    assert result == {"total_budget": 300_000, "spent": 118_000}
 
 
 async def test_escalation_threshold_absent_uses_default():
-    p = await _policy_params_with({"auto_approve": True, "auto_approve_limit": 50_000})
-    assert p.force_escalation_amount == 200_000
+    """응답에 escalation_threshold가 없으면 PolicyParams 기본값(20만원)을 쓴다.
+
+    마법사 2단계 화면의 '고액 지출 20만원 이상'과 같은 값이다.
+    """
+    with patch(
+        "app.graphs.review.nodes.load_context.get_team_settings",
+        return_value={"auto_approve": True, "auto_approve_limit": 50_000},
+    ):
+        updates = await load_context({"team_id": "org-1", "expense_id": "exp-1"})
+    assert updates["policy_params"].force_escalation_amount == 200_000
 
 
-async def test_auto_approve_limit_null_becomes_zero():
-    """DB상 NULL 허용 컬럼 — None이면 0(전건 에스컬레이션, 안전 방향)이지 TypeError가 아니다."""
-    p = await _policy_params_with(
-        {
-            "auto_approve": False,
-            "auto_approve_limit": None,
-            "escalation_threshold": 200_000,
-        }
+async def test_budget_status_skips_explicit_null_alias():
+    """명시 null은 건너뛰고 다음 표기 후보를 쓴다.
+
+    백엔드가 전 필드를 직렬화해 {"spent": null, "usedBudget": 118000}을 보내는 경우,
+    키 존재만 보고 None을 집으면 지출이 0원으로 잡혀 잔액이 실제보다 많아진다 —
+    과다 승인 방향의 오류라 §8에 정면으로 어긋난다.
+    """
+    result = await _budget_with_response(
+        {"total_budget": 300_000, "spent": None, "usedBudget": 118_000}
     )
-    assert p.auto_approve_limit == 0
+    assert result == {"total_budget": 300_000, "spent": 118_000}
+
+
+async def test_budget_status_raises_when_no_alias_present():
+    """어느 표기도 없으면 KeyError — budget_auditor가 error 소견으로 잡아 에스컬레이션된다.
+
+    0으로 때우면 '잔액 0 → 반려'라는 틀린 근거가 만들어진다.
+    """
+    import pytest
+
+    with pytest.raises(KeyError):
+        await _budget_with_response({"total_budget": 300_000})

@@ -8,7 +8,7 @@ from app.graphs.writers.policy_draft import (
     load_templates,
     verify_draft_pure,
 )
-from app.graphs.writers.report import aggregate_pure, verify_report_pure
+from app.graphs.writers.report import aggregate_pure, generate_report, verify_report_pure
 from app.schemas.writers import (
     BudgetReport,
     PolicyDraft,
@@ -30,12 +30,19 @@ def test_templates_cover_all_five_team_types():
         assert 0 < t["auto_approve_ratio"] < 1
 
 
-def _draft(rules=None, auto=50_000, force=300_000):
+def _draft(rules=None, auto=50_000, force=300_000, categories=None, notes=""):
+    # 카테고리는 실제 generate_draft가 항상 유형별 6개를 채우므로 기본값도 채워 둔다
+    # (빈 목록은 마법사 1단계 칩이 비는 상태라 검증이 잡아야 할 결함이다).
     return PolicyDraft(
         rules=rules if rules is not None else ["제1조 테스트"],
         policy_params=PolicyParamsSuggestion(
             auto_approve_limit=auto, force_escalation_amount=force
         ),
+        recommended_categories=(
+            categories if categories is not None
+            else ["도서", "강의", "다과", "대관", "비품", "기타"]
+        ),
+        notes=notes,
     )
 
 
@@ -55,6 +62,76 @@ def test_verify_catches_unresolved_placeholder():
 
 def test_verify_passes_valid_draft():
     assert verify_draft_pure(_draft()) is None
+
+
+# ── 검증 강화분 (마법사 산출물이 '그럴듯하지만 어긋난' 상태로 나가지 않게) ──
+
+
+def test_verify_catches_duplicate_rules():
+    """문장부호·공백만 다른 사실상 같은 조항도 중복으로 잡는다."""
+    err = verify_draft_pure(_draft(rules=["영수증을 첨부한다.", "영수증을 첨부한다"]))
+    assert err is not None and "중복" in err
+
+
+def test_verify_catches_blank_rule():
+    err = verify_draft_pure(_draft(rules=["제1조 테스트", "   "]))
+    assert err is not None and "빈 조항" in err
+
+
+def test_verify_catches_empty_categories():
+    err = verify_draft_pure(_draft(categories=[]))
+    assert err is not None and "카테고리" in err
+
+
+def test_verify_catches_duplicate_categories():
+    err = verify_draft_pure(_draft(categories=["도서", "도서"]))
+    assert err is not None and "카테고리" in err
+
+
+def test_verify_catches_hallucinated_limit_in_rule():
+    """LLM 추가 조항이 코드 계산 한도와 다른 금액을 말하면 불통과 — 회칙과 심사 기준이 갈라진다."""
+    err = verify_draft_pure(
+        _draft(rules=["80,000원 이하의 지출은 AI 자동 심사로 처리한다."], auto=50_000)
+    )
+    assert err is not None and "불일치" in err
+
+
+def test_verify_allows_rule_citing_either_suggested_limit():
+    """자동승인 한도·강제 에스컬레이션 금액 둘 다 정당한 인용값이다."""
+    rules = [
+        "50,000원 이하의 지출은 AI 자동 심사로 처리한다.",
+        "300,000원 이상은 자동 승인 대상에서 제외한다.",
+    ]
+    assert verify_draft_pure(_draft(rules=rules, auto=50_000, force=300_000)) is None
+
+
+def test_verify_catches_hallucinated_limit_without_the_word_auto():
+    """'자동'이라는 말 없이 관리자 확인으로 기준을 말해도 금액이 어긋나면 잡는다."""
+    err = verify_draft_pure(
+        _draft(rules=["80,000원을 넘는 지출은 관리자가 확인한다."], auto=50_000)
+    )
+    assert err is not None and "불일치" in err
+
+
+def test_verify_ignores_amounts_in_non_auto_rules():
+    """자동 심사와 무관한 조항의 금액(식비 한도 등)은 대조 대상이 아니다."""
+    rules = ["1인당 식비는 회당 30,000원을 초과할 수 없다."]
+    assert verify_draft_pure(_draft(rules=rules, auto=50_000)) is None
+
+
+def test_verify_catches_dues_rule_without_notes():
+    """회비 조항과 notes 표기는 같은 입력에서 나오므로 한쪽만 있으면 조립 버그다."""
+    err = verify_draft_pure(_draft(rules=["회비는 1인당 30,000원으로 하며, 그 범위에서 집행한다."]))
+    assert err is not None and "회비" in err
+
+
+def test_verify_allows_dues_free_team_whose_name_contains_dues_word():
+    """모임 이름에 '회비'가 들어가도 회비 없는 초안은 통과 — 골든 pd-dues-zero가 잡은 오탐 회귀.
+
+    notes는 모임 이름을 그대로 품기 때문에 '회비' 단어만 보고 판별하면 안 된다.
+    """
+    notes = "'무회비 동아리' (동아리/학생회) 초기예산 1,000,000원 기준 자동 생성 초안"
+    assert verify_draft_pure(_draft(notes=notes)) is None
 
 
 # ── generate_draft: description 기반 맞춤 조항 (목 모드) ─
@@ -173,3 +250,10 @@ def test_report_verification_passes_when_figures_match():
     text = f"총 지출 {f.total_spent:,}원 (2건). 식비 {80_000:,}원, 도서 {20_000:,}원"
     good = BudgetReport(figures=f, summary=text, recommendations=[], verified=False)
     assert verify_report_pure(good, f) is True
+
+
+async def test_generated_report_passes_verification():
+    f = aggregate_pure("2026-06", EXPENSES)
+    state = await generate_report({"figures": f})
+    assert verify_report_pure(state["report"], f) is True
+    assert state["llm_meta"]["report_writer"].mock is True  # 목 모드 계측 확인 (B-7 재료)

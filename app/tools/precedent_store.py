@@ -15,7 +15,7 @@ def summarize_claim(claim: ExpenseClaim) -> str:
     return f"[{claim.category}] {claim.title} — {claim.amount:,}원. {claim.description}".strip()
 
 
-async def masked_claim_summary(team_id: str, claim: ExpenseClaim) -> str:
+async def masked_claim_summary(team_id: int, claim: ExpenseClaim) -> str:
     """검색 쿼리용 마스킹 요약 — 판례가 마스킹 상태로 저장되므로,
     쿼리도 같은 마스킹을 거쳐야 저장본과 동일 표현 공간에서 유사도가 성립한다."""
     members = await get_team_members(team_id)
@@ -23,7 +23,7 @@ async def masked_claim_summary(team_id: str, claim: ExpenseClaim) -> str:
 
 
 async def save_precedent(
-    team_id: str,
+    team_id: int,
     summary: str,
     decision: str,                  # approve | reject | escalate
     decided_by: str,                # AGENT | ADMIN

@@ -162,3 +162,13 @@ def test_escalation_wins_over_reject_candidate():
     opinions["budget"] = Opinion(auditor="budget", verdict="fail", summary="잔액 부족")
     result = evaluate_guardrails(opinions, [], POLICY, amount=999_999)
     assert result.decision == "escalate"
+
+
+def test_category_mismatch_escalates():
+    """사용자 지정 카테고리 vs AI 분류의 확신 있는 불일치 → 관리자 확인 (2026-07-28).
+
+    반려가 아니라 escalate — AI가 틀렸을 수 있으므로 실행 권한은 사람에게 (C2)."""
+    result = evaluate_guardrails(_ok_opinions(), [], POLICY, amount=30_000,
+                                 category_mismatch=True)
+    assert result.decision == "escalate"
+    assert "category_mismatch" in result.triggered_rules

@@ -12,8 +12,7 @@
 """
 
 import logging
-from functools import lru_cache
-from pathlib import Path
+import re
 
 from langgraph.graph import END, START, StateGraph
 from pydantic import BaseModel
@@ -22,32 +21,62 @@ from typing_extensions import TypedDict
 from app.llm.client import chat_structured
 from app.llm.prompts import load_prompt
 from app.schemas.writers import PolicyDraft, PolicyDraftRequest, PolicyParamsSuggestion
-from app.tools.category_catalog import categories_for
+from app.tools.category_catalog import all_categories
+# 템플릿 로더는 심사 쪽 기본 정책 모드와 공유한다 (app/tools/policy_defaults.py) —
+# 같은 YAML을 두 군데서 따로 읽지 않기 위해서다. 재수출이라 기존 import 경로도 유효.
+from app.tools.policy_defaults import load_templates
 from app.tools.search_references import search_references
 
 logger = logging.getLogger(__name__)
 
-MAX_EXTRA_RULES = 3
+# 추가 조항 상한 — 천장이지 목표가 아니다(프롬프트가 "빠짐없이, 단 중복·일반론 금지"로
+# 실제 개수를 조절). base_rules 4~5개와 합쳐 총 10~12개 = 모바일 카드 한 장 분량.
+#
+# 프롬프트가 이 상한을 실제로 쓰는 것은 **v3부터**다. v1·v2는 본문에 "0~3개"·"최대 3개"로
+# 적혀 있어 실효 상한이 3이었고, 이 주석도 "v2가 0~7개를 사용한다"로 사실과 달랐다
+# (PR #9 리뷰 D6 지적). v3가 "0~7개"로 맞췄다.
+MAX_EXTRA_RULES = 7
 
 
 class ExtraRules(BaseModel):
     extra_rules: list[str] = []
 
 
-_TEMPLATES_PATH = Path(__file__).resolve().parents[3] / "templates" / "policy_templates.yaml"
+def normalize_rule(rule: str) -> str:
+    """조항 비교용 정규화 — 공백·문장부호만 다른 사실상 같은 조항을 같게 본다.
+
+    LLM 추가 조항이 기본 조항을 살짝 바꿔 되풀이하는 일이 잦은데(예: 조사·쉼표 차이),
+    표면 문자열 비교로는 걸러지지 않아 초안에 같은 말이 두 번 실린다.
+    """
+    return re.sub(r"[\s·,.()\[\]'\"]+", "", rule)
+
+
+def dedupe_rules(base: list[str], extra: list[str]) -> list[str]:
+    """기본 조항과 겹치거나 자기들끼리 겹치는 추가 조항을 버린다. 순서 보존.
+
+    빈 조항·공백뿐인 조항도 여기서 떨어진다 — LLM이 빈 문자열을 섞어 보내는 경우가 있다.
+    """
+    seen = {normalize_rule(r) for r in base}
+    out: list[str] = []
+    for rule in extra:
+        cleaned = rule.strip()
+        key = normalize_rule(cleaned)
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        out.append(cleaned)
+    return out
+
+
 PER_MEAL_LIMIT = 30_000  # 1인당 식비 기본 한도 — 추후 팀 규모 기반 조정
 # 강제 에스컬레이션 = 자동승인 한도 × 이 배수. 마법사 2단계 화면의 구간표
 # (소액 5만 미만 / 중간 5~20만 / 고액 20만 이상)에 맞춘 값 — 5만 × 4 = 20만.
 FORCE_ESCALATION_MULTIPLE = 4
 # 회비가 입력된 경우에만 붙는 조항 (유형 무관이라 템플릿이 아닌 코드 상수).
 DUES_RULE = "회비는 1인당 {dues}원으로 하며, 회비 수입 범위 내에서 지출을 집행한다."
-
-
-@lru_cache
-def load_templates() -> dict:
-    import yaml
-
-    return yaml.safe_load(_TEMPLATES_PATH.read_text(encoding="utf-8"))
+# notes의 회비 표기. verify가 이 접두사로 '회비가 반영됐는지'를 판별하므로 조각을 상수로 둔다
+# — 단순히 notes에 '회비'가 있는지 보면 모임 이름('무회비 동아리' 등)에 걸려 오탐한다.
+DUES_NOTE = " · 회비 {dues}원"
 
 
 class DraftState(TypedDict, total=False):
@@ -103,7 +132,8 @@ def _mock_extra_rules(description: str) -> list[str]:
 async def generate_draft(state: DraftState) -> dict:
     """초안 조립. 한도 수치는 코드 계산, 기본 조항은 템플릿 + 치환.
 
-    모임 소개가 있으면 LLM이 그 모임 특성에 맞는 추가 조항(최대 3개)을 제안한다.
+    모임 소개가 있으면 LLM이 그 모임 특성에 맞는 추가 조항(최대 MAX_EXTRA_RULES개)을
+    제안한다. 소개가 없으면 LLM을 호출하지 않아 기본 조항만 남는다.
     기본 조항은 LLM이 절대 건드리지 않음 — 필수 조항 보장은 코드 검증(verify_draft)의
     책임으로 유지하기 위해서다.
     """
@@ -143,23 +173,51 @@ async def generate_draft(state: DraftState) -> dict:
                 mock_response=ExtraRules(extra_rules=_mock_extra_rules(req.description)),
                 prompt_version=spec.version,
             )
-            extra_rules = result.extra_rules[:MAX_EXTRA_RULES]
+            # 중복 제거를 상한 적용보다 먼저 — 그래야 겹친 조항이 상한 자리를 차지하지 않는다
+            extra_rules = dedupe_rules(base_rules, result.extra_rules)[:MAX_EXTRA_RULES]
         except Exception:
             logger.exception("policy_drafter 추가 조항 생성 실패 — 기본 조항만 사용")
 
-    dues_note = f" · 회비 {req.dues:,}원" if req.dues else ""
+    dues_note = DUES_NOTE.format(dues=f"{req.dues:,}") if req.dues else ""
     draft = PolicyDraft(
         rules=base_rules + extra_rules,
         policy_params=params,
-        recommended_categories=categories_for(req.team_type),  # 유형별 고정 6개 (신규 생성 없음)
+        recommended_categories=all_categories(),  # 전역 고정 9종 (신규 생성 없음)
         notes=f"'{req.team_name}' ({req.team_type}) 초기예산 {req.initial_budget:,}원{dues_note}"
         " 기준 자동 생성 초안 — 관리자 검토 후 확정",
     )
     return {"draft": draft}
 
 
+# 승인 기준선을 말하는 조항을 식별 — 이 조항의 금액은 policy_params와 반드시 같아야 한다.
+# '자동 심사'뿐 아니라 '관리자 승인/확인'까지 보는 이유: 같은 기준을 "8만원 넘으면 관리자가
+# 확인한다"처럼 '자동'이라는 말 없이 쓸 수 있고, 그때도 회칙과 심사 기준은 똑같이 갈라진다.
+# 기존 조항 28개(5유형 base + 회비 + 목 추가조항) 전수 확인 결과 헛경보 0건.
+_AUTO_RULE_HINT = re.compile(r"자동\s*(?:심사|승인)|관리자.{0,4}(?:승인|확인)")
+_AMOUNT_RE = re.compile(r"([\d,]+)\s*원")
+# DUES_RULE·DUES_NOTE에서 placeholder 앞부분만 — 문구를 고쳐도 따라간다
+_DUES_PREFIX = DUES_RULE.split("{")[0]
+_DUES_NOTE_MARK = DUES_NOTE.split("{")[0]
+
+
+def _amounts_in(text: str) -> list[int]:
+    """조항 문장에 등장하는 '12,000원' 형태의 금액을 모두 정수로."""
+    out: list[int] = []
+    for raw in _AMOUNT_RE.findall(text):
+        digits = raw.replace(",", "")
+        if digits.isdigit():
+            out.append(int(digits))
+    return out
+
+
 def verify_draft_pure(draft: PolicyDraft) -> str | None:
-    """검증(Evaluator) — 위반 시 사유 반환, 통과 시 None. 순수 함수 (단위 테스트 대상)."""
+    """검증(Evaluator) — 위반 시 사유 반환, 통과 시 None. 순수 함수 (단위 테스트 대상).
+
+    이 초안은 관리자가 그대로 확정하면 곧바로 팀 회칙이 되고, 심사 에이전트가 그 회칙을
+    근거로 판정한다. 그래서 '그럴듯하지만 서로 어긋나는' 산출물을 통과시키지 않는 것이
+    핵심이다 — 특히 LLM 추가 조항이 코드가 계산한 한도와 다른 금액을 말하면, 회원이 보는
+    회칙과 에이전트가 쓰는 기준이 갈라진다.
+    """
     p = draft.policy_params
     if not (0 < p.auto_approve_limit < p.force_escalation_amount):
         return "한도 순서 오류 (auto_approve_limit < force_escalation_amount 여야 함)"
@@ -167,6 +225,33 @@ def verify_draft_pure(draft: PolicyDraft) -> str | None:
         return "조항 없음"
     if any("{" in r for r in draft.rules):
         return "치환되지 않은 placeholder 존재"
+    if any(not r.strip() for r in draft.rules):
+        return "빈 조항 존재"
+
+    keys = [normalize_rule(r) for r in draft.rules]
+    if len(keys) != len(set(keys)):
+        return "중복 조항 존재"
+
+    # 마법사 1단계가 이 목록을 그대로 칩으로 보여준다 — 비면 화면이 비고 중복이면 칩이 두 번 뜬다
+    cats = draft.recommended_categories
+    if not cats:
+        return "추천 카테고리 없음"
+    if len(cats) != len(set(cats)):
+        return "추천 카테고리 중복"
+
+    # 환각 방어 — 자동 심사를 말하는 조항의 금액은 제안 파라미터 둘 중 하나여야 한다
+    allowed = {p.auto_approve_limit, p.force_escalation_amount}
+    for rule in draft.rules:
+        if not _AUTO_RULE_HINT.search(rule):
+            continue
+        bad = [a for a in _amounts_in(rule) if a not in allowed]
+        if bad:
+            return (f"자동 심사 한도 조항의 금액이 제안값과 불일치: {bad[0]:,}원 "
+                    f"(제안 {p.auto_approve_limit:,}원 / {p.force_escalation_amount:,}원)")
+
+    # 회비 조항과 notes 표기는 같은 입력(req.dues)에서 나온다 — 한쪽만 있으면 조립 버그
+    if any(r.startswith(_DUES_PREFIX) for r in draft.rules) != (_DUES_NOTE_MARK in draft.notes):
+        return "회비 조항과 notes 표기 불일치"
     return None
 
 

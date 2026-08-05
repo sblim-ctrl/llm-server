@@ -9,3 +9,7 @@ pgdata/
 eval/results/
 .claude/settings.local.json
 .moai/
+
+# 비공개 메모 — 리포 협력자에 풀스택 팀이 포함돼 있어 docs/internal도 전원이 볼 수 있다.
+# 팀 내부 판단·평가·미정 사안은 여기(커밋 안 됨)나 저장소 밖에 둔다.
+docs/_private/

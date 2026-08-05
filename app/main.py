@@ -5,26 +5,31 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.openapi.utils import get_openapi
 from fastapi.responses import FileResponse
 
 from app.api import (
     analyze,
     briefings,
+    categories,
     context,
+    dashboards,
     digests,
     drafts,
     eval as eval_api,
     health,
     jobs,
+    policy,
     precedents,
     proposals,
     reports,
+    reviews_stream,
 )
 from app.db.pool import apply_schema, close_pool, open_pool
 from app.mcp_server import mcp_app, mcp_session_manager
 from app.tools.backend_client import close_backend_client
 from app.observability import setup_langsmith
-from app.middleware.auth import AuthMiddleware
+from app.middleware.auth import PUBLIC_PATHS, AuthMiddleware
 from app.middleware.request_log import RequestLogMiddleware
 
 STATIC_DIR = Path(__file__).parent / "static"
@@ -55,15 +60,43 @@ app.add_middleware(RequestLogMiddleware)
 
 app.include_router(health.router)
 app.include_router(analyze.router)
+app.include_router(reviews_stream.router)  # 실시간 심사 SSE (데모·관측 전용)
 app.include_router(jobs.router)
 app.include_router(context.router)
+app.include_router(policy.router)  # 마법사 2단계 승인 정책 반영 상태
 app.include_router(precedents.router)
 app.include_router(drafts.router)
+app.include_router(categories.router)
 app.include_router(reports.router)
 app.include_router(briefings.router)
 app.include_router(digests.router)
+app.include_router(dashboards.router)  # 대시보드 AI 요약 (동기)
 app.include_router(proposals.router)
 app.include_router(eval_api.router)
+
+
+def _custom_openapi() -> dict:
+    """스펙에만 서비스 토큰 인증 스킴을 노출 — 런타임 인증 경로는 그대로 둔다.
+
+    Swagger UI의 Authorize 버튼을 켜기 위한 문서용 오버라이드. 실제 인증은 여전히
+    AuthMiddleware가 담당하므로(PUBLIC_PATHS 면제 경로 포함) 여기서는 요청을 막지 않는다.
+    """
+    if app.openapi_schema:
+        return app.openapi_schema
+    schema = get_openapi(
+        title=app.title, version=app.version, description=app.description, routes=app.routes
+    )
+    schema["components"]["securitySchemes"] = {"ServiceToken": {"type": "http", "scheme": "bearer"}}
+    schema["security"] = [{"ServiceToken": []}]
+    for path, methods in schema["paths"].items():
+        if path in PUBLIC_PATHS:
+            for operation in methods.values():
+                operation["security"] = []
+    app.openapi_schema = schema
+    return app.openapi_schema
+
+
+app.openapi = _custom_openapi
 
 
 @app.get("/ui", include_in_schema=False)

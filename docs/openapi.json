@@ -41,16 +41,20 @@
       "AnalyzeRequest": {
         "properties": {
           "expenseId": {
+            "description": "양의 백엔드 BIGINT 기본키",
+            "format": "int64",
             "title": "Expenseid",
-            "type": "string"
+            "type": "integer"
           },
           "jobId": {
             "title": "Jobid",
             "type": "string"
           },
           "organizationId": {
+            "description": "양의 백엔드 BIGINT 기본키",
+            "format": "int64",
             "title": "Organizationid",
-            "type": "string"
+            "type": "integer"
           },
           "receiptPath": {
             "anyOf": [
@@ -80,14 +84,83 @@
       "BriefingRequest": {
         "properties": {
           "team_id": {
+            "description": "양의 백엔드 BIGINT 기본키",
+            "format": "int64",
             "title": "Team Id",
-            "type": "string"
+            "type": "integer"
           }
         },
         "required": [
           "team_id"
         ],
         "title": "BriefingRequest",
+        "type": "object"
+      },
+      "CategoryCatalog": {
+        "properties": {
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Categories",
+            "type": "array"
+          },
+          "fallback": {
+            "title": "Fallback",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "categories",
+          "fallback",
+          "version"
+        ],
+        "title": "CategoryCatalog",
+        "type": "object"
+      },
+      "CategoryTrend": {
+        "description": "카테고리 하나의 이번 달 지출과 전월 대비 변화.",
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "change_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Ratio"
+          },
+          "prev_spent": {
+            "title": "Prev Spent",
+            "type": "integer"
+          },
+          "share": {
+            "title": "Share",
+            "type": "number"
+          },
+          "spent": {
+            "title": "Spent",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "category",
+          "spent",
+          "share",
+          "prev_spent",
+          "change_ratio"
+        ],
+        "title": "CategoryTrend",
         "type": "object"
       },
       "ContextRefreshRequest": {
@@ -103,8 +176,10 @@
             "type": "string"
           },
           "team_id": {
+            "description": "양의 백엔드 BIGINT 기본키",
+            "format": "int64",
             "title": "Team Id",
-            "type": "string"
+            "type": "integer"
           },
           "version": {
             "title": "Version",
@@ -119,12 +194,220 @@
         "title": "ContextRefreshRequest",
         "type": "object"
       },
+      "ContextStatus": {
+        "properties": {
+          "chunk_count": {
+            "title": "Chunk Count",
+            "type": "integer"
+          },
+          "indexed": {
+            "title": "Indexed",
+            "type": "boolean"
+          },
+          "indexed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Indexed At"
+          },
+          "team_id": {
+            "description": "양의 백엔드 BIGINT 기본키",
+            "format": "int64",
+            "title": "Team Id",
+            "type": "integer"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          }
+        },
+        "required": [
+          "team_id",
+          "indexed",
+          "chunk_count",
+          "version",
+          "indexed_at"
+        ],
+        "title": "ContextStatus",
+        "type": "object"
+      },
+      "DashboardFigures": {
+        "description": "결정적 집계 — 요약문의 수치는 반드시 이 값과 일치해야 한다.\n\nLLM은 문장만 쓰고 숫자는 전부 여기서 나온다. 검증기(verify_summary_pure)가\n본문의 금액 토큰을 이 값에서 유도한 허용 목록과 대조한다.",
+        "properties": {
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/CategoryTrend"
+            },
+            "title": "Categories",
+            "type": "array"
+          },
+          "fastest_growing": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CategoryTrend"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "largest_expense_amount": {
+            "title": "Largest Expense Amount",
+            "type": "integer"
+          },
+          "largest_expense_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Largest Expense Title"
+          },
+          "pending_amount": {
+            "title": "Pending Amount",
+            "type": "integer"
+          },
+          "pending_count": {
+            "title": "Pending Count",
+            "type": "integer"
+          },
+          "period": {
+            "title": "Period",
+            "type": "string"
+          },
+          "remaining": {
+            "title": "Remaining",
+            "type": "integer"
+          },
+          "spent": {
+            "title": "Spent",
+            "type": "integer"
+          },
+          "top_category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CategoryTrend"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_budget": {
+            "title": "Total Budget",
+            "type": "integer"
+          },
+          "usage_ratio": {
+            "title": "Usage Ratio",
+            "type": "number"
+          }
+        },
+        "required": [
+          "period",
+          "total_budget",
+          "spent",
+          "remaining",
+          "usage_ratio",
+          "pending_count",
+          "pending_amount",
+          "categories",
+          "top_category",
+          "fastest_growing",
+          "largest_expense_title",
+          "largest_expense_amount"
+        ],
+        "title": "DashboardFigures",
+        "type": "object"
+      },
+      "DashboardSummaryDoc": {
+        "properties": {
+          "figures": {
+            "$ref": "#/components/schemas/DashboardFigures"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "verified": {
+            "title": "Verified",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "figures",
+          "message",
+          "verified"
+        ],
+        "title": "DashboardSummaryDoc",
+        "type": "object"
+      },
+      "DashboardSummaryRequest": {
+        "properties": {
+          "period": {
+            "description": "대상 월 YYYY-MM",
+            "title": "Period",
+            "type": "string"
+          },
+          "team_id": {
+            "description": "양의 백엔드 BIGINT 기본키",
+            "format": "int64",
+            "title": "Team Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "team_id",
+          "period"
+        ],
+        "title": "DashboardSummaryRequest",
+        "type": "object"
+      },
+      "DecisionRequest": {
+        "description": "관리자 결정 — HITL 재개 입력.",
+        "properties": {
+          "decision": {
+            "enum": [
+              "approve",
+              "reject"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "reason": {
+            "default": "",
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision"
+        ],
+        "title": "DecisionRequest",
+        "type": "object"
+      },
       "DigestRequest": {
         "description": "주간 윈도우는 요청이 지정 — 목 데이터가 6월 고정이라 '오늘 기준 최근 7일'은\n비결정적(A-4 명세). week_of가 속한 월~일이 브리핑 대상 주가 된다.\n(DigestFigures 등 결과 모델은 BurnForecast 순환 import 때문에\napp/graphs/writers/digest.py에 정의.)",
         "properties": {
           "team_id": {
+            "description": "양의 백엔드 BIGINT 기본키",
+            "format": "int64",
             "title": "Team Id",
-            "type": "string"
+            "type": "integer"
           },
           "week_of": {
             "description": "주간 윈도우 기준일 YYYY-MM-DD",
@@ -336,8 +619,70 @@
         "title": "PolicyDraftRequest",
         "type": "object"
       },
+      "PolicyParamsStatus": {
+        "properties": {
+          "auto_approve": {
+            "title": "Auto Approve",
+            "type": "boolean"
+          },
+          "auto_approve_limit": {
+            "title": "Auto Approve Limit",
+            "type": "integer"
+          },
+          "auto_approved_up_to": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auto Approved Up To"
+          },
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "effective_auto_approve_limit": {
+            "title": "Effective Auto Approve Limit",
+            "type": "integer"
+          },
+          "force_escalation_amount": {
+            "title": "Force Escalation Amount",
+            "type": "integer"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "team_id": {
+            "description": "양의 백엔드 BIGINT 기본키",
+            "format": "int64",
+            "title": "Team Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "team_id",
+          "available",
+          "auto_approve",
+          "auto_approve_limit",
+          "force_escalation_amount",
+          "effective_auto_approve_limit",
+          "auto_approved_up_to",
+          "summary"
+        ],
+        "title": "PolicyParamsStatus",
+        "type": "object"
+      },
       "PolicyParamsSuggestion": {
         "properties": {
+          "auto_approve": {
+            "default": true,
+            "title": "Auto Approve",
+            "type": "boolean"
+          },
           "auto_approve_limit": {
             "title": "Auto Approve Limit",
             "type": "integer"
@@ -359,6 +704,115 @@
         "title": "PolicyParamsSuggestion",
         "type": "object"
       },
+      "PolicyProposal": {
+        "description": "저장된 회칙 초안. 승인·거절은 PATCH /v1/proposals/{proposalId}로 기록한다.",
+        "properties": {
+          "draft": {
+            "$ref": "#/components/schemas/PolicyDraft"
+          },
+          "proposal_id": {
+            "title": "Proposal Id",
+            "type": "string"
+          },
+          "reused": {
+            "default": false,
+            "title": "Reused",
+            "type": "boolean"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "team_id": {
+            "description": "양의 백엔드 BIGINT 기본키",
+            "format": "int64",
+            "title": "Team Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "proposal_id",
+          "team_id",
+          "status",
+          "draft"
+        ],
+        "title": "PolicyProposal",
+        "type": "object"
+      },
+      "PolicyProposalRequest": {
+        "description": "회칙·정책 관리 화면의 초안 요청 (풀스택 협의 2026-08-04 7번).\n\n입력은 마법사 3단계와 같다 — 초안을 만드는 재료가 달라질 이유가 없다. 다른 것은\n결과를 `proposals`에 남긴다는 점과, 이미 있으면 재사용한다는 점이다.",
+        "properties": {
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "dues": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "1인당 회비. None·0 = 없음",
+            "title": "Dues"
+          },
+          "initial_budget": {
+            "description": "원 단위 총액",
+            "exclusiveMinimum": 0.0,
+            "title": "Initial Budget",
+            "type": "integer"
+          },
+          "member_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Member Count"
+          },
+          "regenerate": {
+            "default": false,
+            "title": "Regenerate",
+            "type": "boolean"
+          },
+          "team_id": {
+            "description": "양의 백엔드 BIGINT 기본키",
+            "format": "int64",
+            "title": "Team Id",
+            "type": "integer"
+          },
+          "team_name": {
+            "title": "Team Name",
+            "type": "string"
+          },
+          "team_type": {
+            "enum": [
+              "동아리/학생회",
+              "스터디",
+              "친목",
+              "동호회",
+              "회사"
+            ],
+            "title": "Team Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "team_type",
+          "team_name",
+          "initial_budget",
+          "team_id"
+        ],
+        "title": "PolicyProposalRequest",
+        "type": "object"
+      },
       "PrecedentCreate": {
         "properties": {
           "claim": {
@@ -373,8 +827,10 @@
             "type": "string"
           },
           "expense_id": {
+            "description": "양의 백엔드 BIGINT 기본키",
+            "format": "int64",
             "title": "Expense Id",
-            "type": "string"
+            "type": "integer"
           },
           "is_override": {
             "default": false,
@@ -397,8 +853,10 @@
             "title": "Rule Version"
           },
           "team_id": {
+            "description": "양의 백엔드 BIGINT 기본키",
+            "format": "int64",
             "title": "Team Id",
-            "type": "string"
+            "type": "integer"
           }
         },
         "required": [
@@ -455,8 +913,10 @@
             "type": "string"
           },
           "team_id": {
+            "description": "양의 백엔드 BIGINT 기본키",
+            "format": "int64",
             "title": "Team Id",
-            "type": "string"
+            "type": "integer"
           }
         },
         "required": [
@@ -469,8 +929,10 @@
       "RuleAmendmentRequest": {
         "properties": {
           "team_id": {
+            "description": "양의 백엔드 BIGINT 기본키",
+            "format": "int64",
             "title": "Team Id",
-            "type": "string"
+            "type": "integer"
           }
         },
         "required": [
@@ -519,6 +981,12 @@
         "title": "ValidationError",
         "type": "object"
       }
+    },
+    "securitySchemes": {
+      "ServiceToken": {
+        "scheme": "bearer",
+        "type": "http"
+      }
     }
   },
   "info": {
@@ -541,6 +1009,7 @@
             "description": "Successful Response"
           }
         },
+        "security": [],
         "summary": "Healthz",
         "tags": [
           "health"
@@ -550,6 +1019,18 @@
     "/readyz": {
       "get": {
         "operationId": "readyz_readyz_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "deep",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Deep",
+              "type": "boolean"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -558,8 +1039,19 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
+        "security": [],
         "summary": "Readyz",
         "tags": [
           "health"
@@ -568,6 +1060,7 @@
     },
     "/v1/analyze": {
       "post": {
+        "description": "지출 1건의 AI 심사를 요청한다. **즉시 202로 접수만 하고 심사는 비동기 실행**된다.\n\n**pull 모델** — 요청에는 5필드만 담는다(지출 상세·예산·회칙은 Agent Server가\n백엔드 내부 API로 되물어 조회. `docs/백엔드_요구_내부API_명세.md` 참조).\n\n- `jobId`: 백엔드가 발급. 콜백에서 그대로 echo되므로 `expenses.ai_job_id` 대조 가능\n- `expenseId` / `organizationId`(= teams.id): 지출·모임 식별자\n- `reviewGoal`: 심사 목표 자연어 지시문\n- `receiptPath`: 영수증 조회 경로 (없으면 미첨부로 심사)\n\n**결과 수신 2경로**: ① 심사 완료 시 `POST {백엔드}/agent-callback` 으로 전송(주경로,\n3회 재시도) ② `GET /v1/jobs/{id}` 폴링(안전망 — 내부 job_id·백엔드 jobId 둘 다 조회 가능)\n\n**멱등성**: 같은 지출의 활성 잡이 있으면 새로 만들지 않고 재사용한다(중복 심사·\n이중 콜백 방지). 응답의 `job_id`가 같으면 기존 잡에 수렴한 것.",
         "operationId": "create_analyze_job_v1_analyze_post",
         "requestBody": {
           "content": {
@@ -601,7 +1094,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Create Analyze Job",
+        "summary": "지출 심사 요청 (백엔드 → Agent Server)",
         "tags": [
           "analyze"
         ]
@@ -648,8 +1141,31 @@
         ]
       }
     },
+    "/v1/categories": {
+      "get": {
+        "description": "카테고리 9종을 돌려준다. 모임 유형과 무관하게 항상 같은 목록이다.\n\n계산이 없는 고정값이라 **매번 부르실 필요가 없다.** 서버 기동 시나 배포 시 한 번\n받아 캐시하시면 된다. 다만 캐시도 사본이라 목록이 바뀌면 어긋나므로, 응답의\n`version`을 함께 저장해 두시고 값이 달라졌을 때만 갱신하시면 된다.\n\n`fallback`은 지출 분류가 어느 카테고리에도 안 걸릴 때 저희가 쓰는 값이다\n(항상 `기타`). 화면에 노출하지 않으셔도 되지만, 저희가 그 값으로 분류할 수\n있다는 점은 알고 계시는 편이 좋다.\n\n정렬 순서는 저희 분류 우선순위다 — 화면에서는 원하시는 순서로 바꾸셔도 된다.",
+        "operationId": "read_categories_v1_categories_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryCatalog"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "지출 카테고리 조회 (전역 9종)",
+        "tags": [
+          "categories"
+        ]
+      }
+    },
     "/v1/context/refresh": {
       "post": {
+        "description": "회칙 변경을 알린다. 접수만 하고 인덱싱은 비동기로 처리한다.\n\n반환된 `job_id`로 `GET /v1/jobs/{job_id}`를 조회하면 인덱싱 성공 여부를 볼 수 있고,\n아래 `/context/status`로 팀 단위 현재 상태를 볼 수도 있다.",
         "operationId": "refresh_context_v1_context_refresh_post",
         "requestBody": {
           "content": {
@@ -686,6 +1202,93 @@
         "summary": "Refresh Context",
         "tags": [
           "context"
+        ]
+      }
+    },
+    "/v1/context/status": {
+      "get": {
+        "description": "이 팀 회칙이 실제로 심사에 반영될 수 있는 상태인지 알려준다.\n\n`indexed=false`면 회칙 기준 심사가 되지 않는다. 그 경우 심사는 모임 유형별 기본\n정책으로 진행되며(반려는 하지 않고 관리자 확인으로 보낸다), 예산·판례 심사는 정상\n동작한다.\n\n마법사 3단계에서 회칙을 등록하신 뒤 이 값을 확인해 \"AI가 회칙 N개 조항을 읽었어요\"\n처럼 보여주시면 관리자가 반영 여부를 알 수 있다.",
+        "operationId": "read_context_status_v1_context_status_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "description": "양의 백엔드 BIGINT 기본키",
+              "format": "int64",
+              "title": "Team Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContextStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "팀 회칙 인덱싱 상태 조회",
+        "tags": [
+          "context"
+        ]
+      }
+    },
+    "/v1/dashboard/summary": {
+      "post": {
+        "description": "이번 달 지출 집계를 바탕으로 대시보드에 띄울 요약 2~4문장을 만든다.\n\n`message`를 화면에 그대로 띄우시면 된다. 함께 오는 `figures`는 그 문장이 어떤\n수치에서 나왔는지 대조할 재료이고, 화면에 꼭 쓰실 필요는 없다.\n\n수치는 전부 집계에서 나온다 — AI가 새 숫자를 만들지 않는다. 만들면 `verified`가\nfalse로 내려온다.\n\n지출이 없는 달이면 그 사실과 총예산만 담은 문장이 온다(빈 문자열이 아니다).",
+        "operationId": "create_dashboard_summary_v1_dashboard_summary_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DashboardSummaryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardSummaryDoc"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "대시보드 AI 요약 생성",
+        "tags": [
+          "dashboard"
         ]
       }
     },
@@ -778,6 +1381,7 @@
     },
     "/v1/jobs/{job_id}": {
       "get": {
+        "description": "심사·생성 잡의 진행 상태와 결과를 조회한다.\n\n콜백이 유실됐을 때의 **폴링 안전망**(§7.1). `job_id`는 우리 내부 id와 백엔드가\n발급한 jobId **둘 다** 받는다.\n\n`status`: `queued` → `running` → `succeeded` / `failed` / `dead`.\n`succeeded`면 `result`에 심사 결과(verdict·reasons·opinions 등)가 담긴다.",
         "operationId": "read_job_v1_jobs__job_id__get",
         "parameters": [
           {
@@ -812,7 +1416,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Read Job",
+        "summary": "잡 상태·결과 조회 (콜백 안전망)",
         "tags": [
           "jobs"
         ]
@@ -820,6 +1424,7 @@
     },
     "/v1/policy-draft": {
       "post": {
+        "description": "마법사 3단계 — 회칙 초안을 만들어 그 자리에서 돌려준다 (저장 없음).",
         "operationId": "create_policy_draft_v1_policy_draft_post",
         "requestBody": {
           "content": {
@@ -854,6 +1459,142 @@
           }
         },
         "summary": "Create Policy Draft",
+        "tags": [
+          "drafts"
+        ]
+      }
+    },
+    "/v1/policy-params/status": {
+      "get": {
+        "description": "2단계에서 저장한 값이 실제 심사에 어떤 기준으로 적용되는지 돌려준다.\n\n마법사 2단계나 관리자 설정 화면에서 저장 직후 호출해 `summary`를 그대로 보여주면,\n관리자가 \"내가 설정한 대로 동작하는가\"를 확인할 수 있다.\n\n`effective_auto_approve_limit`을 함께 보는 것이 중요하다. 화면의 소액 한도와 고액\n기준은 둘 다 '관리자 확인'으로 귀결되므로 **실제로 자동/대기를 가르는 것은 둘 중\n작은 쪽 하나**다. 고액 기준을 소액 한도보다 크게 잡으면 그 칸은 판정에 영향을 주지\n않는다.\n\n경계는 '초과'다 — 한도가 50,000원이면 50,000원은 자동 판정, 50,001원부터 관리자\n확인이다.\n\n`available=false`면 백엔드 team-settings 조회에 실패한 것이고, 그때 심사는\n자동판정 없이(전건 관리자 확인) 진행된다.",
+        "operationId": "read_policy_params_status_v1_policy_params_status_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "organization_id",
+            "required": true,
+            "schema": {
+              "description": "양의 백엔드 BIGINT 기본키",
+              "format": "int64",
+              "title": "Organization Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicyParamsStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "마법사 2단계 승인 정책이 심사에 어떻게 적용되는지 조회",
+        "tags": [
+          "policy"
+        ]
+      }
+    },
+    "/v1/policy-proposals": {
+      "get": {
+        "description": "아직 결정되지 않은 회칙 초안을 돌려준다. 없으면 `null`이다.\n\n회의록의 \"생성된 메시지가 있으면 반환, 없으면 없다고 반환\"이 이 동작이다.\n404가 아니라 200 + `null`인 이유: '초안이 아직 없음'은 오류가 아니라 정상 상태이고,\n화면은 그때 \"AI 초안 생성하기\" 버튼을 보여주면 된다.",
+        "operationId": "read_policy_proposal_v1_policy_proposals_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "title": "Team Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PolicyProposal"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Read Policy Proposal V1 Policy Proposals Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "저장된 회칙 초안 조회 (없으면 null)",
+        "tags": [
+          "drafts"
+        ]
+      },
+      "post": {
+        "description": "회칙 초안을 만들어 `proposals`에 남기고 돌려준다.\n\n아직 결정되지 않은 초안이 이미 있으면 **새로 만들지 않고 그것을 돌려준다**\n(`reused=true`). 관리자가 버튼을 다시 눌렀을 때 회칙이 바뀌면 안 되기 때문이다.\n일부러 새로 만들려면 `regenerate=true`를 주시면 된다 — 그때는 이전 초안을 그대로\n두고 새 제안을 하나 더 만든다(이력이 남는다).\n\n관리자가 확인한 뒤에는 `PATCH /v1/proposals/{proposalId}`로 `accepted`·`dismissed`를\n기록해 주시면 된다. 승인된 회칙을 백엔드가 저장하신 다음에는\n`POST /v1/context/refresh`를 보내 주셔야 심사에 반영된다 — 그 알림이 없으면\n회칙을 등록해도 AI는 계속 모르는 상태다.",
+        "operationId": "create_policy_proposal_v1_policy_proposals_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PolicyProposalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicyProposal"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "회칙 초안 생성·저장 (회칙·정책 관리 화면)",
         "tags": [
           "drafts"
         ]
@@ -1035,6 +1776,96 @@
           "reports"
         ]
       }
+    },
+    "/v1/reviews/stream": {
+      "post": {
+        "description": "심사 그래프를 직접 실행하며 노드 진행을 SSE로 중계 (HITL 데모·관측 전용).",
+        "operationId": "stream_review_v1_reviews_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalyzeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stream Review"
+      }
+    },
+    "/v1/reviews/{job_id}/decision": {
+      "post": {
+        "description": "관리자 결정으로 멈춘 심사를 재개 — 콜백·판례 저장(ADMIN)까지 SSE 중계.",
+        "operationId": "resume_review_v1_reviews__job_id__decision_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resume Review"
+      }
     }
-  }
+  },
+  "security": [
+    {
+      "ServiceToken": []
+    }
+  ]
 }

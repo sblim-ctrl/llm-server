@@ -3,7 +3,7 @@ from typing import TypedDict
 
 
 class IndexingState(TypedDict, total=False):
-    team_id: str
+    team_id: int
     doc_type: str   # rule | category (params는 인덱싱 대상 아님 — app/worker.py 참고)
     version: int
     raw_text: str

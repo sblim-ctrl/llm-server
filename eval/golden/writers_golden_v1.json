@@ -1,6 +1,6 @@
 {
   "version": "writers-v1",
-  "description": "문서 생성 에이전트 3종 시나리오 골든셋 (PROGRESS §6-4). 심사 골든셋(golden_v1.json)과 동일 철학 — 목 모드에서 결정적으로 재현 가능해야 한다. 목 규약: report는 team_id에 noexpense(빈 이력)/balanced(균형 지출) 단서 사용, briefing은 각 케이스의 precedents를 실행 전 DB에 시드(멱등 — 팀 단위 삭제 후 재삽입). expect 규칙: *_contain=부분 문자열 포함, *_not_contain=미포함, 그 외 키=동등 비교. verified=false는 건수와 무관하게 하드 게이트 실패.",
+  "description": "문서 생성 에이전트 3종 시나리오 골든셋 (PROGRESS §6-4). 심사 골든셋(golden_v1.json)과 동일 철학 — 목 모드에서 결정적으로 재현 가능해야 한다. 목 규약: report는 team_id에 noexpense(빈 이력)/balanced(균형 지출) 단서 사용, briefing은 각 케이스의 precedents를 실행 전 DB에 시드(멱등 — 팀 단위 삭제 후 재삽입). expect 규칙: *_contain=부분 문자열 포함, *_not_contain=미포함, 그 외 키=동등 비교. verified=false는 건수와 무관하게 하드 게이트 실패. v2 보강: pd-desc-two-groups(키워드 2그룹만 겹치는 조합), rp-standard-categories(저활용 카테고리 다과·비품 개별 명시 확인), bf-scattered(에스컬레이션이 여러 카테고리에 분산되어 회칙 갭 없이도 판정 다수인 경우) 3건 추가 — 총 20건.",
   "policy_draft_cases": [
     {
       "id": "pd-club-base",
@@ -112,6 +112,17 @@
         "rules_count": 8,
         "rules_contain": ["안전장비", "서버", "홍보물"]
       }
+    },
+    {
+      "id": "pd-desc-two-groups",
+      "scenario": "소개 반영 — 캠핑+개발 키워드 2그룹만 겹침(신입 모집 언급 없음) → 추가 조항 정확히 2개(5+2=7)",
+      "input": {"team_type": "스터디", "team_name": "캠핑 코딩 모임", "initial_budget": 600000, "description": "주말마다 캠핑을 즐기며 코딩 프로젝트를 진행하는 개발 스터디입니다"},
+      "expect": {
+        "verified": true,
+        "rules_count": 7,
+        "rules_contain": ["안전장비", "서버"],
+        "rules_not_contain": ["홍보물"]
+      }
     }
   ],
   "report_cases": [
@@ -152,6 +163,19 @@
         "recommendations_count": 1,
         "recommendations_contain": ["최대 단건", "분기 회식"],
         "recommendations_not_contain": ["편중", "사용률이 낮습니다"]
+      }
+    },
+    {
+      "id": "rp-standard-categories",
+      "scenario": "기본 이력 재사용(다른 period) — 저활용 카테고리 다과·비품이 각각 명시적으로 언급되는지 확인",
+      "input": {"team_id": "eval-writers-report-club", "period": "2026-05"},
+      "expect": {
+        "verified": true,
+        "total_spent": 399000,
+        "expense_count": 8,
+        "top_category": "식비",
+        "recommendations_count": 4,
+        "recommendations_contain": ["편중", "다과", "비품"]
       }
     }
   ],
@@ -231,6 +255,33 @@
         "escalated_count": 1,
         "gap_categories": ["식비"],
         "notes_contain": ["override", "식비"]
+      }
+    },
+    {
+      "id": "bf-scattered",
+      "scenario": "에스컬레이션 3건이 카테고리별로 분산(각 10%) — 30% 임계값 미달로 회칙 갭 없음, 판정 다수여도 특이 패턴 없음 노트",
+      "team_id": "eval-writers-bf-scattered",
+      "precedents": [
+        {"category": "식비", "title": "정기 회식", "amount": 60000, "decision": "escalate", "decided_by": "AGENT", "is_override": false},
+        {"category": "도서", "title": "전공 서적", "amount": 55000, "decision": "escalate", "decided_by": "AGENT", "is_override": false},
+        {"category": "행사", "title": "체육대회", "amount": 130000, "decision": "escalate", "decided_by": "AGENT", "is_override": false},
+        {"category": "식비", "title": "간이 식사", "amount": 25000, "decision": "approve", "decided_by": "AGENT", "is_override": false},
+        {"category": "도서", "title": "교재 구입", "amount": 30000, "decision": "approve", "decided_by": "AGENT", "is_override": false},
+        {"category": "행사", "title": "친목 게임", "amount": 20000, "decision": "approve", "decided_by": "AGENT", "is_override": false},
+        {"category": "다과", "title": "모임 간식", "amount": 15000, "decision": "approve", "decided_by": "AGENT", "is_override": false},
+        {"category": "비품", "title": "필기구", "amount": 9000, "decision": "approve", "decided_by": "AGENT", "is_override": false},
+        {"category": "교육", "title": "온라인 강의", "amount": 33000, "decision": "approve", "decided_by": "ADMIN", "is_override": false},
+        {"category": "교통", "title": "대중교통비", "amount": 12000, "decision": "approve", "decided_by": "ADMIN", "is_override": false}
+      ],
+      "expect": {
+        "verified": true,
+        "total_precedents": 10,
+        "agent_decisions": 8,
+        "admin_decisions": 2,
+        "override_count": 0,
+        "escalated_count": 3,
+        "gap_categories": [],
+        "notes_contain": ["특이 패턴"]
       }
     }
   ]
