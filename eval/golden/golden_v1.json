@@ -1,6 +1,6 @@
 {
   "version": "v1",
-  "description": "골든셋 60건 — 5개 모임 유형(실제 모임 생성 화면 기준) × 6개 시나리오 (§9.2). 입력은 pull 모델 5필드(jobId/expenseId/organizationId/reviewGoal/receiptPath — bravo 설계서 TABLE 18): 지출 상세는 expenseId의 목 규약 쿼리(?title=&amount=&category=&date=&description=)로 load_context가 되물어 채운다. receiptPath에 mock://receipt?amount=&date= 로 영수증 오버라이드, organizationId에 lowbudget 포함 시 잔액 부족(잔액 1,000원), noauto 포함 시 auto_approve=False. 기본 정책: auto_approve_limit=50000, force_escalation_amount=300000. | expected_gate_includes: Trajectory 검사 라벨(발동해야 할 가드레일 규칙)",
+  "description": "골든셋 68건 — sblim 60건(5개 모임 유형(실제 모임 생성 화면 기준) × 6개 시나리오, §9.2) + cowbro 전용 8건(브랜치 통합 2026-08-04: autoclassify 2·mismatch-002 3·gate-priority·boundary-003·budget-edge). 입력은 pull 모델 5필드(jobId/expenseId/organizationId/reviewGoal/receiptPath — bravo 설계서 TABLE 18): 지출 상세는 expenseId의 목 규약 쿼리(?title=&amount=&category=&date=&description=)로 load_context가 되물어 채운다. receiptPath에 mock://receipt?amount=&date= 로 영수증 오버라이드, organizationId에 lowbudget 포함 시 잔액 부족(잔액 1,000원), noauto 포함 시 auto_approve=False. 기본 정책: auto_approve_limit=50000, force_escalation_amount=200000(코드 기본값 app/schemas/common.py 및 목 백엔드와 일치 — 구값 300000은 4배 하향 전 잔재였다). | expected_gate_includes: Trajectory 검사 라벨(발동해야 할 가드레일 규칙)",
   "cases": [
     {
       "id": "club-approve-001",

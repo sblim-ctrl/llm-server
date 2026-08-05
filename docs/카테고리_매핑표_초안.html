@@ -1,0 +1,929 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>지출 카테고리 매핑표 초안 — LLM팀 → 풀스택 팀</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&family=Noto+Serif+KR:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    :root {
+      --ivory:  #FAF9F5;
+      --paper:  #FFFFFF;
+      --slate:  #141413;
+      --clay:   #D97757;
+      --clay-d: #B85C3E;
+      --oat:    #E3DACC;
+      --olive:  #788C5D;
+
+      --g100: #F0EEE6;
+      --g300: #D1CFC5;
+      --g500: #87867F;
+      --g700: #3D3D3A;
+
+      --sans:  "Noto Sans KR", system-ui, -apple-system, sans-serif;
+      --serif: "Noto Serif KR", ui-serif, Georgia, serif;
+      --mono:  "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+      --max-width:    1100px;
+      --content-max:  720px;
+      --radius-panel: 12px;
+      --radius-row:   8px;
+      --border:       1.5px solid var(--g300);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--ivory);
+      color: var(--g700);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+      padding: 56px 24px 120px;
+    }
+
+    .page {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 210px minmax(0, 1fr);
+      gap: 48px;
+    }
+
+    @media (max-width: 920px) {
+      .page { grid-template-columns: 1fr; }
+      nav { display: none; }
+    }
+
+    /* side navigation */
+    nav { position: sticky; top: 32px; align-self: start; font-size: 13px; }
+
+    nav .nav-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--g500);
+      margin-bottom: 12px;
+    }
+
+    nav a {
+      display: block;
+      padding: 5px 0 5px 12px;
+      border-left: 2px solid var(--g300);
+      color: var(--g700);
+      text-decoration: none;
+    }
+
+    nav a:hover { color: var(--slate); border-color: var(--clay); }
+    nav a.l2 { padding-left: 24px; font-size: 12.5px; color: var(--g500); }
+
+    nav .nav-files {
+      margin-top: 28px;
+      border-top: 1px solid var(--g300);
+      padding-top: 16px;
+    }
+
+    nav .nav-files code {
+      display: block;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--g500);
+      padding: 3px 0;
+      word-break: break-all;
+    }
+
+    /* header */
+    header { margin-bottom: 12px; }
+
+    .eyebrow {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--g500);
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: 30px;
+      color: var(--slate);
+      letter-spacing: -0.01em;
+      margin-bottom: 14px;
+      line-height: 1.25;
+    }
+
+    .tldr {
+      border: var(--border);
+      border-left: 3px solid var(--clay);
+      border-radius: 10px;
+      background: var(--paper);
+      padding: 16px 18px;
+      margin-bottom: 8px;
+      font-size: 14.5px;
+    }
+
+    .tldr b { color: var(--slate); }
+    .tldr ul { margin: 8px 0 0 18px; }
+    .tldr li { margin-bottom: 4px; }
+
+    h2 {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: 22px;
+      color: var(--slate);
+      margin: 44px 0 14px;
+      scroll-margin-top: 24px;
+    }
+
+    h3 {
+      font-family: var(--sans);
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--slate);
+      margin: 26px 0 10px;
+    }
+
+    p { margin-bottom: 12px; max-width: var(--content-max); }
+    ul, ol { margin: 0 0 12px 20px; max-width: var(--content-max); }
+    li { margin-bottom: 6px; }
+    code { font-family: var(--mono); font-size: 13px; }
+    b, strong { color: var(--slate); }
+
+    /* tables */
+    .tbl-wrap { overflow-x: auto; margin: 14px 0 20px; }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 13.5px;
+      background: var(--paper);
+      border: var(--border);
+      border-radius: var(--radius-row);
+      overflow: hidden;
+    }
+
+    caption {
+      caption-side: top;
+      text-align: left;
+      font-family: var(--sans);
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--slate);
+      padding: 0 0 8px;
+    }
+
+    caption .tag {
+      font-family: var(--mono);
+      font-size: 10.5px;
+      font-weight: 400;
+      letter-spacing: 0.04em;
+      padding: 2px 7px;
+      border-radius: 5px;
+      margin-left: 8px;
+      vertical-align: 2px;
+    }
+
+    .tag-fixed { background: var(--olive); color: #fff; }
+    .tag-new   { background: var(--oat);  color: var(--g700); }
+
+    th {
+      background: var(--g100);
+      text-align: left;
+      font-weight: 700;
+      font-size: 12px;
+      color: var(--g700);
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--g300);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--g100);
+      vertical-align: top;
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    td.mono, th.mono { font-family: var(--mono); font-size: 12.5px; }
+    td.num { text-align: right; font-family: var(--mono); }
+
+    .enum {
+      font-family: var(--mono);
+      font-size: 12.5px;
+      color: var(--slate);
+      background: var(--g100);
+      padding: 1px 7px;
+      border-radius: 5px;
+      white-space: nowrap;
+    }
+
+    .enum-etc { background: rgba(217, 119, 87, 0.16); color: var(--clay-d); }
+
+    .rule {
+      display: inline-block;
+      width: 18px;
+      text-align: center;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--g500);
+    }
+
+    .flag {
+      color: var(--clay-d);
+      font-weight: 700;
+      font-family: var(--mono);
+      font-size: 11.5px;
+    }
+
+    /* callout */
+    .callout {
+      display: flex;
+      gap: 12px;
+      border: var(--border);
+      border-color: var(--oat);
+      background: rgba(227, 218, 204, 0.35);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin: 18px 0;
+      font-size: 14px;
+      max-width: var(--content-max);
+    }
+
+    .callout.warn {
+      border-color: var(--clay);
+      background: rgba(217, 119, 87, 0.09);
+    }
+
+    .callout .ico { color: var(--clay); font-weight: 700; flex-shrink: 0; }
+    .callout p:last-child { margin-bottom: 0; }
+
+    /* chart */
+    .chart {
+      border: var(--border);
+      border-radius: var(--radius-panel);
+      background: var(--paper);
+      padding: 18px;
+      margin: 16px 0 8px;
+      overflow-x: auto;
+    }
+
+    .chart svg { display: block; }
+
+    .chart-note {
+      font-size: 12.5px;
+      color: var(--g500);
+      margin-top: 10px;
+      max-width: none;
+    }
+
+    /* tabbed code */
+    .tabs {
+      border: var(--border);
+      border-radius: 10px;
+      background: var(--paper);
+      margin: 16px 0 8px;
+      overflow: hidden;
+    }
+
+    .tabbar {
+      display: flex;
+      border-bottom: 1px solid var(--g300);
+      background: var(--g100);
+    }
+
+    .tabbar button {
+      appearance: none;
+      border: none;
+      background: none;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--g500);
+      padding: 10px 16px;
+      cursor: pointer;
+      border-right: 1px solid var(--g300);
+    }
+
+    .tabbar button.active {
+      background: var(--paper);
+      color: var(--slate);
+      border-bottom: 2px solid var(--clay);
+      margin-bottom: -1px;
+    }
+
+    .tab-pane {
+      display: none;
+      margin: 0;
+      padding: 16px 18px;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      line-height: 1.6;
+      color: var(--slate);
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    .tab-pane.active { display: block; }
+    .cm { color: var(--g500); }
+    .hl { color: var(--clay-d); }
+
+    /* ask list */
+    .ask {
+      border: var(--border);
+      border-left: 3px solid var(--clay);
+      border-radius: 10px;
+      background: var(--paper);
+      padding: 16px 18px;
+      margin: 14px 0;
+      max-width: var(--content-max);
+    }
+
+    .ask h3 { margin: 0 0 8px; }
+    .ask p:last-child { margin-bottom: 0; }
+
+    footer {
+      margin-top: 64px;
+      padding-top: 20px;
+      border-top: 1px solid var(--g300);
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--g500);
+      line-height: 1.8;
+    }
+
+    @media print {
+      .page { grid-template-columns: 1fr; }
+      nav { display: none; }
+      body { background: white; color: black; padding: 0; font-size: 11pt; }
+      table { page-break-inside: auto; }
+      tr { page-break-inside: avoid; }
+      h1, h2, h3, caption { page-break-after: avoid; }
+      .tab-pane { display: block !important; }
+      .tabbar { display: none; }
+      .no-print { display: none !important; }
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <div style="border:2px solid #c0392b;background:#fdecea;color:#7b241c;
+              padding:16px 20px;margin:0 0 24px;border-radius:8px;line-height:1.7">
+    <strong style="font-size:1.05em">🚫 이 문서는 2026-08-05자로 폐기되었습니다.</strong><br>
+    카테고리 <strong>ENUM 9종 확장</strong>으로 확정되어 30종 → 7종 매핑이 불필요해졌습니다.
+    아래 내용은 8/4 시점의 기록으로만 남깁니다.<br><br>
+    <strong>확정 9종 (저장값, 언더바 표기)</strong> —
+    <code>회의</code> <code>IT_인프라</code> <code>행사_활동</code> <code>장소_대관</code>
+    <code>교육</code> <code>식비</code> <code>교통</code> <code>비품</code> <code>기타</code><br>
+    화면 표시 시에만 <code>_</code>를 <code>/</code>로 바꿔 주세요.
+  </div>
+
+  <nav>
+    <div class="nav-label">On this page</div>
+    <a href="#bg">1. 배경 — 왜 30종인가</a>
+    <a href="#rule">2. 매핑 원칙</a>
+    <a href="#table">3. 전체 매핑표 30행</a>
+    <a href="#amb">4. 확정이 필요한 4건</a>
+    <a href="#effect">5. 이 매핑의 귀결</a>
+    <a href="#impl">6. 구현 — 평면 표 28행</a>
+    <a href="#ask">7. 회신 요청 3건</a>
+    <div class="nav-files">
+      <div class="nav-label">Referenced</div>
+      <code>templates/category_catalog.yaml</code>
+      <code>app/tools/category_catalog.py</code>
+      <code>app/graphs/writers/policy_draft.py</code>
+      <code>app/graphs/review/nodes/callback.py</code>
+    </div>
+  </nav>
+
+  <main>
+
+    <header>
+      <div class="eyebrow">LLM팀 → 풀스택 팀 · 2026-08-04 · 회신요청 3번 · 16번 ⑥ 후속</div>
+      <h1>지출 카테고리 매핑표 초안</h1>
+      <div class="tldr">
+        <b>TL;DR</b> — 카테고리 ENUM을 확장하지 않고 매핑으로 맞추는 방향, 받아들이겠습니다.
+        다만 보내주신 매핑표 6종은 저희 <b>모임 유형 5종 중 <code>동아리/학생회</code> 하나</b>의 목록입니다.
+        <ul>
+          <li>저희 추천 카테고리는 <b>모임 유형별로 다릅니다</b> — 유형당 6개 × 5유형 = <b>30종</b></li>
+          <li>나머지 4유형 <b>24종의 매핑을 아래에 제안</b>드립니다. 확정만 해주시면 됩니다</li>
+          <li>회신에 <code>IT인프라</code>는 매핑 대상이 아니라고 하셨는데, 회사 유형의
+              <code>업무도구/소프트웨어비</code>가 여기에 해당합니다</li>
+          <li><code>suggestedCategory</code> 표기는 아직 확정이 안 됩니다 —
+              <b>화면의 <code>강연비</code>와 7종 ENUM이 서로 맞지 않습니다</b> (7번 항목)</li>
+        </ul>
+      </div>
+    </header>
+
+    <h2 id="bg">1. 배경 — 저희 카테고리가 30종인 이유</h2>
+
+    <p>
+      저희는 카테고리를 하나의 고정 목록으로 두지 않고 <b>모임 유형마다 다른 6개</b>를 씁니다.
+      같은 "회식 저녁"이라도 친목 모임이면 <code>식비/모임비</code>, 회사면 <code>식대/회식비</code>,
+      동호회면 <code>식비/간식비</code>로 분류됩니다. 유형 5종 × 6개 = 총 30종입니다.
+    </p>
+
+    <p>
+      이 목록은 두 곳에서 나갑니다. <b>마법사 1단계</b>의 카테고리 자동 추천
+      (<code>POST /v1/policy-draft</code> 응답의 <code>recommended_categories</code>)과,
+      <b>심사 콜백</b>의 <code>suggestedCategory</code>입니다. 둘 다 같은 카탈로그를 씁니다.
+    </p>
+
+    <div class="callout">
+      <span class="ico">★</span>
+      <div>
+        보내주신 6종(<code>행사/프로그램비</code> · <code>홍보/콘텐츠비</code> · <code>교육/강연비</code> ·
+        <code>식비/간식비</code> · <code>회의/운영비</code> · <code>물품/소모품비</code>)은
+        저희 <code>동아리/학생회</code> 유형의 목록과 정확히 일치합니다.
+        스터디·친목·동호회·회사 유형은 전혀 다른 6개를 씁니다.
+      </div>
+    </div>
+
+    <h2 id="rule">2. 매핑 원칙 — 주신 6종에서 역산했습니다</h2>
+
+    <p>
+      나머지 24종을 임의로 붙이면 검토가 어려우실 것 같아, <b>보내주신 6종이 따르는 규칙을 먼저 추출</b>한 뒤
+      같은 규칙으로 24종을 붙였습니다. 표의 각 행에 어느 규칙을 적용했는지 번호로 표기했습니다.
+    </p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th style="width:44px">규칙</th><th>내용</th><th>보내주신 6종의 예</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">①</td>
+            <td><b>이름 직접 대응</b> — 카테고리 이름 앞부분이 ENUM 값과 그대로 같음</td>
+            <td><code>행사/프로그램비</code> → <span class="enum">행사</span></td>
+          </tr>
+          <tr>
+            <td class="mono">②</td>
+            <td><b>산출물·목적이 한 ENUM에 명확히 속함</b> — 이름은 다르나 성격이 하나로 모임</td>
+            <td><code>홍보/콘텐츠비</code> → <span class="enum">디자인</span></td>
+          </tr>
+          <tr>
+            <td class="mono">③</td>
+            <td><b>대응 ENUM 없음</b> → 기타</td>
+            <td><code>물품/소모품비</code> → <span class="enum enum-etc">기타</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      규칙 ②는 6종 중 <code>홍보/콘텐츠비</code> 하나뿐이고, 그래서 풀스택 팀에서도
+      "한 번 더 검토 후 확정하겠다"고 하신 것으로 이해했습니다. 저희가 새로 제안하는 24종에서도
+      ②를 적용한 곳이 판단이 갈릴 수 있는 지점이라, <b>4번 항목에 따로 모아 두었습니다.</b>
+    </p>
+
+    <h2 id="table">3. 전체 매핑표 30행</h2>
+
+    <p>
+      <code>표기(언더바)</code> 열은 슬래시를 언더바로 바꾼 형태입니다. 저장값 제약에 맞춰 참고용으로 병기했습니다.
+      <span class="flag">▲</span> 표시는 확정이 필요한 항목으로, 4번에서 설명드립니다.
+    </p>
+
+    <div class="tbl-wrap">
+      <table>
+        <caption>동아리/학생회<span class="tag tag-fixed">풀스택 팀 확정분 — 그대로 옮김</span></caption>
+        <thead>
+          <tr>
+            <th>저희 카테고리</th><th class="mono">표기(언더바)</th>
+            <th style="width:110px">→ ENUM</th><th style="width:44px">규칙</th><th>비고</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>행사/프로그램비</td><td class="mono">행사_프로그램비</td><td><span class="enum">행사</span></td><td class="mono">①</td><td></td></tr>
+          <tr><td>홍보/콘텐츠비</td><td class="mono">홍보_콘텐츠비</td><td><span class="enum">디자인</span></td><td class="mono">②</td><td>풀스택 팀 재검토 중</td></tr>
+          <tr><td>교육/강연비</td><td class="mono">교육_강연비</td><td><span class="enum">교육</span></td><td class="mono">①</td><td></td></tr>
+          <tr><td>식비/간식비</td><td class="mono">식비_간식비</td><td><span class="enum">식비</span></td><td class="mono">①</td><td>동호회와 이름 중복</td></tr>
+          <tr><td>회의/운영비</td><td class="mono">회의_운영비</td><td><span class="enum">회의</span></td><td class="mono">①</td><td></td></tr>
+          <tr><td>물품/소모품비</td><td class="mono">물품_소모품비</td><td><span class="enum enum-etc">기타</span></td><td class="mono">③</td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <caption>스터디<span class="tag tag-new">신규 제안</span></caption>
+        <thead>
+          <tr>
+            <th>저희 카테고리</th><th class="mono">표기(언더바)</th>
+            <th style="width:110px">→ ENUM</th><th style="width:44px">규칙</th><th>비고</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>교재/자료비</td><td class="mono">교재_자료비</td><td><span class="enum">교육</span></td><td class="mono">②</td><td>회사 <code>교육/도서비</code>가 도서를 교육에 묶는 것과 일관</td></tr>
+          <tr><td>온라인/구독비</td><td class="mono">온라인_구독비</td><td><span class="enum">교육</span></td><td class="mono">②</td><td><span class="flag">▲</span> IT인프라와 갈림</td></tr>
+          <tr><td>공간/대관비</td><td class="mono">공간_대관비</td><td><span class="enum">회의</span></td><td class="mono">②</td><td><span class="flag">▲</span> 기타와 갈림</td></tr>
+          <tr><td>인쇄/문구비</td><td class="mono">인쇄_문구비</td><td><span class="enum enum-etc">기타</span></td><td class="mono">③</td><td>소모품 성격</td></tr>
+          <tr><td>식비/다과비</td><td class="mono">식비_다과비</td><td><span class="enum">식비</span></td><td class="mono">①</td><td></td></tr>
+          <tr><td>실습/프로젝트비</td><td class="mono">실습_프로젝트비</td><td><span class="enum">IT인프라</span></td><td class="mono">②</td><td><span class="flag">▲</span> 기타와 갈림</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <caption>친목<span class="tag tag-new">신규 제안</span></caption>
+        <thead>
+          <tr>
+            <th>저희 카테고리</th><th class="mono">표기(언더바)</th>
+            <th style="width:110px">→ ENUM</th><th style="width:44px">규칙</th><th>비고</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>숙박/여행비</td><td class="mono">숙박_여행비</td><td><span class="enum enum-etc">기타</span></td><td class="mono">③</td><td></td></tr>
+          <tr><td>레저/액티비티비</td><td class="mono">레저_액티비티비</td><td><span class="enum enum-etc">기타</span></td><td class="mono">③</td><td>볼링·방탈출 등 — 조직 행사와 성격이 다름</td></tr>
+          <tr><td>선물/기념비</td><td class="mono">선물_기념비</td><td><span class="enum enum-etc">기타</span></td><td class="mono">③</td><td></td></tr>
+          <tr><td>장소/예약비</td><td class="mono">장소_예약비</td><td><span class="enum enum-etc">기타</span></td><td class="mono">③</td><td><span class="flag">▲</span> 파티룸·룸카페 — 스터디 <code>공간/대관비</code>와 처리가 다름</td></tr>
+          <tr><td>교통비</td><td class="mono">교통비</td><td><span class="enum enum-etc">기타</span></td><td class="mono">③</td><td>동호회와 이름 중복</td></tr>
+          <tr><td>식비/모임비</td><td class="mono">식비_모임비</td><td><span class="enum">식비</span></td><td class="mono">①</td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <caption>동호회<span class="tag tag-new">신규 제안</span></caption>
+        <thead>
+          <tr>
+            <th>저희 카테고리</th><th class="mono">표기(언더바)</th>
+            <th style="width:110px">→ ENUM</th><th style="width:44px">규칙</th><th>비고</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>대회/참가비</td><td class="mono">대회_참가비</td><td><span class="enum">행사</span></td><td class="mono">②</td><td>동아리 <code>행사/프로그램비</code>가 대회를 포함하는 것과 일관</td></tr>
+          <tr><td>장비/용품비</td><td class="mono">장비_용품비</td><td><span class="enum enum-etc">기타</span></td><td class="mono">③</td><td>라켓·셔틀콕·유니폼 등</td></tr>
+          <tr><td>장소/시설비</td><td class="mono">장소_시설비</td><td><span class="enum enum-etc">기타</span></td><td class="mono">③</td><td>체육관·구장·코트</td></tr>
+          <tr><td>교통비</td><td class="mono">교통비</td><td><span class="enum enum-etc">기타</span></td><td class="mono">③</td><td>친목과 이름 중복</td></tr>
+          <tr><td>식비/간식비</td><td class="mono">식비_간식비</td><td><span class="enum">식비</span></td><td class="mono">①</td><td>동아리와 이름 중복</td></tr>
+          <tr><td>활동/프로그램비</td><td class="mono">활동_프로그램비</td><td><span class="enum">교육</span></td><td class="mono">②</td><td><span class="flag">▲</span> 행사와 갈림</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <caption>회사<span class="tag tag-new">신규 제안</span></caption>
+        <thead>
+          <tr>
+            <th>저희 카테고리</th><th class="mono">표기(언더바)</th>
+            <th style="width:110px">→ ENUM</th><th style="width:44px">규칙</th><th>비고</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>교통/출장비</td><td class="mono">교통_출장비</td><td><span class="enum enum-etc">기타</span></td><td class="mono">③</td><td></td></tr>
+          <tr><td><b>업무도구/소프트웨어비</b></td><td class="mono">업무도구_소프트웨어비</td><td><span class="enum">IT인프라</span></td><td class="mono">②</td><td><b>회신의 "IT인프라는 매핑 대상 아님"을 뒤집는 항목</b></td></tr>
+          <tr><td>교육/도서비</td><td class="mono">교육_도서비</td><td><span class="enum">교육</span></td><td class="mono">①</td><td></td></tr>
+          <tr><td>회의/워크숍비</td><td class="mono">회의_워크숍비</td><td><span class="enum">회의</span></td><td class="mono">①</td><td></td></tr>
+          <tr><td>식대/회식비</td><td class="mono">식대_회식비</td><td><span class="enum">식비</span></td><td class="mono">①</td><td></td></tr>
+          <tr><td>비품/소모품비</td><td class="mono">비품_소모품비</td><td><span class="enum enum-etc">기타</span></td><td class="mono">③</td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="amb">4. 확정이 필요한 4건</h2>
+
+    <p>
+      위 24종 중 아래 넷은 <b>저희가 한쪽으로 정한 것이지 자명하지 않습니다.</b>
+      판단 근거와 반대쪽 선택지를 같이 적었으니, 편한 쪽으로 정해 주시면 그대로 맞추겠습니다.
+    </p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>카테고리</th><th style="width:150px">저희 제안 / 대안</th><th>판단 근거와 반대 논거</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>온라인/구독비</code><br><span style="color:var(--g500);font-size:12.5px">스터디</span></td>
+            <td><span class="enum">교육</span> / <span class="enum">IT인프라</span></td>
+            <td>분류 키워드에 <code>인강·수강·강의</code>와 <code>구독·멤버십·클라우드</code>가 섞여 있습니다.
+                스터디 맥락에서는 강의 구독이 주류라 <b>교육</b>을 골랐고, 클라우드성 지출은 회사 유형의
+                <code>업무도구/소프트웨어비</code>가 더 정확한 수신처라고 봤습니다.</td>
+          </tr>
+          <tr>
+            <td><code>실습/프로젝트비</code><br><span style="color:var(--g500);font-size:12.5px">스터디</span></td>
+            <td><span class="enum">IT인프라</span> / <span class="enum enum-etc">기타</span></td>
+            <td>키워드가 <code>실습·프로젝트·서버·도메인·API·재료·키트</code>입니다. 개발 스터디를 전제로
+                <b>IT인프라</b>를 골랐지만, 비개발 스터디라면 <code>재료·키트</code>가 주가 되어 기타가 맞습니다.</td>
+          </tr>
+          <tr>
+            <td><code>활동/프로그램비</code><br><span style="color:var(--g500);font-size:12.5px">동호회</span></td>
+            <td><span class="enum">교육</span> / <span class="enum">행사</span></td>
+            <td>이름은 "프로그램"이라 행사 쪽으로 보이지만, 키워드 5개 중 3개가
+                <code>레슨·클래스·강습</code>입니다. 동호회 실지출은 강습비 비중이 커서 <b>교육</b>을 골랐습니다.</td>
+          </tr>
+          <tr>
+            <td><code>공간/대관비</code> vs<br><code>장소/예약비</code></td>
+            <td><span class="enum">회의</span> vs <span class="enum enum-etc">기타</span></td>
+            <td>비슷해 보이는데 다르게 보낸 이유는 키워드 차이입니다 — 스터디는
+                <code>스터디룸·회의실·공간</code>, 친목은 <code>파티룸·룸카페·장소</code>입니다.
+                <b>"둘 다 기타"로 통일하셔도 저희는 무방합니다.</b></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="effect">5. 이 매핑의 귀결 — 숫자로 보시면</h2>
+
+    <p>
+      30행을 ENUM 기준으로 뒤집어 세면 이렇게 됩니다. 매핑 승인 판단에 필요한 수치라 같이 드립니다.
+    </p>
+
+    <div class="chart">
+      <svg width="620" height="252" viewBox="0 0 620 252" role="img"
+           aria-label="백엔드 ENUM별 수신 카테고리 개수 — 기타 12, 식비 5, 교육 5, 회의 3, IT인프라 2, 행사 2, 디자인 1">
+        <g font-family="JetBrains Mono, monospace" font-size="12">
+          <!-- 기타 -->
+          <text x="96" y="22" text-anchor="end" fill="#141413" font-weight="500">기타</text>
+          <rect x="104" y="10" width="460" height="17" rx="3" fill="#D97757"/>
+          <text x="574" y="22" fill="#141413" font-weight="500">12</text>
+          <!-- 식비 -->
+          <text x="96" y="56" text-anchor="end" fill="#3D3D3A">식비</text>
+          <rect x="104" y="44" width="192" height="17" rx="3" fill="#788C5D"/>
+          <text x="306" y="56" fill="#3D3D3A">5</text>
+          <!-- 교육 -->
+          <text x="96" y="90" text-anchor="end" fill="#3D3D3A">교육</text>
+          <rect x="104" y="78" width="192" height="17" rx="3" fill="#788C5D"/>
+          <text x="306" y="90" fill="#3D3D3A">5</text>
+          <!-- 회의 -->
+          <text x="96" y="124" text-anchor="end" fill="#3D3D3A">회의</text>
+          <rect x="104" y="112" width="115" height="17" rx="3" fill="#788C5D"/>
+          <text x="229" y="124" fill="#3D3D3A">3</text>
+          <!-- IT인프라 -->
+          <text x="96" y="158" text-anchor="end" fill="#3D3D3A">IT인프라</text>
+          <rect x="104" y="146" width="77" height="17" rx="3" fill="#788C5D"/>
+          <text x="191" y="158" fill="#3D3D3A">2</text>
+          <!-- 행사 -->
+          <text x="96" y="192" text-anchor="end" fill="#3D3D3A">행사</text>
+          <rect x="104" y="180" width="77" height="17" rx="3" fill="#788C5D"/>
+          <text x="191" y="192" fill="#3D3D3A">2</text>
+          <!-- 디자인 -->
+          <text x="96" y="226" text-anchor="end" fill="#3D3D3A">디자인</text>
+          <rect x="104" y="214" width="38" height="17" rx="3" fill="#E3DACC" stroke="#D97757"
+                stroke-width="1" stroke-dasharray="3 2"/>
+          <text x="152" y="226" fill="#3D3D3A">1</text>
+          <text x="176" y="226" fill="#87867F" font-size="11">재검토 결과에 따라 0</text>
+          <!-- baseline -->
+          <line x1="104" y1="243" x2="564" y2="243" stroke="#D1CFC5" stroke-width="1"/>
+        </g>
+      </svg>
+      <div class="chart-note">
+        30행 기준. 이름 기준(중복 <code>교통비</code>·<code>식비/간식비</code> 각 1회로 셈)으로는 28개이고,
+        그중 기타가 11개입니다.
+      </div>
+    </div>
+
+    <h3>유형별로 보면 편차가 큽니다</h3>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>모임 유형</th><th class="num" style="width:110px">기타로 가는 수</th><th class="num" style="width:80px">비율</th><th>남는 카테고리</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>친목</td><td class="num"><b>5</b> / 6</td><td class="num"><b>83%</b></td><td>식비 하나만 남습니다</td></tr>
+          <tr><td>동호회</td><td class="num">3 / 6</td><td class="num">50%</td><td>행사 · 식비 · 교육</td></tr>
+          <tr><td>회사</td><td class="num">2 / 6</td><td class="num">33%</td><td>IT인프라 · 교육 · 회의 · 식비</td></tr>
+          <tr><td>동아리/학생회</td><td class="num">1 / 6</td><td class="num">17%</td><td>행사 · 디자인 · 교육 · 식비 · 회의</td></tr>
+          <tr><td>스터디</td><td class="num">1 / 6</td><td class="num">17%</td><td>교육 · 회의 · 식비 · IT인프라</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout warn">
+      <span class="ico">!</span>
+      <div>
+        <p>
+          <b>친목 모임은 카테고리별 통계 화면이 거의 동작하지 않게 됩니다.</b>
+          숙박·레저·선물·장소·교통이 모두 <code>기타</code> 한 칸에 들어가고 식비만 따로 잡힙니다.
+        </p>
+        <p>
+          회신요청 3번에서 저희가 말씀드렸던 "숙박·대관·교통·장비·홍보가 전부 기타로 몰린다"의 실제 수치입니다.
+          <b>매핑으로 연동은 되지만 이 문제 자체가 해소되지는 않는다</b>는 점만 공유드립니다 —
+          ENUM 확장을 다시 요청드리는 것은 아니고, 나중에 통계 화면 요구가 올라올 때 참고하시라는 뜻입니다.
+        </p>
+      </div>
+    </div>
+
+    <p>
+      한 가지 더, <span class="enum">디자인</span> ENUM은 <b>수신처가 <code>홍보/콘텐츠비</code> 하나뿐</b>입니다.
+      재검토 끝에 이 매핑을 취소하시면 디자인 ENUM으로 오는 카테고리가 아예 없어집니다.
+      7번의 회신 요청에 포함했습니다.
+    </p>
+
+    <h2 id="impl">6. 구현 — 유형별 표가 아니라 평면 표 28행이면 됩니다</h2>
+
+    <p>
+      30행이지만 <b>이름 기준으로는 28개</b>입니다. <code>교통비</code>(친목·동호회)와
+      <code>식비/간식비</code>(동아리·동호회)가 중복인데,
+      <b>둘 다 모임 유형과 무관하게 같은 ENUM으로 갑니다.</b>
+    </p>
+
+    <p>
+      따라서 <code>모임유형 × 카테고리</code> 2차원 표를 만드실 필요가 없습니다.
+      <b>카테고리 이름 하나당 ENUM 하나짜리 평면 표</b>로 충분합니다. 바로 쓰실 수 있게 아래에 붙여 둡니다.
+    </p>
+
+    <div class="tabs" data-tabs="map-tabs">
+      <div class="tabbar">
+        <button data-pane="pane-json" class="active">JSON</button>
+        <button data-pane="pane-sql">SQL (CASE)</button>
+      </div>
+      <pre class="tab-pane active" id="pane-json"><span class="cm">// 저희가 보내는 카테고리 이름 → 풀스택 팀 expenses.category ENUM</span>
+<span class="cm">// 슬래시 표기 기준. 언더바로 받으시려면 키의 "/"를 "_"로 바꾸시면 됩니다.</span>
+{
+  <span class="cm">// 동아리/학생회 — 확정분</span>
+  "행사/프로그램비":        "행사",
+  "홍보/콘텐츠비":          "디자인",     <span class="hl">// 재검토 중</span>
+  "교육/강연비":            "교육",
+  "식비/간식비":            "식비",
+  "회의/운영비":            "회의",
+  "물품/소모품비":          "기타",
+
+  <span class="cm">// 스터디</span>
+  "교재/자료비":            "교육",
+  "온라인/구독비":          "교육",       <span class="hl">// 확정 필요</span>
+  "공간/대관비":            "회의",       <span class="hl">// 확정 필요</span>
+  "인쇄/문구비":            "기타",
+  "식비/다과비":            "식비",
+  "실습/프로젝트비":        "IT인프라",  <span class="hl">// 확정 필요</span>
+
+  <span class="cm">// 친목</span>
+  "숙박/여행비":            "기타",
+  "레저/액티비티비":        "기타",
+  "선물/기념비":            "기타",
+  "장소/예약비":            "기타",       <span class="hl">// 확정 필요</span>
+  "교통비":                 "기타",
+  "식비/모임비":            "식비",
+
+  <span class="cm">// 동호회 (교통비·식비/간식비는 위와 동일해 생략)</span>
+  "대회/참가비":            "행사",
+  "장비/용품비":            "기타",
+  "장소/시설비":            "기타",
+  "활동/프로그램비":        "교육",       <span class="hl">// 확정 필요</span>
+
+  <span class="cm">// 회사</span>
+  "교통/출장비":            "기타",
+  "업무도구/소프트웨어비":  "IT인프라",
+  "교육/도서비":            "교육",
+  "회의/워크숍비":          "회의",
+  "식대/회식비":            "식비",
+  "비품/소모품비":          "기타"
+}</pre>
+      <pre class="tab-pane" id="pane-sql"><span class="cm">-- 저희가 보내는 값(:src)을 expenses.category ENUM으로 변환</span>
+<span class="cm">-- 슬래시 표기 기준. 언더바로 받으시면 WHEN 절의 '/'를 '_'로 바꾸시면 됩니다.</span>
+CASE :src
+  <span class="cm">-- 행사</span>
+  WHEN '행사/프로그램비'       THEN '행사'
+  WHEN '대회/참가비'           THEN '행사'
+  <span class="cm">-- 교육</span>
+  WHEN '교육/강연비'           THEN '교육'
+  WHEN '교재/자료비'           THEN '교육'
+  WHEN '온라인/구독비'         THEN '교육'      <span class="hl">-- 확정 필요</span>
+  WHEN '활동/프로그램비'       THEN '교육'      <span class="hl">-- 확정 필요</span>
+  WHEN '교육/도서비'           THEN '교육'
+  <span class="cm">-- 식비</span>
+  WHEN '식비/간식비'           THEN '식비'
+  WHEN '식비/다과비'           THEN '식비'
+  WHEN '식비/모임비'           THEN '식비'
+  WHEN '식대/회식비'           THEN '식비'
+  <span class="cm">-- 회의</span>
+  WHEN '회의/운영비'           THEN '회의'
+  WHEN '공간/대관비'           THEN '회의'      <span class="hl">-- 확정 필요</span>
+  WHEN '회의/워크숍비'         THEN '회의'
+  <span class="cm">-- IT인프라</span>
+  WHEN '업무도구/소프트웨어비' THEN 'IT인프라'
+  WHEN '실습/프로젝트비'       THEN 'IT인프라' <span class="hl">-- 확정 필요</span>
+  <span class="cm">-- 디자인</span>
+  WHEN '홍보/콘텐츠비'         THEN '디자인'    <span class="hl">-- 재검토 중</span>
+  <span class="cm">-- 기타 (나머지 11종) — 명시하지 않고 ELSE로 받으셔도 됩니다</span>
+  ELSE '기타'
+END</pre>
+    </div>
+
+    <div class="callout">
+      <span class="ico">★</span>
+      <div>
+        <p>
+          <b>모르는 값이 오면 <code>기타</code>로 떨어뜨려 주세요.</b>
+          저희 카탈로그는 팀 확정 사항이라 임의로 늘리지 않지만, 만에 하나 목록 밖 값이 가더라도
+          저장이 실패하지 않게 <code>ELSE '기타'</code> 형태를 권합니다.
+        </p>
+        <p>
+          <b>ENUM 저장값 표기 한 가지만 확인 부탁드립니다.</b> 위 표와 코드에는 8/4 회신에 적어주신 대로
+          <code>IT인프라</code>로 적었는데, 저희가 7/27에 받은 DB 스키마에는 <code>IT_인프라</code>(언더바)로
+          되어 있고 화면에는 <code>IT/인프라</code>(슬래시)로 표시됩니다. <b>저장값이 셋 중 어느 것인지만
+          알려주시면</b> 그대로 맞추겠습니다 — 이 값 하나가 어긋나면 매핑이 통째로 실패합니다.
+        </p>
+      </div>
+    </div>
+
+    <h2 id="ask">7. 회신 요청 3건</h2>
+
+    <div class="ask">
+      <h3>① 24종 매핑 승인 + 확정이 필요한 4건</h3>
+      <p>
+        3번 표의 신규 제안 24종을 그대로 쓰셔도 되는지, 그리고 4번의 네 항목을 어느 쪽으로 정하실지
+        알려주세요. 어느 쪽이든 저희는 값을 바꿔 보내는 게 아니라 <b>표만 맞추면 되는 일</b>이라 부담 없습니다.
+      </p>
+    </div>
+
+    <div class="ask">
+      <h3>② <code>홍보/콘텐츠비</code> → <code>디자인</code> 재검토 결과</h3>
+      <p>
+        "한 번 더 검토 후 확정하겠다"고 하신 항목입니다. 이 매핑을 취소하시면
+        <b><code>디자인</code> ENUM으로 오는 카테고리가 하나도 없게 됩니다</b>(5번 차트 참조).
+        그 경우 홍보물 제작비를 어디로 보낼지도 같이 정해 주시면 좋겠습니다.
+      </p>
+    </div>
+
+    <div class="ask">
+      <h3>③ 콜백 <code>suggestedCategory</code>는 어느 목록을 따를까요 — 화면과 어긋나는 부분이 있습니다</h3>
+      <p>
+        "콜백 <code>suggestedCategory</code>도 이 표기로 주시면 바로 매핑됩니다"를 저희 쪽에서
+        두 가지로 읽었습니다. <b>(가)</b> 7종 ENUM 값 자체를 달라 <b>(나)</b> 저희 30종을 언더바 표기로만 바꿔 달라.
+      </p>
+      <p>
+        확정을 못 한 이유는 <b>화면 설계와 7종 ENUM이 서로 맞지 않기 때문</b>입니다.
+        지출 상세 화면 4종을 보면 <code>카테고리</code>와 <code>자동 분류</code>가 나란히 따로 표시되고,
+        <b>강연료 건은 두 값이 서로 다릅니다.</b>
+      </p>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr><th>지출 상세 화면</th><th style="width:110px">카테고리</th><th style="width:110px">자동 분류</th><th>7종 ENUM에 있나</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>정기 회의 다과비</td><td><span class="enum">회의</span></td><td class="mono">회의비</td><td>✕ (회의는 있으나 "회의비"는 없음)</td></tr>
+            <tr><td>해커톤 참가비</td><td><span class="enum">행사</span></td><td class="mono">행사비</td><td>✕</td></tr>
+            <tr><td><b>외부 강사 강연료</b></td><td><span class="enum">교육</span></td><td class="mono"><b>강연비</b></td><td><b>✕ — 7종 어디에도 없는 값</b></td></tr>
+            <tr><td>팀 회식비</td><td><span class="enum">식비</span></td><td class="mono">식비</td><td>○</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        <b>(가)로 구현하면 화면의 <code>강연비</code>를 재현할 수 없습니다.</b> 카테고리 칸과 자동 분류 칸이
+        늘 같은 값이 되어 자동 분류 칸이 무의미해집니다. 반대로 <b>(나)</b>라면 저희 동아리/학생회
+        <code>교육/강연비</code>가 화면의 <code>강연비</code>에 대응해 자연스럽습니다.
+      </p>
+      <p>
+        → <b>자동 분류 칸이 따르는 목록을 알려주세요.</b> 저희 30종이면 지금 값을 언더바로만 바꿔 보내겠고,
+        7종이면 저희가 위 매핑표를 적용해 ENUM 값으로 변환해 보내겠습니다. 별도 목록이 있으면 그 목록을 주시면 됩니다.
+        (회신요청 16번 ⑥와 같은 건입니다)
+      </p>
+    </div>
+
+    <div class="callout">
+      <span class="ico">★</span>
+      <div>
+        덧붙여, ③과 맞물린 항목이 하나 있습니다. 풀스택 팀 <code>expenses.category</code>가
+        <code>NOT NULL</code>이라 저희가 지출 상세를 조회하면 카테고리가 항상 채워져 옵니다.
+        저희는 지금 <b>카테고리가 비어 있을 때만</b> 자동 분류를 돌리게 되어 있어서,
+        이대로면 <code>suggestedCategory</code>가 받은 값을 그대로 돌려주는 형태가 됩니다.
+        화면대로 두 칸이 서로 다른 값을 보여주는 게 맞다면 <b>저희가 항상 분류하도록 고치겠습니다</b> —
+        ③ 회신과 함께 알려주시면 한 번에 반영하겠습니다.
+      </div>
+    </div>
+
+    <footer>
+      근거 파일: templates/category_catalog.yaml (팀 확정 2026-07-10, 유형당 6개 고정) ·
+      app/graphs/writers/policy_draft.py (recommended_categories) ·
+      app/graphs/review/nodes/callback.py (suggestedCategory)<br>
+      관련 문서: docs/풀스택_회신요청.md 3번 · 16번 ⑥ · docs/풀스택_연동_계약.md §3-2<br>
+      작성: LLM팀 · 2026-08-04
+    </footer>
+
+  </main>
+
+</div>
+
+<script>
+document.querySelectorAll("[data-tabs]").forEach(function(box) {
+  var btns = box.querySelectorAll("button");
+  var panes = box.querySelectorAll(".tab-pane");
+  btns.forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      btns.forEach(function(b) { b.classList.remove("active"); });
+      panes.forEach(function(p) { p.classList.remove("active"); });
+      btn.classList.add("active");
+      var target = document.getElementById(btn.dataset.pane);
+      if (target) target.classList.add("active");
+    });
+  });
+});
+</script>
+</body>
+</html>
