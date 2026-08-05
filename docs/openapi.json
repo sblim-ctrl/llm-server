@@ -98,16 +98,26 @@
       },
       "CategoryCatalog": {
         "properties": {
-          "teams": {
+          "categories": {
             "items": {
-              "$ref": "#/components/schemas/TeamCategories"
+              "type": "string"
             },
-            "title": "Teams",
+            "title": "Categories",
             "type": "array"
+          },
+          "fallback": {
+            "title": "Fallback",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
           }
         },
         "required": [
-          "teams"
+          "categories",
+          "fallback",
+          "version"
         ],
         "title": "CategoryCatalog",
         "type": "object"
@@ -434,6 +444,63 @@
         "title": "PolicyDraftRequest",
         "type": "object"
       },
+      "PolicyParamsStatus": {
+        "properties": {
+          "auto_approve": {
+            "title": "Auto Approve",
+            "type": "boolean"
+          },
+          "auto_approve_limit": {
+            "title": "Auto Approve Limit",
+            "type": "integer"
+          },
+          "auto_approved_up_to": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auto Approved Up To"
+          },
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "effective_auto_approve_limit": {
+            "title": "Effective Auto Approve Limit",
+            "type": "integer"
+          },
+          "force_escalation_amount": {
+            "title": "Force Escalation Amount",
+            "type": "integer"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "team_id": {
+            "description": "양의 백엔드 BIGINT 기본키",
+            "format": "int64",
+            "title": "Team Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "team_id",
+          "available",
+          "auto_approve",
+          "auto_approve_limit",
+          "force_escalation_amount",
+          "effective_auto_approve_limit",
+          "auto_approved_up_to",
+          "summary"
+        ],
+        "title": "PolicyParamsStatus",
+        "type": "object"
+      },
       "PolicyParamsSuggestion": {
         "properties": {
           "auto_approve": {
@@ -531,33 +598,6 @@
         "title": "PrecedentCreated",
         "type": "object"
       },
-      "ProposalBudgetRequest": {
-        "properties": {
-          "period": {
-            "anyOf": [
-              {
-                "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Period"
-          },
-          "team_id": {
-            "description": "양의 백엔드 BIGINT 기본키",
-            "format": "int64",
-            "title": "Team Id",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "team_id"
-        ],
-        "title": "ProposalBudgetRequest",
-        "type": "object"
-      },
       "ProposalPatch": {
         "description": "관리자 결정 기록 (§9 수락률 지표의 기록 경로).",
         "properties": {
@@ -615,32 +655,6 @@
           "team_id"
         ],
         "title": "RuleAmendmentRequest",
-        "type": "object"
-      },
-      "TeamCategories": {
-        "properties": {
-          "categories": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Categories",
-            "type": "array"
-          },
-          "fallback": {
-            "title": "Fallback",
-            "type": "string"
-          },
-          "team_type": {
-            "title": "Team Type",
-            "type": "string"
-          }
-        },
-        "required": [
-          "team_type",
-          "categories",
-          "fallback"
-        ],
-        "title": "TeamCategories",
         "type": "object"
       },
       "ValidationError": {
@@ -837,26 +851,8 @@
     },
     "/v1/categories": {
       "get": {
-        "description": "유형별 카테고리 6개를 돌려준다.\n\n`team_type`을 주면 해당 유형 하나만, 생략하면 5개 유형 전부 준다. 마법사 1단계는\n유형이 이미 정해진 시점이므로 보통 하나만 조회하면 되고, 전체 조회는 백엔드가\n캐시해 두고 쓰실 때를 위한 것이다.\n\n`fallback`은 지출 분류가 어느 카테고리에도 안 걸릴 때 쓰는 기본값이다. 화면에\n노출하지 않으셔도 되지만, 저희가 그 값으로 분류할 수 있다는 점은 알고 계시는 편이\n좋다.",
+        "description": "카테고리 9종을 돌려준다. 모임 유형과 무관하게 항상 같은 목록이다.\n\n계산이 없는 고정값이라 **매번 부르실 필요가 없다.** 서버 기동 시나 배포 시 한 번\n받아 캐시하시면 된다. 다만 캐시도 사본이라 목록이 바뀌면 어긋나므로, 응답의\n`version`을 함께 저장해 두시고 값이 달라졌을 때만 갱신하시면 된다.\n\n`fallback`은 지출 분류가 어느 카테고리에도 안 걸릴 때 저희가 쓰는 값이다\n(항상 `기타`). 화면에 노출하지 않으셔도 되지만, 저희가 그 값으로 분류할 수\n있다는 점은 알고 계시는 편이 좋다.\n\n정렬 순서는 저희 분류 우선순위다 — 화면에서는 원하시는 순서로 바꾸셔도 된다.",
         "operationId": "read_categories_v1_categories_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "team_type",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Team Type"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "content": {
@@ -867,19 +863,9 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
-        "summary": "모임 유형별 지출 카테고리 조회",
+        "summary": "지출 카테고리 조회 (전역 9종)",
         "tags": [
           "categories"
         ]
@@ -1143,6 +1129,51 @@
         ]
       }
     },
+    "/v1/policy-params/status": {
+      "get": {
+        "description": "2단계에서 저장한 값이 실제 심사에 어떤 기준으로 적용되는지 돌려준다.\n\n마법사 2단계나 관리자 설정 화면에서 저장 직후 호출해 `summary`를 그대로 보여주면,\n관리자가 \"내가 설정한 대로 동작하는가\"를 확인할 수 있다.\n\n`effective_auto_approve_limit`을 함께 보는 것이 중요하다. 화면의 소액 한도와 고액\n기준은 둘 다 '관리자 확인'으로 귀결되므로 **실제로 자동/대기를 가르는 것은 둘 중\n작은 쪽 하나**다. 고액 기준을 소액 한도보다 크게 잡으면 그 칸은 판정에 영향을 주지\n않는다.\n\n경계는 '초과'다 — 한도가 50,000원이면 50,000원은 자동 판정, 50,001원부터 관리자\n확인이다.\n\n`available=false`면 백엔드 team-settings 조회에 실패한 것이고, 그때 심사는\n자동판정 없이(전건 관리자 확인) 진행된다.",
+        "operationId": "read_policy_params_status_v1_policy_params_status_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "organization_id",
+            "required": true,
+            "schema": {
+              "description": "양의 백엔드 BIGINT 기본키",
+              "format": "int64",
+              "title": "Organization Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicyParamsStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "마법사 2단계 승인 정책이 심사에 어떻게 적용되는지 조회",
+        "tags": [
+          "policy"
+        ]
+      }
+    },
     "/v1/precedents": {
       "post": {
         "operationId": "create_precedent_v1_precedents_post",
@@ -1181,47 +1212,6 @@
         "summary": "Create Precedent",
         "tags": [
           "precedents"
-        ]
-      }
-    },
-    "/v1/proposals/budget": {
-      "post": {
-        "operationId": "create_budget_proposal_job_v1_proposals_budget_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ProposalBudgetRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "202": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AnalyzeAccepted"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Create Budget Proposal Job",
-        "tags": [
-          "proposals"
         ]
       }
     },
