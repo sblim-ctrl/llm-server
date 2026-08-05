@@ -122,6 +122,47 @@
         "title": "CategoryCatalog",
         "type": "object"
       },
+      "CategoryTrend": {
+        "description": "카테고리 하나의 이번 달 지출과 전월 대비 변화.",
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "change_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Ratio"
+          },
+          "prev_spent": {
+            "title": "Prev Spent",
+            "type": "integer"
+          },
+          "share": {
+            "title": "Share",
+            "type": "number"
+          },
+          "spent": {
+            "title": "Spent",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "category",
+          "spent",
+          "share",
+          "prev_spent",
+          "change_ratio"
+        ],
+        "title": "CategoryTrend",
+        "type": "object"
+      },
       "ContextRefreshRequest": {
         "description": "REQ-041 컨텍스트 갱신 이벤트.",
         "properties": {
@@ -200,6 +241,140 @@
           "indexed_at"
         ],
         "title": "ContextStatus",
+        "type": "object"
+      },
+      "DashboardFigures": {
+        "description": "결정적 집계 — 요약문의 수치는 반드시 이 값과 일치해야 한다.\n\nLLM은 문장만 쓰고 숫자는 전부 여기서 나온다. 검증기(verify_summary_pure)가\n본문의 금액 토큰을 이 값에서 유도한 허용 목록과 대조한다.",
+        "properties": {
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/CategoryTrend"
+            },
+            "title": "Categories",
+            "type": "array"
+          },
+          "fastest_growing": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CategoryTrend"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "largest_expense_amount": {
+            "title": "Largest Expense Amount",
+            "type": "integer"
+          },
+          "largest_expense_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Largest Expense Title"
+          },
+          "pending_amount": {
+            "title": "Pending Amount",
+            "type": "integer"
+          },
+          "pending_count": {
+            "title": "Pending Count",
+            "type": "integer"
+          },
+          "period": {
+            "title": "Period",
+            "type": "string"
+          },
+          "remaining": {
+            "title": "Remaining",
+            "type": "integer"
+          },
+          "spent": {
+            "title": "Spent",
+            "type": "integer"
+          },
+          "top_category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CategoryTrend"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_budget": {
+            "title": "Total Budget",
+            "type": "integer"
+          },
+          "usage_ratio": {
+            "title": "Usage Ratio",
+            "type": "number"
+          }
+        },
+        "required": [
+          "period",
+          "total_budget",
+          "spent",
+          "remaining",
+          "usage_ratio",
+          "pending_count",
+          "pending_amount",
+          "categories",
+          "top_category",
+          "fastest_growing",
+          "largest_expense_title",
+          "largest_expense_amount"
+        ],
+        "title": "DashboardFigures",
+        "type": "object"
+      },
+      "DashboardSummaryDoc": {
+        "properties": {
+          "figures": {
+            "$ref": "#/components/schemas/DashboardFigures"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "verified": {
+            "title": "Verified",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "figures",
+          "message",
+          "verified"
+        ],
+        "title": "DashboardSummaryDoc",
+        "type": "object"
+      },
+      "DashboardSummaryRequest": {
+        "properties": {
+          "period": {
+            "description": "대상 월 YYYY-MM",
+            "title": "Period",
+            "type": "string"
+          },
+          "team_id": {
+            "description": "양의 백엔드 BIGINT 기본키",
+            "format": "int64",
+            "title": "Team Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "team_id",
+          "period"
+        ],
+        "title": "DashboardSummaryRequest",
         "type": "object"
       },
       "DecisionRequest": {
@@ -955,6 +1130,48 @@
         "summary": "팀 회칙 인덱싱 상태 조회",
         "tags": [
           "context"
+        ]
+      }
+    },
+    "/v1/dashboard/summary": {
+      "post": {
+        "description": "이번 달 지출 집계를 바탕으로 대시보드에 띄울 요약 2~4문장을 만든다.\n\n`message`를 화면에 그대로 띄우시면 된다. 함께 오는 `figures`는 그 문장이 어떤\n수치에서 나왔는지 대조할 재료이고, 화면에 꼭 쓰실 필요는 없다.\n\n수치는 전부 집계에서 나온다 — AI가 새 숫자를 만들지 않는다. 만들면 `verified`가\nfalse로 내려온다.\n\n지출이 없는 달이면 그 사실과 총예산만 담은 문장이 온다(빈 문자열이 아니다).",
+        "operationId": "create_dashboard_summary_v1_dashboard_summary_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DashboardSummaryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardSummaryDoc"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "대시보드 AI 요약 생성",
+        "tags": [
+          "dashboard"
         ]
       }
     },

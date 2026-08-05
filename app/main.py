@@ -12,6 +12,7 @@ from app.api import (
     briefings,
     categories,
     context,
+    dashboards,
     digests,
     drafts,
     eval as eval_api,
@@ -68,6 +69,7 @@ app.include_router(categories.router)
 app.include_router(reports.router)
 app.include_router(briefings.router)
 app.include_router(digests.router)
+app.include_router(dashboards.router)  # 대시보드 AI 요약 (동기)
 app.include_router(proposals.router)
 app.include_router(eval_api.router)
 

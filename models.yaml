@@ -11,6 +11,10 @@ agents:
   report_writer: gpt-4o-mini
   briefing_writer: gpt-4o
   digest_writer: gpt-4o-mini    # 주간 브리핑 — 수치는 코드, LLM은 문구만 (C7 — A 소유 줄)
+  dashboard_writer: gpt-4o-mini # 대시보드 요약 — digest_writer와 같은 성격이다. 집계는
+                                # 코드가 끝내고 LLM은 2~4문장만 쓴다. 화면을 열 때마다
+                                # 도는 동기 API라 지연·비용이 둘 다 중요해서 mini다.
+                                # 수치 환각은 모델이 아니라 verify_summary_pure가 막는다.
   judge: gpt-4o                 # LLM-as-Judge — 사유 품질 채점 (평가 전용, 심사 무관)
                                 # mini→4o 승급(7/29 실측): mini가 faithfulness 다중 필드
                                 # 대조에서 few_shot 앵무새·필드 혼동을 프롬프트 교정으로도
