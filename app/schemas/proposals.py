@@ -33,7 +33,7 @@ class ProposalPatch(BaseModel):
 class ProposalOut(BaseModel):
     id: str
     team_id: BigIntId
-    type: str  # budget | rule_amendment
+    type: str  # budget | rule_amendment | rule_draft
     payload: dict[str, Any]
     status: str  # proposed | accepted | dismissed
     decided_by: str | None = None

@@ -938,6 +938,69 @@
         "title": "PrecedentCreated",
         "type": "object"
       },
+      "ProposalOut": {
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "decided_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided By"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "team_id": {
+            "description": "양의 백엔드 BIGINT 기본키",
+            "format": "int64",
+            "title": "Team Id",
+            "type": "integer"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "team_id",
+          "type",
+          "payload",
+          "status",
+          "created_at"
+        ],
+        "title": "ProposalOut",
+        "type": "object"
+      },
       "ProposalPatch": {
         "description": "관리자 결정 기록 (§9 수락률 지표의 기록 경로).",
         "properties": {
@@ -1694,6 +1757,87 @@
         "summary": "Create Precedent",
         "tags": [
           "precedents"
+        ]
+      }
+    },
+    "/v1/proposals": {
+      "get": {
+        "description": "AI가 올린 제안 목록을 돌려준다. 없으면 빈 배열이다 — 404가 아니다 (LLM-015).\n\n`type` 미지정 시 마법사 회칙 초안(`rule_draft`)은 기본 제외한다. 그쪽은\n`GET /v1/policy-proposals`(LLM-019)가 다루는 별개 자원이라, 관리자 제안함\n목록에 섞이면 같은 초안이 두 화면에 중복 노출된다. `type=rule_draft`를\n명시하면 그때는 포함된다.",
+        "operationId": "read_proposals_v1_proposals_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "description": "양의 백엔드 BIGINT 기본키",
+              "format": "int64",
+              "title": "Team Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProposalOut"
+                  },
+                  "title": "Response Read Proposals V1 Proposals Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "제안 목록 조회 (LLM-015, type 미지정 시 마법사 회칙 초안 rule_draft 제외)",
+        "tags": [
+          "proposals"
         ]
       }
     },
