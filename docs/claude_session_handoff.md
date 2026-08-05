@@ -213,8 +213,9 @@ MOCK_LLM=false uv run python eval/compare_prompts.py   # 프롬프트 A/B
 ## 7. 환경
 
 ### 지금 상태
-- **Docker: 꺼져 있음** (세션 중 내려갔다). eval·DB 작업 전에 먼저 올려야 한다.
-- **DB**: BIGINT 마이그레이션 미적용 (문자열 목 데이터 1,174행 때문에 거부됨)
+- **Docker: 실행 중** (`llm-api`·`llm-postgres`·`llm-worker`)
+- **DB**: BIGINT 마이그레이션 미적용 (문자열 목 데이터 1,174행 때문에 거부됨 —
+  `jobs` 100 · `context_chunks` 47 · `precedents` 1,020 · `proposals` 7)
 - **Swagger 터널**: 없음 — 필요하면 새로 열어야 하고 주소가 매번 바뀐다
 
 ### 기본 실행
