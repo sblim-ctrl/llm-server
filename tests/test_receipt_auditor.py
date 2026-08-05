@@ -29,6 +29,39 @@ async def test_matching_receipt_gives_pass_opinion():
     assert result["mismatch"] == []
 
 
+# ── OCR 추출값 노출 (풀스택 협의 2026-08-04 8번) ──────────────────────────
+
+async def test_merchant_appears_in_summary_and_evidence():
+    """상호명을 읽었으면 소견에 드러난다 — 관리자가 무엇을 보고 판단했는지 알 수 있게."""
+    result = await _run(ReceiptData(amount=32_000, date="2026-07-01", merchant="교보문고 광화문점",
+                                    items=["알고리즘 교재"], parse_ok=True))
+    op = result["opinions"]["receipt"]
+    assert "교보문고 광화문점" in op.summary
+    read = " ".join(op.evidence)
+    assert "교보문고 광화문점" in read
+    assert "32,000원" in read and "2026-07-01" in read
+    assert "알고리즘 교재" in read
+
+
+async def test_no_merchant_still_reads_cleanly():
+    """상호명을 못 읽어도 문장이 어색해지지 않는다."""
+    result = await _run(ReceiptData(amount=32_000, date="2026-07-01", parse_ok=True))
+    op = result["opinions"]["receipt"]
+    assert op.summary.endswith("일치합니다 (금액 32,000원).")
+    assert "상호" not in " ".join(op.evidence)
+
+
+async def test_mismatch_keeps_both_reason_and_read_values():
+    """불일치일 때도 읽은 값이 함께 남아야 관리자가 대조할 수 있다."""
+    result = await _run(ReceiptData(amount=25_000, date="2026-07-01",
+                                    merchant="○○마트", parse_ok=True))
+    op = result["opinions"]["receipt"]
+    assert op.verdict == "fail"
+    joined = " ".join(op.evidence)
+    assert "청구 32000" in joined and "영수증 25000" in joined   # 불일치 사유
+    assert "○○마트" in joined                                    # 읽은 값
+
+
 async def test_amount_mismatch_gives_fail_opinion_with_both_numbers():
     """관리자가 화면에서 '무엇이 어긋났는지' 바로 읽을 수 있어야 한다."""
     result = await _run(ReceiptData(amount=25_000, date="2026-07-01", parse_ok=True))

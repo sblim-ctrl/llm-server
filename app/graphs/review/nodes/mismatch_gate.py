@@ -30,6 +30,17 @@ def _receipt_opinion(receipt: ReceiptData | None, claim: ExpenseClaim,
     if receipt.amount is not None:
         figures["receipt_amount"] = receipt.amount
 
+    # 읽어낸 값을 근거로 남긴다 — 관리자가 화면에서 "무엇을 보고 판단했는지" 알 수 있게
+    # (풀스택 협의 2026-08-04 8번: OCR 추출값 상호명·날짜·금액).
+    read = [f"상호 {receipt.merchant}"] if receipt.merchant else []
+    if receipt.amount is not None:
+        read.append(f"금액 {receipt.amount:,}원")
+    if receipt.date:
+        read.append(f"날짜 {receipt.date}")
+    if receipt.items:
+        read.append(f"품목 {', '.join(receipt.items[:3])}")
+    evidence = [f"영수증에서 읽은 값: {' · '.join(read)}"] if read else []
+
     if mismatches:
         detail = ", ".join(
             f"{FIELD_LABELS.get(m.field, m.field)} 청구 {m.claimed} / 영수증 {m.receipt}"
@@ -38,12 +49,13 @@ def _receipt_opinion(receipt: ReceiptData | None, claim: ExpenseClaim,
         return Opinion(
             auditor="receipt", verdict="fail",
             summary=f"영수증과 청구 내용이 일치하지 않습니다 — {detail}",
-            evidence=[detail], figures=figures,
+            evidence=[detail, *evidence], figures=figures,
         )
+    where = f" — {receipt.merchant}" if receipt.merchant else ""
     return Opinion(
         auditor="receipt", verdict="pass",
-        summary=f"영수증이 청구 내용과 일치합니다 (금액 {claim.amount:,}원).",
-        figures=figures,
+        summary=f"영수증이 청구 내용과 일치합니다 (금액 {claim.amount:,}원){where}.",
+        evidence=evidence, figures=figures,
     )
 
 
