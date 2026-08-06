@@ -118,3 +118,78 @@ async def test_get_expense_history_normalizes_real_mode_rows(monkeypatch):
 
     rows = await backend_client.get_expense_history(1)
     assert [r["category"] for r in rows] == ["교육", "기타", "식비"]
+
+
+async def test_get_expense_detail_normalizes_real_mode_category(monkeypatch):
+    """상세도 이력과 같은 경계에서 접는다 — claim.category가 구 값으로 서지 않게.
+
+    load_context가 claim.category를 만드는 출처는 이력이 아니라 이 함수다. 여기서
+    접지 않으면 백엔드 ENUM 마이그레이션 전까지 구 값이 심사 그래프 안까지 들어온다.
+    """
+
+    class _FakeResponse:
+        @staticmethod
+        def raise_for_status() -> None: ...
+
+        @staticmethod
+        def json() -> dict:
+            return {
+                "title": "교재",
+                "amount": 32000,
+                "category": "교재/자료비",
+                "date": "2026-07-01",
+                "description": "알고리즘 교재 2권",
+            }
+
+    class _FakeClient:
+        @staticmethod
+        async def get(_url: str, params: dict | None = None) -> _FakeResponse:
+            return _FakeResponse()
+
+    monkeypatch.setattr(backend_client, "_client", lambda: _FakeClient())
+    monkeypatch.setattr(backend_client.get_settings(), "mock_backend", False, raising=False)
+
+    detail = await backend_client.get_expense_detail(1, 1)
+    assert detail["category"] == "교육"
+    # 나머지 필드는 그대로 통과시킨다
+    assert detail["title"] == "교재"
+    assert detail["amount"] == 32000
+
+
+@pytest.mark.parametrize("blank", [None, "", "   "])
+async def test_get_expense_detail_keeps_blank_category_blank(monkeypatch, blank):
+    """빈 값은 '기타'로 접지 않는다 — BE-001 계약상 null이 정상 경로다.
+
+    이력과 갈리는 지점이다. 이력의 빈 값은 집계 버킷이 필요해 '기타'로 접지만,
+    상세의 빈 값은 **분류기를 돌리라는 신호**다. 여기서 '기타'로 채우면 claim.category가
+    비어 있지 않게 되어 AI 분류가 통째로 무력화된다(모든 지출이 기타로 확정).
+    """
+
+    class _FakeResponse:
+        @staticmethod
+        def raise_for_status() -> None: ...
+
+        @staticmethod
+        def json() -> dict:
+            return {"title": "모임 회식", "amount": 30000, "category": blank}
+
+    class _FakeClient:
+        @staticmethod
+        async def get(_url: str, params: dict | None = None) -> _FakeResponse:
+            return _FakeResponse()
+
+    monkeypatch.setattr(backend_client, "_client", lambda: _FakeClient())
+    monkeypatch.setattr(backend_client.get_settings(), "mock_backend", False, raising=False)
+
+    detail = await backend_client.get_expense_detail(1, 1)
+    assert not (detail["category"] or "").strip()
+
+
+async def test_get_expense_detail_mock_category_is_not_normalized():
+    """목 규약은 접지 않는다 — 골든셋이 카탈로그 밖 값(다과·대관·도서)을 쓴다.
+
+    §7 '규약을 깨지 말 것'. 여기서 접으면 골든셋 60여 건이 통째로 다른 코드 경로를
+    타므로, 이력과 마찬가지로 실모드 응답에만 적용한다.
+    """
+    detail = await backend_client.get_expense_detail(1, "exp-1?category=다과")
+    assert detail["category"] == "다과"

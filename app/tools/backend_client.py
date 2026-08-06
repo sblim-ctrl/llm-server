@@ -326,6 +326,12 @@ async def get_expense_detail(organization_id: int, expense_id: int) -> dict[str,
       "exp-1?title=교재&amount=32000&category=도서&date=2026-07-01&description=..."
       (in-memory 시딩은 api/worker가 별도 프로세스라 전달 불가 — ID에 인코딩하는
       방식만이 두 프로세스에서 동일하게 동작한다). 없는 키는 기본값.
+
+    실모드 응답의 `category`는 **값이 있을 때만** 9종으로 정규화한다
+    (`normalize_expense_category`). load_context가 claim.category를 만드는 출처가
+    이 함수라, 여기서 접지 않으면 백엔드 ENUM 마이그레이션 전까지 구 값이 심사
+    그래프 안까지 들어온다. 목 응답은 접지 않는다 — 골든셋이 카탈로그 밖 값을
+    목 규약으로 쓰고 있어 여기서 접으면 규약이 깨진다(§7).
     """
     s = get_settings()
     if s.mock_backend:
@@ -349,7 +355,15 @@ async def get_expense_detail(organization_id: int, expense_id: int) -> dict[str,
         f"/internal/agent/organizations/{organization_id}/expenses/{expense_id}"
     )
     r.raise_for_status()
-    return r.json()
+    detail = r.json()
+    # 값이 있을 때만 접는다 — 빈 값은 '기타'가 아니라 **빈 값 그대로** 둬야 한다.
+    # 이력과 갈리는 지점이다: 이력의 빈 값은 집계 버킷이 필요해 '기타'로 접지만,
+    # 상세의 빈 값은 "분류기를 돌려라"는 신호다(BE-001 계약상 null이 정상 경로).
+    # 여기서 '기타'로 채우면 claim.category가 비어 있지 않게 되어 AI 분류가 통째로
+    # 무력화된다 — 모든 지출이 조용히 '기타'로 확정된다.
+    if isinstance(detail, dict) and str(detail.get("category") or "").strip():
+        detail["category"] = normalize_expense_category(detail["category"])
+    return detail
 
 
 async def get_team_settings(organization_id: int) -> dict[str, Any]:
