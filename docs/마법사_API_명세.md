@@ -66,9 +66,9 @@ Authorization: Bearer {SERVICE_TOKEN}
 | 확인 (우리 → 화면) | `GET /v1/policy-params/status` | 저장값 + 실효 한도 + 한 줄 설명 |
 
 > **2026-08-05 화면 개편 + LLM-005 전면 개정.** 금액 입력칸이 2개("소액 자동 승인
-> 한도" + "고액 직접 확인 기준")에서 1개("관리자 승인 필수 금액")로 줄었다. 이에 맞춰
-> 백엔드가 `team_settings`의 `escalation_threshold` 컬럼을 삭제하기로 했고, 화면의 한
-> 칸은 `auto_approve_limit`에 저장한다. 우리 `POST /v1/policy-draft`의 **초기값 추천
+> 한도" + "고액 직접 확인 기준")에서 1개("관리자 승인 필수 금액")로 줄었다. 화면의 한
+> 칸은 `auto_approve_limit`에 저장한다 — 백엔드 `team_settings`에는 처음부터 이 컬럼
+> 하나뿐이었다(2026-08-06 백엔드 정정 — `escalation_threshold` 컬럼은 존재하지 않는다). 우리 `POST /v1/policy-draft`의 **초기값 추천
 > (`policy_params`)은 제거됐다** — 사용자가 입력한 기준 금액이 원천이고, 그 값이 요청
 > 필드로 들어와 회칙 초안의 금액 조항·검증에 쓰인다.
 
@@ -108,7 +108,8 @@ Authorization: Bearer {SERVICE_TOKEN}
 `null`이 정상 케이스다. 0으로 읽으면 모든 금액이 한도에 걸려 관리자 확인으로 간다 — 어느
 쪽으로도 해석 가능할 때 자동 승인이 되지 않는 쪽을 고른다.
 
-**③ 삭제된 `escalation_threshold`는 한도를 축소하지 않는다.** 이 키가 응답에 없으면 우리는
+**③ `escalation_threshold` 키는 응답에 없다(컬럼 자체가 없다 — 2026-08-06 정정). 없어도
+한도를 축소하지 않는다.** 이 키가 응답에 없으면 우리는
 `auto_approve_limit`과 같은 값으로 읽는다. 모델 기본값 200,000을 채워 넣으면
 `min(관리자 설정값, 200,000)`이 되어 **관리자가 50만을 설정해도 20만부터 관리자 확인**이
 되기 때문이다. 이 컬럼은 원래 금액이었고 확신도 θ가 아니었다 — 둘을 섞어 `θ = 200000.0`이
@@ -167,9 +168,9 @@ Authorization: Bearer {SERVICE_TOKEN}
 고액 기준 20만 → 3만으로 내림:   49,999원·50,000원의 판정이 바뀜
 ```
 
-2026-08-05 화면 개편으로 칸이 하나가 되고 백엔드가 `escalation_threshold` 컬럼을
-삭제하면서 이 불일치는 해소됐다. 컬럼 삭제 전에 두 값이 따로 저장된 팀은 여전히
-`min(두 값)`이 실효 한도이므로, 코드는 min 계산을 그대로 유지한다.
+2026-08-05 화면 개편으로 칸이 하나가 되면서 이 불일치는 해소됐다. 백엔드 정정
+(2026-08-06)으로 `escalation_threshold` 컬럼은 애초에 존재하지 않았음이 확인돼 두 값이
+갈릴 데이터 경로 자체가 없다 — 코드의 min 계산은 방어적으로 그대로 유지한다.
 
 ### GET /v1/policy-params/status (신설)
 
@@ -199,8 +200,8 @@ Authorization: Bearer {SERVICE_TOKEN}
 | 필드 | 뜻 |
 |---|---|
 | `available` | 백엔드 team-settings 조회 성공 여부. `false`면 아래는 fail-safe 기본값이고 심사는 전건 관리자 확인으로 진행된다 |
-| `auto_approve` ~ `force_escalation_amount` | 저장된 값을 우리가 해석한 결과. `escalation_threshold` 컬럼 삭제 후로는 `force_escalation_amount`가 `auto_approve_limit`과 같은 값이다 |
-| `effective_auto_approve_limit` | **실제로 자동/대기를 가르는 금액.** 두 값이 따로 저장된 팀(컬럼 삭제 전)은 작은 쪽 |
+| `auto_approve` ~ `force_escalation_amount` | 저장된 값을 우리가 해석한 결과. `escalation_threshold` 컬럼이 없으므로(2026-08-06 정정 — 애초에 부재) `force_escalation_amount`는 항상 `auto_approve_limit`과 같은 값이다 |
+| `effective_auto_approve_limit` | **실제로 자동/대기를 가르는 금액.** 현재 구조에서는 항상 위 두 값과 같다(min 계산은 방어적 유지) |
 | `auto_approved_up_to` | 이 금액까지 자동 판정. 경계가 '이상'이라 실효 한도보다 1원 낮다. 자동 심사를 안 쓰거나 한도가 0이면 `null` |
 | `summary` | 화면에 그대로 띄울 한 줄 설명 |
 
@@ -231,15 +232,15 @@ Authorization: Bearer {SERVICE_TOKEN}
 
 1. ~~**경계 문구.**~~ **해소** (2026-08-05) — 화면이 "N원 이상"으로 확정해 코드를 `>=`로
    맞췄다. 한도 50,000이면 49,999원까지 자동, 50,000원부터 관리자 확인이다.
-2. ~~**고액 기준 칸의 용도.**~~ **해소** (2026-08-05) — 화면 금액 칸이 하나로 합쳐지고
-   백엔드가 `escalation_threshold` 컬럼을 삭제하기로 했다.
+2. ~~**고액 기준 칸의 용도.**~~ **해소** (2026-08-05) — 화면 금액 칸이 하나로 합쳐졌다
+   (8/6 백엔드 정정: `escalation_threshold` 컬럼은 애초에 없었다).
 3. **토글 저장 방향.** 켬 = `auto_approve: false`. 백엔드 저장 시점에 반전하는지, 화면에서
    반전해 보내는지 어느 쪽인지 정해야 한다.
 4. ~~**`auto_approve` 추천값 전달 통로.**~~ **소멸** (2026-08-06) — LLM-005 전면 개정으로
    `policy_params` 추천 자체가 제거됐다. 토글 초기 상태는 화면 기본값(꺼짐 = 자동 심사
    사용)을 쓰면 된다.
-5. **컬럼 삭제 시점.** 우리 매핑 수정이 배포된 뒤에 백엔드가 `escalation_threshold`를
-   지워야 한다. 순서가 반대면 관리자 설정값이 모델 기본값 200,000으로 축소된다.
+5. ~~**컬럼 삭제 시점.**~~ **소멸** (2026-08-06) — 백엔드 정정으로 `escalation_threshold`
+   컬럼이 애초에 존재하지 않았음이 확인됐다. 삭제할 것도, 지킬 배포 순서도 없다.
 
 ## POST /v1/policy-draft — 마법사 1~3단계 통합 요청 (LLM-005 전면 개정 2026-08-05)
 
@@ -266,16 +267,16 @@ Content-Type: application/json
 | 필드 | 타입 | 필수 | 출처 | 설명 |
 |---|---|---|---|---|
 | `team_id` | integer (int64) | O | 0단계 | 모임 생성 응답의 `teamId` |
-| `team_type` | string | O | 0단계 | `동아리/학생회` · `스터디` · `친목` · `동호회` · `회사` 중 하나 (슬래시까지 일치) |
+| `team_type` | string | O | 0단계 | 백엔드 ENUM **언더바 표기 그대로**: `동아리_학생회` · `스터디` · `친목` · `동호회` · `회사` (2026-08-06 확정 — 서버가 내부 표기로 변환하며, 구 표기 `동아리/학생회`도 받는다) |
 | `team_name` | string | O | 0단계 | 모임 이름 |
 | `initial_budget` | integer | O | 0단계 | 원 단위 총액, 0보다 커야 함 |
 | `member_count` | integer \| null | X | 0단계 | 현재 미사용 |
 | `description` | string | X | 0단계 | 모임 소개. 있으면 AI가 맞춤 조항을 추가한다 (`rule_source=ai`일 때) |
 | `dues` | integer \| null | X | 1단계 | 1인당 회비. `null`·`0` 둘 다 "없음" |
-| `force_escalation_amount` | integer | O | 2단계 | '관리자 확인 설정 금액'. 이 값 하나로 승인 정책이 결정된다 — **AI는 승인 정책을 제안하지 않는다.** 서버는 0 초과만 확인하고(아래 오류표), 화면의 최소 50,000원 하한은 화면 몫이다 |
+| `force_escalation_amount` | integer | O | 2단계 | '관리자 확인 설정 금액'. 이 값 하나로 승인 정책이 결정된다 — **AI는 승인 정책을 제안하지 않는다.** 서버는 0 이상만 확인하고(음수 거절 — 아래 오류표), 화면의 최소 50,000원 하한은 화면 몫이다. **`0` = 전건 관리자 확인**('모든 지출을 직접 확인' 토글 켬, 2026-08-06 확정) |
 | `rule_source` | string | O | 3단계 | `file`(파일 업로드) · `manual`(직접 입력) · `ai`(AI 초안) · `skip`(건너뛰기) |
 | `rule_text` | string \| null | 조건부 | 3단계 | `rule_source=manual`일 때 필수 — 직접 입력한 회칙 원문 |
-| `rule_file_ref` | string \| null | 조건부 | 3단계 | `rule_source=file`일 때 필수 — 업로드 파일을 BE-005로 되물을 참조 키 |
+| `rule_file_ref` | string \| null | 조건부 | 3단계 | `rule_source=file`일 때 필수 — **저장된 파일명**(예: `bd345b5a-….pdf`, 2026-08-06 확정). 조회 자체는 teamId로 하므로(회칙 팀당 1개) 어떤 파일 기준의 초안인지 남기는 기록·추적용 |
 
 `rule_text`·`rule_file_ref`는 이 API에서 **검증만** 한다 — 본문 저장은 백엔드,
 심사 반영은 LLM-006 인덱싱 경로가 담당한다.
@@ -283,7 +284,7 @@ Content-Type: application/json
 ```json
 {
   "team_id": 9001,
-  "team_type": "동아리/학생회",
+  "team_type": "동아리_학생회",
   "team_name": "산악부",
   "initial_budget": 1000000,
   "dues": 30000,
@@ -348,24 +349,24 @@ Content-Type: application/json
 }
 ```
 
-### 백엔드 저장 규약 (개정안 §1-3)
+### 백엔드 저장 규약 (개정안 §1-3 · 2026-08-06 정정)
 
 ```
-team_settings.auto_approve_limit = team_settings.escalation_threshold
-                                 = 사용자가 입력한 기준 금액
+team_settings.auto_approve_limit = 사용자가 입력한 기준 금액
+('모든 지출 직접 확인' 토글 켬 = null 저장, LLM-005 요청에는 0으로 전달)
 ```
 
-두 값을 같은 금액으로 저장하면 '대기 구간'이 사라져 "미만 = 자동 승인, 이상 =
-관리자 확인" 정책이 그대로 구현된다 (심사 로직 무수정). 나중에 관리 화면에서 두 값을
-따로 조정하면 기존 3구간 동작으로 자연 복귀한다. `escalation_threshold` 컬럼 삭제
-후에는 `auto_approve_limit` 하나만 저장하면 된다 — 우리 매핑이 같은 값으로 읽는다.
+**`auto_approve_limit` 하나만 저장하면 된다.** 구판의 "두 컬럼(`escalation_threshold`)을
+같은 값으로 저장" 규약은 폐기 — 백엔드 정정(2026-08-06)으로 그 컬럼은 애초에 존재하지
+않았고, 우리 매핑이 없는 키를 `auto_approve_limit`과 같은 값으로 읽으므로 "미만 = 자동
+승인, 이상 = 관리자 확인" 정책이 그대로 구현된다 (심사 로직 무수정).
 
 ### 오류
 
 | 코드 | 상황 |
 |---|---|
 | 401 | 서비스 토큰 없음·불일치 |
-| 422 | 필수 필드 누락(`team_id` · `force_escalation_amount` · `rule_source` 포함), `initial_budget`·`force_escalation_amount` 0 이하, `team_type`·`rule_source`가 허용값 밖, `manual`인데 `rule_text` 없음, `file`인데 `rule_file_ref` 없음 |
+| 422 | 필수 필드 누락(`team_id` · `force_escalation_amount` · `rule_source` 포함), `initial_budget` 0 이하, `force_escalation_amount` 음수(0은 허용 — 전건 관리자 확인), `team_type`·`rule_source`가 허용값 밖, `manual`인데 `rule_text` 없음, `file`인데 `rule_file_ref` 없음 |
 | 500 | 생성된 초안이 내부 검증 불통과 (`{"detail": "초안 검증 실패: ..."}`) |
 
 ```json
