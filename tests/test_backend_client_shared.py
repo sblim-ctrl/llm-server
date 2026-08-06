@@ -205,3 +205,30 @@ async def test_get_expense_detail_mock_does_not_normalize(monkeypatch):
     )
     detail = await backend_client.get_expense_detail(9002, 90001)
     assert detail["category"] == "교재/자료비"
+
+
+async def test_get_team_profile_normalizes_real_mode_team_type(monkeypatch):
+    """백엔드 ENUM은 언더바 표기(2026-08-06 확정) — 프로필 응답도 경계에서 내부 표기로 접는다.
+
+    변환 없이는 templates·유형별 카탈로그 조회가 조용히 기본 유형으로 fallback한다
+    (policy_defaults.py:53 · load_context.py:77-79).
+    """
+
+    class _FakeResponse:
+        @staticmethod
+        def raise_for_status() -> None: ...
+
+        @staticmethod
+        def json() -> dict:
+            return {"team_type": "동아리_학생회"}
+
+    class _FakeClient:
+        @staticmethod
+        async def get(_url: str, params: dict | None = None) -> _FakeResponse:
+            return _FakeResponse()
+
+    monkeypatch.setattr(backend_client, "_client", lambda: _FakeClient())
+    monkeypatch.setattr(backend_client.get_settings(), "mock_backend", False, raising=False)
+
+    profile = await backend_client.get_team_profile(1)
+    assert profile["team_type"] == "동아리/학생회"

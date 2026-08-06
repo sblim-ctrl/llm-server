@@ -1,13 +1,27 @@
 """문서 생성 에이전트 계약 — PolicyDrafter(/v1/policy-draft) · ReportWriter(/v1/reports/summary)."""
 
 from datetime import date
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, BeforeValidator, Field, field_validator, model_validator
 
 from app.schemas.ids import BigIntId
 
 TeamType = Literal["동아리/학생회", "스터디", "친목", "동호회", "회사"]
+
+# 백엔드 ENUM은 언더바 표기다(2026-08-06 확정 — 카테고리 '행사_활동'과 같은 규칙).
+# 계약은 언더바, 내부 표기(템플릿·카탈로그 키)는 슬래시라 경계에서 접는다 — B-8
+# 카테고리 정규화와 같은 위치 원칙. "동아리학생회"는 백엔드 메시지에 언더바 없이
+# 적혀 있어 정확한 표기 재확인 전까지 두는 방어 매핑이다.
+TEAM_TYPE_ALIASES = {"동아리_학생회": "동아리/학생회", "동아리학생회": "동아리/학생회"}
+
+
+def normalize_team_type(value: object) -> object:
+    """백엔드 표기 → 내부 표기. 모르는 값은 그대로 두어 Literal 검증이 거절하게 한다."""
+    if isinstance(value, str):
+        return TEAM_TYPE_ALIASES.get(value, value)
+    return value
+
 
 # 마법사 3단계에서 무엇을 골랐는지 (file=파일 업로드 · manual=직접 입력 · ai=AI 초안 ·
 # skip=건너뛰기). 응답 rules는 ai일 때만 채워진다 — API 명세서 개정안 §1-2.
@@ -26,7 +40,9 @@ class PolicyDraftRequest(BaseModel):
     """
 
     team_id: BigIntId  # 0단계 모임 생성 응답의 teamId
-    team_type: TeamType
+    team_type: Annotated[TeamType, BeforeValidator(normalize_team_type)] = Field(
+        description="모임 유형. 백엔드 ENUM 언더바 표기('동아리_학생회')도 받는다 — 수신 시 내부 표기로 변환"
+    )
     team_name: str
     initial_budget: int = Field(gt=0, description="원 단위 총액")
     member_count: int | None = None
@@ -38,9 +54,12 @@ class PolicyDraftRequest(BaseModel):
     # (미만=AI 자동 승인 가능, 이상=관리자 결정). LLM은 승인 정책을 제안하지 않는다.
     # 화면 최소 5만원 하한은 여기서 걸지 않는다 — 개정안 §1-2가 요구하는 것은
     # '정수·필수'뿐이라 그 하한까지 서버가 계약에 없이 선제로 강제하지는 않는다.
-    # gt=0은 그와 별개로 initial_budget과 같은 최소한의 정합성 검사다(음수·0은
-    # '기준 금액'이라는 의미 자체가 성립하지 않는다).
-    force_escalation_amount: int = Field(gt=0, description="원 단위 기준 금액")
+    # 0은 '모든 지출을 직접 확인' 토글이다(백엔드 확인 2026-08-06 — 그쪽은
+    # auto_approve_limit=null 저장). 심사 쪽 해석(policy_params: 한도 없음→0→전건
+    # 관리자 확인)과 같은 의미라 허용하고, 음수만 거절한다.
+    force_escalation_amount: int = Field(
+        ge=0, description="원 단위 기준 금액. 0 = 전건 관리자 확인"
+    )
     rule_source: RuleSource
     # 아래 둘은 여기서 검증만 한다 — 회칙 본문 저장은 백엔드, 심사 반영은 LLM-006 경로.
     rule_text: str | None = None  # manual일 때 필수 — 직접 입력한 회칙 원문
