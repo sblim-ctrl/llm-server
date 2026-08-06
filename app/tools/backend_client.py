@@ -5,11 +5,13 @@
 """
 
 import asyncio
+import copy
+import functools
+import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from urllib.parse import parse_qs, urlsplit
 
 import httpx
 
@@ -19,8 +21,38 @@ from app.tools.category_catalog import all_categories, fallback_category
 logger = logging.getLogger(__name__)
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_FIXTURE_PATH = _PROJECT_ROOT / "eval" / "fixtures" / "mock_backend.json"
 
 _http_client: httpx.AsyncClient | None = None
+
+
+@functools.cache
+def _fixtures() -> dict[str, Any]:
+    """MOCK_BACKEND=true 목 데이터 — eval/fixtures/mock_backend.json 1회 로드 (T9).
+
+    두 프로세스(api·worker)가 in-memory 시딩으로는 데이터를 못 주고받아 디스크
+    파일을 공유 원천으로 쓴다. 반환값은 절대 그대로 넘기지 않는다 — 아래 조회
+    헬퍼가 매번 사본을 만들어, 호출부가 결과를 변형해도 캐시 원본이 오염되지
+    않게 한다.
+    """
+    return json.loads(_FIXTURE_PATH.read_text(encoding="utf-8"))
+
+
+def _fixture_org(team_id: Any) -> dict[str, Any] | None:
+    # deepcopy — organizations의 "budget"은 중첩 dict라 얕은 복사로는 캐시 원본과
+    # 같은 객체를 공유한다(호출부의 변형이 프로세스 수명 내내 캐시를 오염시킴).
+    org = _fixtures()["organizations"].get(str(team_id))
+    return copy.deepcopy(org) if org is not None else None
+
+
+def _fixture_expense(expense_id: Any) -> dict[str, Any] | None:
+    expense = _fixtures()["expenses"].get(str(expense_id))
+    return dict(expense) if expense is not None else None
+
+
+def _fixture_history(name: str) -> list[dict[str, Any]]:
+    rows = _fixtures()["expense_histories"].get(name, [])
+    return [dict(r) for r in rows]
 
 
 def _headers() -> dict[str, str]:
@@ -86,11 +118,10 @@ async def get_budget_status(team_id: int, category: str | None = None) -> dict[s
     """
     s = get_settings()
     if s.mock_backend:
-        team_key = str(team_id)
-        # 목 규약: team_id에 "lowbudget" 포함 → 잔액 부족 (반려 케이스 생성용, 잔액 1,000원)
-        if "lowbudget" in team_key:
-            return {"total_budget": 20_000, "spent": 19_000}
-        # 기본 고정값: 총예산 30만, 승인 지출 11.8만
+        org = _fixture_org(team_id)
+        if org is not None:
+            return dict(org["budget"])
+        # fixture 미등재 ID의 기본 폴백: 총예산 30만, 승인 지출 11.8만
         return {"total_budget": 300_000, "spent": 118_000}
     r = await _client().get(
         f"/internal/agent/teams/{team_id}/budget",
@@ -175,102 +206,9 @@ async def get_expense_history(team_id: int, **filters: Any) -> list[dict[str, An
     """
     s = get_settings()
     if s.mock_backend:
-        team_key = str(team_id)
-        # 목 규약 (골든셋·데모와 공유하는 team_id 단서 — §7 '규약을 깨지 말 것'):
-        #   "noexpense" 포함 → 지출 없음 (빈 기간 리포트 시나리오)
-        #   "balanced"  포함 → 편중·저활용 없는 균형 지출 (추천이 top 건 안내만 나와야 함)
-        if "noexpense" in team_key:
-            return []
-        if "balanced" in team_key:
-            return [
-                {
-                    "title": "분기 회식",
-                    "amount": 90000,
-                    "category": "식비",
-                    "date": "2026-06-06",
-                    "status": "APPROVED",
-                },
-                {
-                    "title": "세미나실 대관",
-                    "amount": 75000,
-                    "category": "대관",
-                    "date": "2026-06-13",
-                    "status": "APPROVED",
-                },
-                {
-                    "title": "공용 교재",
-                    "amount": 75000,
-                    "category": "도서",
-                    "date": "2026-06-20",
-                    "status": "APPROVED",
-                },
-                {
-                    "title": "모임 다과",
-                    "amount": 60000,
-                    "category": "다과",
-                    "date": "2026-06-27",
-                    "status": "APPROVED",
-                },
-            ]
-        # 결정적 샘플 이력 (리포트 개발용) — 계약 확정 시 실 API로 교체
-        return [
-            {
-                "title": "정기 회식",
-                "amount": 84000,
-                "category": "식비",
-                "date": "2026-06-05",
-                "status": "APPROVED",
-            },
-            {
-                "title": "스터디룸 대관",
-                "amount": 40000,
-                "category": "대관",
-                "date": "2026-06-08",
-                "status": "APPROVED",
-            },
-            {
-                "title": "교재 3권",
-                "amount": 54000,
-                "category": "도서",
-                "date": "2026-06-12",
-                "status": "APPROVED",
-            },
-            {
-                "title": "간식",
-                "amount": 18000,
-                "category": "다과",
-                "date": "2026-06-14",
-                "status": "APPROVED",
-            },
-            {
-                "title": "번개 모임 식사",
-                "amount": 62000,
-                "category": "식비",
-                "date": "2026-06-19",
-                "status": "APPROVED",
-            },
-            {
-                "title": "온라인 강의",
-                "amount": 33000,
-                "category": "교육",
-                "date": "2026-06-21",
-                "status": "APPROVED",
-            },
-            {
-                "title": "프린트·제본",
-                "amount": 12000,
-                "category": "비품",
-                "date": "2026-06-25",
-                "status": "APPROVED",
-            },
-            {
-                "title": "월말 회식",
-                "amount": 96000,
-                "category": "식비",
-                "date": "2026-06-28",
-                "status": "APPROVED",
-            },
-        ]
+        org = _fixture_org(team_id)
+        history_name = org["expense_history"] if org is not None else "default"
+        return _fixture_history(history_name)
     r = await _client().get(f"/internal/agent/teams/{team_id}/expenses", params=filters)
     r.raise_for_status()
     rows = r.json()
@@ -321,36 +259,34 @@ async def get_expense_detail(organization_id: int, expense_id: int) -> dict[str,
     제목·금액·카테고리는 없다 — 이 함수로 되물어 가져온다. 정확한 엔드포인트 경로는
     풀스택 질의요청서 회신 대기 중 — 확정되면 아래 URL만 교체.
 
-    목 규약 (골든셋·대시보드와 공유 — §7 '규약을 깨지 말 것'):
-      expense_id에 "?"가 있으면 query로 상세를 오버라이드 —
-      "exp-1?title=교재&amount=32000&category=도서&date=2026-07-01&description=..."
-      (in-memory 시딩은 api/worker가 별도 프로세스라 전달 불가 — ID에 인코딩하는
-      방식만이 두 프로세스에서 동일하게 동작한다). 없는 키는 기본값.
+    목 데이터는 eval/fixtures/mock_backend.json에서 조회한다(T9). fixture는 이미
+    9종 카탈로그 값만 담으므로 실모드처럼 접을 필요가 없다 — 접기·안 접기
+    비대칭이 여기서 자연히 사라진다(tests/test_mock_fixture.py가 강제).
 
     실모드 응답의 `category`는 **값이 있을 때만** 9종으로 정규화한다
     (`normalize_expense_category`). load_context가 claim.category를 만드는 출처가
     이 함수라, 여기서 접지 않으면 백엔드 ENUM 마이그레이션 전까지 구 값이 심사
-    그래프 안까지 들어온다. 목 응답은 접지 않는다 — 골든셋이 카탈로그 밖 값을
-    목 규약으로 쓰고 있어 여기서 접으면 규약이 깨진다(§7).
+    그래프 안까지 들어온다.
     """
     s = get_settings()
     if s.mock_backend:
-        expense_key = str(expense_id)
-        detail = {
+        expense = _fixture_expense(expense_id)
+        if expense is not None:
+            return {
+                "title": expense["title"],
+                "amount": expense["amount"],
+                "category": expense["category"],
+                "date": expense["date"],
+                "description": expense["description"],
+            }
+        # fixture 미등재 ID의 기본 폴백
+        return {
             "title": "모의 지출",
             "amount": 30_000,
             "category": "",
             "date": "2026-07-01",
             "description": "",
         }
-        if "?" in expense_key:
-            params = parse_qs(urlsplit(expense_key).query)
-            for key in ("title", "category", "date", "description"):
-                if key in params:
-                    detail[key] = params[key][0]
-            if "amount" in params:
-                detail["amount"] = int(params["amount"][0])
-        return detail
     r = await _client().get(
         f"/internal/agent/organizations/{organization_id}/expenses/{expense_id}"
     )
@@ -379,17 +315,20 @@ async def get_team_settings(organization_id: int) -> dict[str, Any]:
     버그가 생긴다(2026-07-31 θ 오염이 목의 0.8에 가려졌던 것과 같은 구조).
     키가 없을 때의 해석은 map_team_settings가 담당한다.
 
-    목 규약: organization_id에 "noauto" 포함 → auto_approve=False (게이트 검증용).
-    그 외에는 True — 골든셋·데모의 자동판정 흐름을 보존하기 위한 목 전용 기본값이며
-    실서비스 기본값(False)과 다르다는 점에 주의.
+    목 데이터는 fixture 조회(T9) — 미등재 조직은 auto_approve=True/limit 50,000
+    (골든셋·데모의 자동판정 흐름을 보존하기 위한 목 전용 기본값이며 실서비스
+    기본값(False)과 다르다는 점에 주의). `escalation_threshold` 키는 fixture에도
+    절대 넣지 않는다 — 위 문단의 실제 형태(키 부재)를 그대로 재현해야 한다.
     """
     s = get_settings()
     if s.mock_backend:
-        organization_key = str(organization_id)
-        return {
-            "auto_approve": "noauto" not in organization_key.lower(),
-            "auto_approve_limit": 50_000,
-        }
+        org = _fixture_org(organization_id)
+        if org is not None:
+            return {
+                "auto_approve": org["auto_approve"],
+                "auto_approve_limit": org["auto_approve_limit"],
+            }
+        return {"auto_approve": True, "auto_approve_limit": 50_000}
     r = await _client().get(f"/internal/agent/organizations/{organization_id}/team-settings")
     r.raise_for_status()
     return r.json()
@@ -426,22 +365,13 @@ async def get_receipt_by_path(receipt_path: str) -> bytes | None:
 async def get_team_profile(team_id: int) -> dict[str, Any]:
     """팀 프로필(모임 유형 등) 조회 — 유형별 카테고리 카탈로그 선택에 사용.
 
-    목 규약: team_id에 포함된 단서로 유형 추론 (club/study/social/hobby/company).
-    실제 엔드포인트 경로는 풀스택 팀과 미확정.
+    목 데이터는 fixture 조회(T9). 실제 엔드포인트 경로는 풀스택 팀과 미확정.
     """
     s = get_settings()
     if s.mock_backend:
-        tid = str(team_id).lower()
-        for hint, team_type in [
-            ("club", "동아리/학생회"),
-            ("study", "스터디"),
-            ("social", "친목"),
-            ("hobby", "동호회"),
-            ("company", "회사"),
-            ("corp", "회사"),
-        ]:
-            if hint in tid:
-                return {"team_type": team_type}
+        org = _fixture_org(team_id)
+        if org is not None:
+            return {"team_type": org["team_type"]}
         return {"team_type": "동아리/학생회"}  # 기본값
     r = await _client().get(f"/internal/agent/teams/{team_id}/profile")
     r.raise_for_status()

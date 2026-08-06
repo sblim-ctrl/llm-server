@@ -22,9 +22,12 @@
 정확도는 참고 지표로 출력 (실모드 목표 ≥90% — PROGRESS §6-1 추이 참고).
 비용: 30건 기준 약 $0.15~0.25 (gpt-4o, 건당 평균 ~$0.006).
 """
+
 import asyncio
 import csv
+import functools
 import json
+import logging
 import sys
 import time
 from datetime import date
@@ -37,33 +40,56 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-from app.config import get_settings                                    # noqa: E402
+from app.config import get_settings  # noqa: E402
 from app.db.pool import apply_schema, close_pool, get_pool, open_pool  # noqa: E402
 
 DEFAULT_GOLDEN = ROOT / "eval" / "golden" / "golden_v1.json"
+FIXTURE_PATH = ROOT / "eval" / "fixtures" / "mock_backend.json"
 RESULTS_DIR = ROOT / "eval" / "results"
 ACCURACY_TARGET = 0.90
 
 
+@functools.cache
+def _fixture_expenses() -> dict:
+    return json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))["expenses"]
+
+
 def receipt_text_for(case_input: dict) -> str | None:
-    """receiptPath → receipt_text 변환 — 목 규약 의미 보존 (모듈 docstring 3번)."""
-    q = parse_qs(urlsplit(case_input["expenseId"]).query)
-    amount, dt = int(q["amount"][0]), q["date"][0]
+    """receiptPath → receipt_text 변환 — 목 규약 의미 보존 (모듈 docstring 3번).
+
+    expenseId는 T9부터 fixture 정수 키다 — 지출 금액·날짜는 쿼리스트링이 아니라
+    eval/fixtures/mock_backend.json에서 읽는다.
+    """
+    expense = _fixture_expenses()[str(case_input["expenseId"])]
+    amount, dt = expense["amount"], expense["date"]
     rp = case_input.get("receiptPath")
     if not rp:
-        return None                                  # 미첨부 시나리오
+        return None  # 미첨부 시나리오
     if rp.startswith("mock://receipt"):
-        p = parse_qs(urlsplit(rp).query)              # 오버라이드 → 불일치 시나리오
+        p = parse_qs(urlsplit(rp).query)  # 오버라이드 → 불일치 시나리오
         amount = int(p["amount"][0]) if "amount" in p else amount
         dt = p["date"][0] if "date" in p else dt
     return f"영수증 합계 {amount:,}원 / {dt}"
 
 
+GOLDEN_TEAM_ID_RANGE = (9000, 9999)  # eval/fixtures/mock_backend.json의 조직 대역(T9)
+
+
 async def clean_golden_teams() -> None:
-    """골든 팀 잔재 정리 — 판례(목/실 임베딩 혼입 방지)·회칙 청크 (docstring 1·4번)."""
+    """골든 팀 잔재 정리 — 판례(목/실 임베딩 혼입 방지)·회칙 청크 (docstring 1·4번).
+
+    team_id가 BIGINT로 전환된 뒤로는 `LIKE 'golden-%'`가 성립하지 않는다(T9) — 골든
+    ID 대역 전체를 지운다. 이번 실행이 실제로 쓰는 ID만 지우면, 골든셋이 바뀌어 어떤
+    ID가 더 이상 쓰이지 않게 됐을 때 그 행이 영구히 남아 실키 임베딩이 목 게이트를
+    오염시킬 수 있다 — 대역 전체를 지우는 편이 더 안전하다.
+    """
     async with get_pool().connection() as conn:
-        await conn.execute("DELETE FROM precedents WHERE team_id LIKE 'golden-%%'")
-        await conn.execute("DELETE FROM context_chunks WHERE team_id LIKE 'golden-%%'")
+        await conn.execute(
+            "DELETE FROM precedents WHERE team_id BETWEEN %s AND %s", GOLDEN_TEAM_ID_RANGE
+        )
+        await conn.execute(
+            "DELETE FROM context_chunks WHERE team_id BETWEEN %s AND %s", GOLDEN_TEAM_ID_RANGE
+        )
 
 
 async def main() -> int:
@@ -89,8 +115,8 @@ async def main() -> int:
         versions = {a: load_prompt(a).version for a in ("rule_auditor", "adjudicator")}
         print(f"골든셋 {golden['version']} {len(cases)}건 실모드 실측 — 프롬프트 {versions}")
 
-        await clean_golden_teams()
         teams = sorted({c["input"]["organizationId"] for c in cases})
+        await clean_golden_teams()
         for t in teams:
             await indexing_graph.ainvoke({"team_id": t, "doc_type": "rule", "version": 1})
         print(f"골든 팀 {len(teams)}개 회칙 실인덱싱 완료 — 실행 시작\n")
@@ -98,13 +124,15 @@ async def main() -> int:
         rows, correct, false_appr, cost_total = [], 0, [], 0.0
         for case in cases:
             req = AnalyzeRequest.model_validate(case["input"])
-            final = await review_graph.ainvoke({
-                "job_id": f"eval-real-{case['id']}",
-                "external_job_id": req.job_id,
-                "expense_id": req.expense_id,
-                "team_id": req.organization_id,
-                "receipt_text": receipt_text_for(case["input"]),
-            })
+            final = await review_graph.ainvoke(
+                {
+                    "job_id": f"eval-real-{case['id']}",
+                    "external_job_id": req.job_id,
+                    "expense_id": req.expense_id,
+                    "team_id": req.organization_id,
+                    "receipt_text": receipt_text_for(case["input"]),
+                }
+            )
             actual = final.get("verdict") or "escalate"
             exp = case["expected_verdict"]
             ok = actual == exp
@@ -118,16 +146,17 @@ async def main() -> int:
             gate_rules = "|".join(gate.triggered_rules) if gate else ""
             rows.append([case["id"], exp, actual, ok, fa, gate_rules, f"{cost:.5f}"])
             mark = "O" if ok else "X"
-            print(f" [{mark}] {case['id']:30s} 기대={exp:8s} 실제={actual:8s} ${cost:.4f}"
-                  + (f"  gate={gate_rules}" if not ok else ""))
+            print(
+                f" [{mark}] {case['id']:30s} 기대={exp:8s} 실제={actual:8s} ${cost:.4f}"
+                + (f"  gate={gate_rules}" if not ok else "")
+            )
 
         n = len(rows)
         RESULTS_DIR.mkdir(parents=True, exist_ok=True)
         out = RESULTS_DIR / f"golden_realmode_{date.today().isoformat()}.csv"
         with out.open("w", newline="", encoding="utf-8-sig") as f:
             w = csv.writer(f)
-            w.writerow(["id", "expected", "actual", "correct", "false_approve",
-                        "gate", "cost_usd"])
+            w.writerow(["id", "expected", "actual", "correct", "false_approve", "gate", "cost_usd"])
             w.writerows(rows)
 
         acc = correct / n if n else 0.0
@@ -136,22 +165,27 @@ async def main() -> int:
 
         # 판정 지표 (§4 Sprint 2) — rows에서 expected·actual만 추려 순수 계산
         from app.eval_metrics import verdict_metrics
+
         m = verdict_metrics([{"expected": r[1], "actual": r[2]} for r in rows])
 
         def _pct(v: float | None) -> str:
             return "N/A" if v is None else f"{v:.0%}"
-        print(f"자동 처리율: {m['automation_rate']:.0%} | "
-              f"에스컬레이션 R={_pct(m['escalation_recall'])} "
-              f"P={_pct(m['escalation_precision'])} (안전 핵심)")
+
+        print(
+            f"자동 처리율: {m['automation_rate']:.0%} | "
+            f"에스컬레이션 R={_pct(m['escalation_recall'])} "
+            f"P={_pct(m['escalation_precision'])} (안전 핵심)"
+        )
         for label in ("approve", "reject", "escalate"):
             p = m["per_class"][label]
-            print(f"  {label:8s}(n={p['support']:2d}): "
-                  f"P={_pct(p['precision'])} R={_pct(p['recall'])} F1={_pct(p['f1'])}")
-        print(f"총 비용 ${cost_total:.4f} (건당 평균 ${cost_total / n:.4f}) · "
-              f"소요 {time.time() - started:.0f}s · CSV: {out}")
-
-        await clean_golden_teams()
-        print("골든 팀 데이터 사후 정리 완료 (목 골든셋 게이트 무오염)")
+            print(
+                f"  {label:8s}(n={p['support']:2d}): "
+                f"P={_pct(p['precision'])} R={_pct(p['recall'])} F1={_pct(p['f1'])}"
+            )
+        print(
+            f"총 비용 ${cost_total:.4f} (건당 평균 ${cost_total / n:.4f}) · "
+            f"소요 {time.time() - started:.0f}s · CSV: {out}"
+        )
 
         if false_appr:
             print("\n!! 오승인 발생 — 절대 머지 불가")
@@ -160,6 +194,14 @@ async def main() -> int:
             print("\n주의: 실모드 정확도 목표 미달 — 튜닝 백로그 확인 (PROGRESS §6-1)")
         return 0
     finally:
+        # try 블록 중간에 예외가 나도 사후 정리는 항상 실행돼야 한다 — 그래야
+        # 실키 임베딩이 남아 다음 목 골든셋 실행을 오염시키는 경로가 안 생긴다.
+        # 정리 자체가 실패해도 close_pool()은 반드시 돌아야 커넥션이 새지 않는다.
+        try:
+            await clean_golden_teams()
+            print("골든 팀 데이터 사후 정리 완료 (목 골든셋 게이트 무오염)")
+        except Exception:
+            logging.exception("골든 팀 데이터 사후 정리 실패 — 수동 정리 필요")
         await close_pool()
 
 

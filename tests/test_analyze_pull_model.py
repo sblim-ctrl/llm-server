@@ -1,7 +1,7 @@
 """/v1/analyze pull 모델 계약 테스트 (bravo 설계서 TABLE 18).
 
 - AnalyzeRequest: 백엔드 camelCase 5필드 수용 (+내부 snake_case 호환)
-- get_expense_detail 목 규약: expense_id의 ?쿼리로 지출 상세 오버라이드
+- get_expense_detail 목 데이터: eval/fixtures/mock_backend.json 조회(T9)
 - load_context: claim pull 채움 / 직접 주입 시 조회 생략 / team_settings 실패 시
   auto_approve=False fail-safe
 - team_settings·budget 응답 필드 계약 (풀스택 DB 스키마 2026-07-27 수령분)
@@ -64,45 +64,38 @@ def test_analyze_request_rejects_old_push_contract():
         )
 
 
-async def test_expense_detail_mock_query_override():
-    detail = await get_expense_detail(
-        "org-1",
-        "exp-1?title=스터디 교재&amount=32000&category=도서"
-        "&date=2026-07-01&description=설명%3D테스트",
-    )
-    assert detail["title"] == "스터디 교재"
+async def test_expense_detail_mock_fixture_lookup():
+    """fixture(9002/90001 = club-approve-001)의 값을 그대로 돌려준다."""
+    detail = await get_expense_detail(9002, 90001)
+    assert detail["title"] == "동아리 스터디 교재"
     assert detail["amount"] == 32000
-    assert detail["category"] == "도서"
-    assert detail["description"] == "설명=테스트"  # 최소 이스케이프(%3D) 복원
+    assert detail["category"] == "교육"
+    assert detail["description"] == "알고리즘 스터디 교재 2권"
 
 
-async def test_expense_detail_mock_default_without_query():
-    detail = await get_expense_detail("org-1", "exp-plain")
+async def test_expense_detail_mock_default_when_unregistered():
+    detail = await get_expense_detail(9002, 999999)
     assert detail["amount"] == 30_000 and detail["title"]
 
 
-async def test_team_settings_mock_noauto_convention():
-    assert (await get_team_settings("org-noauto-1"))["auto_approve"] is False
-    assert (await get_team_settings("org-normal"))["auto_approve"] is True
+async def test_team_settings_mock_fixture_lookup():
+    """fixture 9012(club-noauto)는 auto_approve=False, 9002(club-1)는 True."""
+    assert (await get_team_settings(9012))["auto_approve"] is False
+    assert (await get_team_settings(9002))["auto_approve"] is True
 
 
 async def test_load_context_pulls_claim():
-    state = {
-        "team_id": "org-1",
-        "expense_id": "exp-1?title=회식&amount=45000&category=식비&date=2026-07-02",
-    }
+    state = {"team_id": 9002, "expense_id": 90001}
     updates = await load_context(state)
     claim = updates["claim"]
-    assert claim.title == "회식" and claim.amount == 45000
+    assert claim.title == "동아리 스터디 교재" and claim.amount == 32000
     assert updates["policy_params"].auto_approve is True
 
 
 async def test_load_context_skips_pull_when_claim_given():
     """직접 그래프 호출(smoke·seed_demo·단위테스트) — 주입된 claim을 덮지 않는다."""
     given = ExpenseClaim(title="직접 주입", amount=1000, date="2026-07-01")
-    updates = await load_context(
-        {"team_id": "org-1", "expense_id": "exp-1?title=다른값&amount=99999", "claim": given}
-    )
+    updates = await load_context({"team_id": 9002, "expense_id": 999999, "claim": given})
     assert "claim" not in updates
 
 
