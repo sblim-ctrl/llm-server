@@ -1,6 +1,6 @@
 """지출 심사 그래프 조립 (§4.1 메인 워크플로우).
 
-START → load_context → intake_receipt → mismatch_gate
+START → load_context → intake_receipt → classify_category → mismatch_gate
       ─(불일치)→ escalate
       ─(일치)→ [rule / budget / precedent 병렬] → guardrail_gate
       ─(차단)→ escalate
@@ -47,10 +47,19 @@ def build_review_graph(checkpointer: BaseCheckpointSaver | None = None):
     g.add_node("persist_precedent", persist_precedent)
 
     g.add_edge(START, "load_context")
-    # 카테고리 미입력 시 AI 분류로 채운 뒤 심사 진행 (예산 심사가 카테고리를 사용)
-    g.add_edge("load_context", "classify_category")
-    g.add_edge("classify_category", "intake_receipt")
-    g.add_edge("intake_receipt", "mismatch_gate")
+    # **영수증 OCR을 분류보다 먼저** 돌린다 (2026-08-06 순서 변경).
+    #
+    # 종전에는 분류가 먼저라 분류기가 제목·설명만 봤다. 그런데 8/4 회의로 사용자
+    # 카테고리 입력이 사라져 AI 분류가 유일한 출처가 됐고, 제목은 "6월 모임"·"물품"
+    # 처럼 엉성하게 오는 것이 실측으로 확인됐다(20건 중 11건이 기타로 감).
+    #
+    # 영수증 OCR은 **상호명·품목**을 뽑는다. "6월 모임"만으로는 못 맞히는 지출도
+    # 상호가 "○○펜션"이면 장소_대관으로 갈 수 있다 — 가장 강한 단서를 분류기가 못 보고
+    # 있던 셈이다. intake_receipt·mismatch_gate 어느 쪽도 `claim.category`를 읽지
+    # 않으므로(확인 완료) 순서를 바꿔도 기존 동작은 그대로다.
+    g.add_edge("load_context", "intake_receipt")
+    g.add_edge("intake_receipt", "classify_category")
+    g.add_edge("classify_category", "mismatch_gate")
 
     # 불일치 → escalate / 일치 → 3-심사관 fan-out (§3.2)
     # 라우터가 노드 리스트를 반환하면 해당 노드들이 병렬 실행된다

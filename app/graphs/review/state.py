@@ -38,13 +38,11 @@ class ReviewState(TypedDict, total=False):
     rule_version: int
     team_type: str              # 모임 유형 — 유형별 카테고리 카탈로그 선택에 사용
     team_members: list[dict]    # PII 마스킹용 멤버 명단 — 조회 실패 시에도 [] 보장 (B2)
-    # 분류 (classify_category가 씀) — "user"(직접 입력) | "ai"(자동 분류)
+    # 분류 (classify_category가 씀) — 항상 "ai"다. 사용자 카테고리 입력이
+    # 화면에서 사라져(8/4 회의) AI 분류가 유일한 출처가 됐다 (T7, 2026-08-06).
+    # 사용자 선택과 대조하던 category_mismatch·ai_suggested_category 필드는
+    # 가드레일 규칙·테스트와 함께 제거했다 (2026-08-06 팀장 승인 — 세우는 코드 0곳).
     category_source: str
-    # 사용자 지정 카테고리 vs AI 분류의 '확신 있는 불일치' (2026-07-28 결정) —
-    # 라벨은 사용자 것 유지, 가드레일이 category_mismatch로 보류시키고
-    # AI 의견은 콜백 suggestedCategory로 관리자에게 전달
-    category_mismatch: bool
-    ai_suggested_category: str | None
     # 진행 산출물
     receipt_data: ReceiptData | None
     mismatch: list[Mismatch]

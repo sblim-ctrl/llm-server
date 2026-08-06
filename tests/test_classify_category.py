@@ -111,41 +111,56 @@ async def test_empty_category_gets_classified():
     assert result["claim"].category in all_categories()
 
 
-async def test_user_category_is_respected():
-    result = await classify_category(_state("장소_대관"))
-    assert result["category_source"] == "user"
-    assert "claim" not in result  # claim 미변경
+# ── T7 (2026-08-06): 분류는 항상 실행된다 ─────────────────────────────────
+#
+# 종전에는 category에 값이 있으면 분류를 건너뛰고 그 값을 존중했다. 사용자가 화면에서
+# 카테고리를 고르던 시절의 동작이다. 8/4 회의로 그 입력 수단이 사라졌고, 백엔드도
+# expenses.category를 nullable로 바꿔 항상 빈 값을 보내기로 회신했다(2026-08-06).
+# 값이 채워져 와도 라벨은 AI가 확정한다. 채워진 값의 대부분은 우리 콜백이 채운 것이
+# 재심사 때 되돌아온 에코라(리뷰 3번), 경고는 AI 판단과 **다를 때만** 남긴다.
 
 
-async def test_confident_disagreement_flags_mismatch():
-    """숙박 지출을 식비로 등록 → 확신 있는 불일치 → 가드레일 보류 대상."""
-    result = await classify_category(_state("식비"))
-    assert result["category_source"] == "user"
-    assert "claim" not in result                     # 라벨은 사용자 것 유지
-    assert result["category_mismatch"] is True
-    assert result["ai_suggested_category"] == "장소_대관"
+async def test_incoming_category_is_overwritten_by_ai():
+    """값이 채워져 와도 AI 분류가 라벨을 확정한다 — 입력은 참고되지 않는다."""
+    result = await classify_category(_state("식비"))          # 숙박인데 식비로 옴
+    assert result["category_source"] == "ai"
+    assert result["claim"].category == "장소_대관", "AI 분류가 이겨야 한다"
 
 
-async def test_agreeing_category_is_not_flagged():
-    state = {"claim": ExpenseClaim(title="회식 저녁", amount=40_000, category="식비",
-                                   date="2026-07-10", description="정기 모임 식사")}
-    result = await classify_category(state)
-    assert result["category_mismatch"] is False
-    assert result["ai_suggested_category"] is None
+async def test_differing_incoming_category_logs_warning(caplog):
+    """들어온 값과 AI 판단이 갈리면 경고 — 분류 흔들림·구화면 입력은 사람이 봐야 할 신호다."""
+    import logging
+
+    with caplog.at_level(logging.WARNING):
+        await classify_category(_state("식비"))               # AI는 장소_대관으로 판단
+    assert any("다르다" in r.message for r in caplog.records), "불일치 경고가 있어야 한다"
 
 
-async def test_no_keyword_hit_is_not_flagged():
-    """키워드 미적중(확신 없음) → 비교하지 않음 — 과잉 보류 방지."""
-    state = {"claim": ExpenseClaim(title="정체불명 지출", amount=10_000, category="식비",
-                                   date="2026-07-10", description="")}
-    result = await classify_category(state)
-    assert result["category_mismatch"] is False
+async def test_reecho_of_own_category_is_quiet(caplog):
+    """재심사 에코(지난 심사에서 우리가 확정한 값 그대로)는 경고하지 않는다.
+
+    백엔드는 첫 심사 콜백의 suggestedCategory로 expenses.category를 채우므로, 재심사
+    경로에서는 채워진 값이 오는 것이 정상이다. 무조건 경고하면 심사할수록 로그가
+    잡음이 된다 — normalize_expense_category(0155ad9)와 같은 눈높이."""
+    import logging
+
+    with caplog.at_level(logging.WARNING):
+        result = await classify_category(_state("장소_대관"))  # AI 판단과 같은 값이 옴
+    assert result["claim"].category == "장소_대관"
+    assert not caplog.records, "에코 일치에 경고를 찍으면 로그가 신호가 아니라 잡음이 된다"
 
 
-async def test_category_outside_catalog_is_skipped():
-    """후보 밖 카테고리(구 어휘 체계) → 비교 불가, 건너뜀 — 오탐 회귀 방지."""
-    result = await classify_category(_state("숙박/여행비"))   # 구 30종 시절 라벨
-    assert result == {"category_source": "user"}
+async def test_stale_vocabulary_category_is_also_overwritten():
+    """구 30종 시절 라벨이 와도 덮는다 — 카탈로그 밖 값이 백엔드로 나가면 ENUM 저장이 실패한다."""
+    result = await classify_category(_state("숙박/여행비"))
+    assert result["claim"].category == "장소_대관"
+
+
+async def test_result_never_leaves_catalog():
+    """어떤 값이 들어와도 결과는 9종 안이다 — 백엔드 ENUM에 닿는 마지막 방어."""
+    for incoming in ("", "식비", "숙박/여행비", "존재하지않는카테고리", "IT/인프라"):
+        result = await classify_category(_state(incoming))
+        assert result["claim"].category in all_categories(), f"입력 {incoming!r}에서 벗어났다"
 
 
 # ── 저확신 폴백 (카테고리 직접 입력 삭제 대응) ──────────────────────────────
@@ -233,3 +248,274 @@ def test_prompt_few_shot_anchors_low_confidence():
                    for s in load_prompt("classifier").few_shot]
     assert any(c < 0.8 for c in confidences), "저확신 예시가 없다"
     assert any(c >= 0.9 for c in confidences), "고확신 예시가 없다"
+
+
+# ── '기타' 재질의 · OCR 단서 (2026-08-06 실측 발견) ───────────────────────
+
+async def test_etc_answer_is_rechecked_against_keywords():
+    """엉성한 제목이 목 모드 끝까지 통과하는지 — 재질의 도입 배경의 회귀 그물.
+
+    배경: '기타'가 카탈로그의 정식 후보라서, 실모드 모델은 모를 때 저확신 대신
+    "기타"를 확신 있게 고른다. 엉성한 제목 20건 실측에서 11건이 기타로 갔고 `대관료`·
+    `비품 구매`처럼 **카탈로그에 키워드가 버젓이 있는 것들**까지 기타가 됐다
+    (확신도 0.85라 폴백 문턱 0.8을 넘어 키워드를 볼 기회조차 없음).
+
+    주의: 목 모드 mock_response는 키워드 분류 결과를 그대로 내므로 "기타인데 키워드는
+    안다" 조합이 여기서는 나올 수 없다 — 이 테스트는 재질의 분기를 **직접 타지 못한다**
+    (키워드 경로로 같은 답에 도달할 뿐). 분기 자체의 커버는 바로 아래 주입 테스트가
+    맡는다(분기를 무력화하면 아래 테스트만 실패한다 — 뮤테이션으로 확인).
+    """
+    state = {"claim": ExpenseClaim(title="대관료", amount=50_000, category="",
+                                   date="2026-07-10", description="")}
+    result = await classify_category(state)
+    assert result["claim"].category == "장소_대관", "키워드가 아는 것을 기타로 두면 안 된다"
+
+
+async def test_etc_recheck_fires_even_at_high_confidence():
+    """재질의 분기의 실제 커버 — 실모드에서 실측된 답('기타', 0.85)을 직접 주입한다.
+
+    확신도 0.85는 저확신 폴백(0.8 미만)에 안 걸린다. 재질의 분기가 없으면 이 답이
+    그대로 확정돼 이 테스트가 실패한다 — 위 테스트와 달리 키워드 경로로는 통과할 수
+    없게 만든 것이다.
+    """
+    from unittest.mock import AsyncMock, patch
+
+    from app.graphs.review.nodes.classify_category import CategoryPrediction
+
+    state = {"claim": ExpenseClaim(title="대관료", amount=50_000, category="",
+                                   date="2026-07-10", description="")}
+    with patch("app.graphs.review.nodes.classify_category.chat_structured",
+               AsyncMock(return_value=(CategoryPrediction(category="기타", confidence=0.85), {}))):
+        result = await classify_category(state)
+    assert result["claim"].category == "장소_대관", "확신 있는 '기타'도 키워드가 알면 교정돼야 한다"
+
+
+async def test_etc_recheck_respects_keyword_ignorance():
+    """주입된 '기타'라도 키워드가 모르면 그대로 둔다 — 재질의는 아는 것만 고친다."""
+    from unittest.mock import AsyncMock, patch
+
+    from app.graphs.review.nodes.classify_category import CategoryPrediction
+
+    state = {"claim": ExpenseClaim(title="알 수 없는 지출", amount=10_000, category="",
+                                   date="2026-07-10", description="")}
+    with patch("app.graphs.review.nodes.classify_category.chat_structured",
+               AsyncMock(return_value=(CategoryPrediction(category="기타", confidence=0.85), {}))):
+        result = await classify_category(state)
+    assert result["claim"].category == "기타"
+
+
+async def test_etc_stays_when_keywords_also_dont_know():
+    """키워드도 모르면 그때는 기타로 남긴다 — 억지로 8종에 밀어 넣지 않는다."""
+    state = {"claim": ExpenseClaim(title="기타 잡비", amount=10_000, category="",
+                                   date="2026-07-10", description="")}
+    result = await classify_category(state)
+    assert result["claim"].category == "기타"
+
+
+# (test_receipt_merchant_is_used_as_classification_hint 삭제 — 2026-08-06 리뷰 ②)
+#
+# 그 테스트는 목 모드에서 '6월 모임'+'가평 솔밭펜션' → 장소_대관을 단언했는데, **그 단언이
+# 성립하는 유일한 경로가 목 응답의 키워드 매칭에 상호명을 먹이는 것**이었다. 즉 B-1이
+# 위험하다고 판정한 바로 그 메커니즘을 회귀 그물로 잠그고 있었다(팀장 지적).
+#
+# 잠그려던 의도("상호 단서가 분류에 도달한다")는 아래 test_hints_still_reach_the_llm이
+# 더 정확히 대체한다 — LLM 입력을 직접 검사하므로, 상호명이 실제로 작동하는 유일한
+# 경로를 본다. 목 모드 쪽은 test_mock_mode_ignores_merchant_in_keyword_matching이
+# 반대 방향(상호가 분류를 바꾸지 못한다)으로 대체한다.
+
+
+async def test_unreadable_receipt_does_not_break_classification():
+    """영수증 판독 실패면 제목·설명만으로 분류한다 (fail-open) — 심사를 막지 않는다."""
+    from app.schemas.common import ReceiptData
+
+    state = {"claim": ExpenseClaim(title="회식 저녁", amount=40_000, category="",
+                                   date="2026-07-10", description="정기 모임"),
+             "receipt_data": ReceiptData(parse_ok=False, parse_error="판독 불가")}
+    result = await classify_category(state)
+    assert result["claim"].category == "식비"
+
+
+# ── 상호명은 키워드 매칭에 쓰지 않는다 (B-1, 2026-08-06 리뷰) ─────────────
+#
+# 상호는 업종과 무관한 낱말을 흔히 품는다. 키워드 매칭은 부분 문자열이라 그 낱말을
+# 해석 없이 삼키므로, 키워드 계열(재질의·저확신 폴백·환각 교정)은 사용자가 쓴
+# 제목·설명만 본다. 상호명·품목은 문맥을 읽는 LLM에게만 전달한다.
+
+def _receipt(merchant: str):
+    from app.schemas.common import ReceiptData
+
+    return ReceiptData(amount=50_000, date="2026-07-10", merchant=merchant,
+                       items=[], parse_ok=True)
+
+
+async def test_merchant_word_cannot_flip_confident_etc():
+    """상호의 업종 무관 낱말이 팀 합의를 뒤집으면 안 된다 — 리뷰 B-1의 실제 사례.
+
+    '회원 경조사 조화'는 카탈로그가 명시적으로 기타로 정한 합의인데
+    (test_personal_gifts_are_other_not_activity), 상호 'OO화원 플라워카페'의
+    '카페' 두 글자가 재질의에서 식비로 뒤집었다. LLM이 낸 '기타'가 정답인 자리다.
+    """
+    from unittest.mock import AsyncMock, patch
+
+    from app.graphs.review.nodes.classify_category import CategoryPrediction
+
+    state = {"claim": ExpenseClaim(title="회원 경조사 조화", amount=50_000, category="",
+                                   date="2026-07-10", description=""),
+             "receipt_data": _receipt("OO화원 플라워카페")}
+    with patch("app.graphs.review.nodes.classify_category.chat_structured",
+               AsyncMock(return_value=(CategoryPrediction(category="기타", confidence=0.9), {}))):
+        result = await classify_category(state)
+    assert result["claim"].category == "기타", "상호의 '카페'가 합의를 뒤집으면 안 된다"
+
+
+async def test_merchant_word_cannot_hijack_hallucination_correction():
+    """환각 교정 경로도 상호명을 보면 안 된다 — 세 키워드 지점 중 유일하게 그물이 없던 곳.
+
+    후보 밖 값(환각)이 오면 코드가 키워드로 교정하는데, 그 조회에 상호명이 섞이면
+    나머지 두 경로와 같은 오탐이 난다. 이 지점만 뮤테이션해도 아무 테스트가 실패하지
+    않는 상태였다(2026-08-06 리뷰 지적).
+    """
+    from unittest.mock import AsyncMock, patch
+
+    from app.graphs.review.nodes.classify_category import CategoryPrediction
+
+    state = {"claim": ExpenseClaim(title="회원 경조사 조화", amount=50_000, category="",
+                                   date="2026-07-10", description=""),
+             "receipt_data": _receipt("OO화원 플라워카페")}
+    with patch("app.graphs.review.nodes.classify_category.chat_structured",
+               AsyncMock(return_value=(CategoryPrediction(category="꽃값", confidence=0.99), {}))):
+        result = await classify_category(state)
+    assert result["claim"].category == "기타", "환각 교정이 상호의 '카페'를 물면 안 된다"
+
+
+async def test_merchant_word_cannot_hijack_low_confidence_fallback():
+    """저확신 폴백도 같은 원칙 — '월 정산'+카페24(호스팅 업체)가 식비가 되면 안 된다."""
+    from unittest.mock import AsyncMock, patch
+
+    from app.graphs.review.nodes.classify_category import CategoryPrediction
+
+    state = {"claim": ExpenseClaim(title="월 정산", amount=33_000, category="",
+                                   date="2026-07-10", description=""),
+             "receipt_data": _receipt("카페24")}
+    with patch("app.graphs.review.nodes.classify_category.chat_structured",
+               AsyncMock(return_value=(CategoryPrediction(category="비품", confidence=0.4), {}))):
+        result = await classify_category(state)
+    assert result["claim"].category == "기타", "제목·설명에 단서가 없으면 기타가 맞다"
+
+
+@pytest.mark.parametrize("title,merchant,expected", [
+    # 팀장 리뷰(2026-08-06)가 목 모드에서 실제로 재현한 오탐 3건 + 성공 1건.
+    ("회원 경조사 조화", "OO화원 플라워카페", "기타"),      # '카페'가 식비로 끌어가던 것
+    ("월 정산", "카페24", "기타"),                        # 호스팅 업체인데 '카페'
+    ("6월 모임", "여행박사", "기타"),                      # 상호의 '여행'
+    ("6월 모임", "가평 솔밭펜션", "기타"),                  # 목은 상호를 못 읽는다(정직한 표현)
+])
+async def test_mock_mode_ignores_merchant_in_keyword_matching(title, merchant, expected):
+    """**패치 없이 목 경로 그대로** 도는 그물 — 상호명이 목 응답을 오염시키면 안 된다.
+
+    위 오탐 케이스들을 잠그는 다른 테스트들은 `chat_structured`를 패치해 실모드 분기를
+    강제로 태운다. 그건 실모드 로직을 정확히 잠그지만 **목 경로는 지나가지 않는다** —
+    그래서 목의 `mock_response`가 힌트 포함 텍스트를 쓰던 구멍을 못 잡았다(리뷰 지적).
+
+    목 모드는 골든셋·데모·대시보드가 도는 모드이고 T9(골든셋 재작업)가 이 PR 직후라,
+    여기서 상호명 동작이 굳으면 실모드가 내지 않을 답이 기대값으로 박힌다.
+
+    '가평 솔밭펜션'까지 기타인 것이 의도다: 상호명의 이득은 문맥을 읽는 LLM만 낼 수
+    있으므로, 키워드 매처인 목이 그 이득을 흉내내면 오탐만 물려받는다.
+    """
+    from app.schemas.common import ReceiptData
+
+    state = {"claim": ExpenseClaim(title=title, amount=30_000, category="",
+                                   date="2026-07-01", description=""),
+             "receipt_data": ReceiptData(merchant=merchant, items=[], parse_ok=True),
+             "expense_id": 1}
+    result = await classify_category(state)
+    assert result["claim"].category == expected, (
+        f"목 모드에서 상호명 '{merchant}'이 분류를 끌어갔다")
+
+
+async def test_mock_mode_still_classifies_from_user_text():
+    """상호명을 끊어도 제목·설명 기반 목 분류는 그대로 — 회귀 방지."""
+    from app.schemas.common import ReceiptData
+
+    state = {"claim": ExpenseClaim(title="정기 모임 뒤풀이 치킨", amount=40_000, category="",
+                                   date="2026-07-01", description=""),
+             "receipt_data": ReceiptData(merchant="무관한상호", items=[], parse_ok=True)}
+    result = await classify_category(state)
+    assert result["claim"].category == "식비"
+
+
+# ── 예외 경로가 확정값을 파괴하지 않는다 (리뷰 ③, 2026-08-06) ─────────────
+
+async def test_llm_failure_preserves_previously_confirmed_category():
+    """LLM 장애가 지난 심사의 확정 카테고리를 '기타'로 밀어버리면 안 된다.
+
+    종전 동작: except → 무조건 fallback_category(). 재심사 경로에서는 백엔드가 첫 심사
+    콜백으로 채운 값이 되돌아오므로, 일시 장애 한 번에 그 값이 '기타'가 되고 판례
+    임베딩·콜백 suggestedCategory로 나갔다 — 되돌릴 경로가 없다.
+    """
+    from unittest.mock import AsyncMock, patch
+
+    state = {"claim": ExpenseClaim(title="여름 MT 펜션 2박", amount=90_000,
+                                   category="장소_대관", date="2026-07-10", description=""),
+             "expense_id": 42}
+    with patch("app.graphs.review.nodes.classify_category.chat_structured",
+               AsyncMock(side_effect=RuntimeError("LLM 장애"))):
+        result = await classify_category(state)
+    assert result["claim"].category == "장소_대관", "확정값이 장애로 파괴됐다"
+
+
+async def test_llm_failure_without_incoming_uses_keyword_rule():
+    """확정값이 없으면 키워드 규칙으로 — 전면 장애는 저확신의 극단이고 처리도 같아야 한다."""
+    from unittest.mock import AsyncMock, patch
+
+    state = {"claim": ExpenseClaim(title="정기 모임 뒤풀이 치킨", amount=40_000, category="",
+                                   date="2026-07-10", description="")}
+    with patch("app.graphs.review.nodes.classify_category.chat_structured",
+               AsyncMock(side_effect=RuntimeError("LLM 장애"))):
+        result = await classify_category(state)
+    assert result["claim"].category == "식비", "키워드가 아는데 '기타'로 떨어뜨렸다"
+
+
+async def test_llm_failure_still_falls_back_to_etc_when_nothing_known():
+    """확정값도 키워드 적중도 없으면 종전대로 '기타' — 하한은 그대로다."""
+    from unittest.mock import AsyncMock, patch
+
+    state = {"claim": ExpenseClaim(title="정체불명 지출", amount=10_000, category="",
+                                   date="2026-07-10", description="")}
+    with patch("app.graphs.review.nodes.classify_category.chat_structured",
+               AsyncMock(side_effect=RuntimeError("LLM 장애"))):
+        result = await classify_category(state)
+    assert result["claim"].category == "기타"
+
+
+async def test_llm_failure_does_not_log_mismatch_warning(caplog):
+    """장애로 확정값을 유지했을 때 '분류가 흔들렸다'는 경고가 뜨면 원인을 가린다."""
+    import logging
+    from unittest.mock import AsyncMock, patch
+
+    state = {"claim": ExpenseClaim(title="여름 MT 펜션 2박", amount=90_000,
+                                   category="장소_대관", date="2026-07-10", description=""),
+             "expense_id": 42}
+    with caplog.at_level(logging.WARNING):
+        with patch("app.graphs.review.nodes.classify_category.chat_structured",
+                   AsyncMock(side_effect=RuntimeError("LLM 장애"))):
+            await classify_category(state)
+    assert not any("다르다" in r.message for r in caplog.records), (
+        "장애는 분류 불일치가 아니다 — 불일치 경고가 원인을 가린다")
+
+
+async def test_hints_still_reach_the_llm():
+    """상호명·품목은 LLM user 메시지에는 들어간다 — 힌트 실측 개선(8건 중 5건)의 주 경로 보존."""
+    from unittest.mock import AsyncMock, patch
+
+    from app.graphs.review.nodes.classify_category import CategoryPrediction
+
+    state = {"claim": ExpenseClaim(title="6월 모임", amount=90_000, category="",
+                                   date="2026-07-10", description=""),
+             "receipt_data": _receipt("가평 솔밭펜션")}
+    fake = AsyncMock(return_value=(CategoryPrediction(category="장소_대관", confidence=0.9), {}))
+    with patch("app.graphs.review.nodes.classify_category.chat_structured", fake):
+        result = await classify_category(state)
+    assert result["claim"].category == "장소_대관"
+    assert "가평 솔밭펜션" in fake.call_args.kwargs["user"], "상호명이 LLM 입력에서 빠지면 안 된다"
