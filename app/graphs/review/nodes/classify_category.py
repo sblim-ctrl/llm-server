@@ -15,8 +15,10 @@
 - 분류 실패는 심사를 막지 않는다 — '기타'로 채우고 진행한다. 카테고리는 안전 문제가
   아니라 분류 문제라, 이것 때문에 관리자를 부르면 과잉 보류가 된다.
 
-**값이 채워져 오면** 화면에 입력 수단이 없으므로 계약 위반이다. 존중하지 않고 AI 분류로
-덮되 경고 로그를 남긴다 — 조용히 덮으면 계약이 어긋난 사실 자체가 묻힌다.
+**값이 채워져 와도 라벨은 AI가 확정한다.** 채워져 오는 값의 대부분은 우리가 지난 심사
+콜백(suggestedCategory)으로 내보낸 것이 재심사 때 되돌아온 에코라 이상 신호가 아니다 —
+경고는 **AI의 이번 판단과 다를 때만** 남긴다 (리뷰 3번, normalize_expense_category와
+같은 눈높이: 아는 값은 조용히, 신호일 때만 소리 낸다).
 (종전의 `_check_category_mismatch`는 사용자 선택이 있던 시절의 대조 장치라 제거했다.
 `guardrail_gate`의 `category_mismatch` 규칙·state 필드도 함께 제거 — 2026-08-06 팀장 승인.)
 
@@ -66,18 +68,17 @@ async def classify_category(state: ReviewState) -> dict:
     삭제**되면서 AI 분류가 유일한 출처가 됐고, 백엔드도 `expenses.category`를 nullable로
     바꿔 항상 빈 값으로 보내기로 회신했다(2026-08-06).
 
-    그래서 값이 채워져 오는 것은 **더 이상 정상 경로가 아니다.** 화면에 입력 수단이
-    없는데 값이 왔다는 건 어딘가 잘못됐다는 뜻이라, 존중하지 않고 AI 분류로 덮되
-    **경고 로그를 남긴다** — 조용히 덮으면 계약이 어긋난 사실 자체가 묻힌다.
+    다만 **값이 채워져 오는 것 자체는 이상 신호가 아니다** (리뷰 3번, 2026-08-06).
+    백엔드는 첫 심사 콜백의 suggestedCategory로 `expenses.category`를 채우므로, 같은
+    지출을 두 번째로 심사하는 모든 경로에서 **우리가 지난번에 확정한 값이 되돌아온다.**
+    읽기 경계 정규화(0155ad9·3b70de5) 덕에 들어올 수 있는 값은 9종뿐이다. 그래서
+    무조건 경고하지 않고, **AI의 이번 판단과 다를 때만** 경고한다 — 같으면 재심사
+    에코가 정상 확인된 것이고, 다르면 사람이 봐야 할 신호(분류 흔들림 또는 구화면
+    입력)다. 어느 쪽이든 라벨은 AI 값으로 확정한다.
     """
     claim = state["claim"]
     candidates = all_categories()
-    if claim.category:
-        logger.warning(
-            "지출에 category가 채워져 왔다 — 화면에 입력 수단이 없으므로 계약 위반이다. "
-            "AI 분류로 덮는다 (받은 값: %r, expense=%s)",
-            claim.category, state.get("expense_id"),
-        )
+    incoming = claim.category  # 재심사 에코(대부분) 또는 구화면 입력 — 분류 후 대조용
     # 영수증에서 읽은 **상호명·품목을 분류 근거에 넣는다** (2026-08-06).
     # 사용자 카테고리 입력이 사라진 뒤 제목이 "6월 모임"·"물품"처럼 엉성하게 오는 것이
     # 실측으로 확인됐다. 상호("○○펜션")·품목이 제목보다 강한 단서인 경우가 많다.
@@ -134,6 +135,18 @@ async def classify_category(state: ReviewState) -> dict:
     except Exception:
         logger.exception("classify_category failed — '기타'로 폴백")
         category = fallback_category()
+
+    if incoming and incoming != category:
+        # 사람이 봐야 할 신호만 경고로: 이전 확정값(또는 구화면 입력)과 이번 AI 판단이
+        # 갈렸다 — 분류가 흔들리거나 프론트가 아직 카테고리 입력을 보내는 경우다.
+        logger.warning(
+            "들어온 category(%r)와 AI 분류(%r)가 다르다 — AI 값으로 덮는다 (expense=%s)",
+            incoming, category, state.get("expense_id"),
+        )
+    elif incoming:
+        # 재심사 에코 — 우리가 지난 심사에서 내보낸 값이 그대로 재확정됐다. 정상.
+        logger.debug("category 재심사 에코 일치: %r (expense=%s)",
+                     incoming, state.get("expense_id"))
 
     return {"claim": claim.model_copy(update={"category": category}),
             "category_source": "ai", "llm_meta": llm_meta}

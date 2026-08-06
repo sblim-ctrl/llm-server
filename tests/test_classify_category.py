@@ -116,23 +116,38 @@ async def test_empty_category_gets_classified():
 # 종전에는 category에 값이 있으면 분류를 건너뛰고 그 값을 존중했다. 사용자가 화면에서
 # 카테고리를 고르던 시절의 동작이다. 8/4 회의로 그 입력 수단이 사라졌고, 백엔드도
 # expenses.category를 nullable로 바꿔 항상 빈 값을 보내기로 회신했다(2026-08-06).
-# 이제 값이 오는 것은 정상 경로가 아니라 계약 위반이므로 존중하지 않고 AI 분류로 덮는다.
+# 값이 채워져 와도 라벨은 AI가 확정한다. 채워진 값의 대부분은 우리 콜백이 채운 것이
+# 재심사 때 되돌아온 에코라(리뷰 3번), 경고는 AI 판단과 **다를 때만** 남긴다.
 
 
 async def test_incoming_category_is_overwritten_by_ai():
-    """값이 채워져 와도 AI 분류로 덮는다 — 화면에 입력 수단이 없으므로 계약 위반이다."""
+    """값이 채워져 와도 AI 분류가 라벨을 확정한다 — 입력은 참고되지 않는다."""
     result = await classify_category(_state("식비"))          # 숙박인데 식비로 옴
     assert result["category_source"] == "ai"
     assert result["claim"].category == "장소_대관", "AI 분류가 이겨야 한다"
 
 
-async def test_overwrite_is_logged_not_silent(caplog):
-    """덮는 사실을 로그로 남긴다 — 조용히 덮으면 계약이 어긋난 사실 자체가 묻힌다."""
+async def test_differing_incoming_category_logs_warning(caplog):
+    """들어온 값과 AI 판단이 갈리면 경고 — 분류 흔들림·구화면 입력은 사람이 봐야 할 신호다."""
     import logging
 
     with caplog.at_level(logging.WARNING):
-        await classify_category(_state("식비"))
-    assert any("category가 채워져" in r.message for r in caplog.records), "경고 로그가 있어야 한다"
+        await classify_category(_state("식비"))               # AI는 장소_대관으로 판단
+    assert any("다르다" in r.message for r in caplog.records), "불일치 경고가 있어야 한다"
+
+
+async def test_reecho_of_own_category_is_quiet(caplog):
+    """재심사 에코(지난 심사에서 우리가 확정한 값 그대로)는 경고하지 않는다.
+
+    백엔드는 첫 심사 콜백의 suggestedCategory로 expenses.category를 채우므로, 재심사
+    경로에서는 채워진 값이 오는 것이 정상이다. 무조건 경고하면 심사할수록 로그가
+    잡음이 된다 — normalize_expense_category(0155ad9)와 같은 눈높이."""
+    import logging
+
+    with caplog.at_level(logging.WARNING):
+        result = await classify_category(_state("장소_대관"))  # AI 판단과 같은 값이 옴
+    assert result["claim"].category == "장소_대관"
+    assert not caplog.records, "에코 일치에 경고를 찍으면 로그가 신호가 아니라 잡음이 된다"
 
 
 async def test_stale_vocabulary_category_is_also_overwritten():
