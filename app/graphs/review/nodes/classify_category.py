@@ -48,7 +48,8 @@ logger = logging.getLogger(__name__)
 # 추측을 확정값으로 쓰면 통계가 조용히 오염되는데, 그 시점엔 되물어볼 사람이 없다.
 # 키워드 규칙을 폴백으로 고른 이유는 **결정적**이라서다 — 같은 지출이 매번 같은
 # 카테고리로 가야 카테고리별 집계가 의미를 갖는다. 실측 정확도도 낮지 않다
-# (17케이스 키워드 단독 88.2%, scripts/ab_classifier.py).
+# (17케이스 키워드 단독 16/17=94.1%, scripts/ab_classifier.py — '구입' 제거로
+#  '농구공 5개 구입'이 기타로 가는 1건은 의도된 교환, 카탈로그 주석 참조).
 #
 # 에스컬레이션은 하지 않는다. 카테고리는 안전 문제가 아니라 분류 문제이고, 이것 때문에
 # 관리자를 부르면 과잉 보류가 된다.
@@ -79,17 +80,24 @@ async def classify_category(state: ReviewState) -> dict:
     claim = state["claim"]
     candidates = all_categories()
     incoming = claim.category  # 재심사 에코(대부분) 또는 구화면 입력 — 분류 후 대조용
-    # 영수증에서 읽은 **상호명·품목을 분류 근거에 넣는다** (2026-08-06).
-    # 사용자 카테고리 입력이 사라진 뒤 제목이 "6월 모임"·"물품"처럼 엉성하게 오는 것이
-    # 실측으로 확인됐다. 상호("○○펜션")·품목이 제목보다 강한 단서인 경우가 많다.
-    # 영수증이 없거나 판독 실패면 종전과 같이 제목·설명만으로 분류한다(fail-open).
+    # 영수증에서 읽은 **상호명·품목은 LLM 입력에만** 넣는다 (B-1, 2026-08-06 리뷰).
+    #
+    # 제목이 "6월 모임"처럼 엉성할 때 상호("○○펜션")가 가장 강한 단서라는 실측은
+    # 유효하다(8건 중 5건 기타 탈출). 단 그 단서를 해석할 수 있는 건 문맥을 읽는
+    # LLM뿐이다. 키워드 매칭은 부분 문자열이라 상호명에 안전하지 않다 — 상호는 업종과
+    # 무관한 낱말을 흔히 품는다('OO화원 플라워카페'의 카페→식비, '카페24'(호스팅),
+    # '여행박사'). 실제로 '회원 경조사 조화'(팀 합의: 기타)를 상호의 '카페' 두 글자가
+    # 식비로 뒤집었다. 그래서 키워드 계열(환각 교정·저확신 폴백·기타 재질의)은 전부
+    # **사용자가 쓴 제목·설명(user_text)만** 본다. 영수증이 없거나 판독 실패면 종전과
+    # 같이 제목·설명만으로 분류한다(fail-open).
     receipt = state.get("receipt_data")
     hints = []
     if receipt is not None and receipt.parse_ok:
         if receipt.merchant:
             hints.append(receipt.merchant)
         hints.extend(receipt.items or [])
-    text = " ".join([claim.title, claim.description, *hints]).strip()
+    user_text = f"{claim.title} {claim.description}".strip()  # 키워드 매칭 전용
+    text = " ".join([user_text, *hints]).strip()              # LLM 입력 전용
 
     llm_meta = {}
     try:
@@ -107,16 +115,16 @@ async def classify_category(state: ReviewState) -> dict:
         llm_meta = {"classifier": meta}
         fallback = fallback_category()
         if pred.category not in candidates:
-            # 환각 카테고리 — 코드가 키워드 규칙으로 교정한다
+            # 환각 카테고리 — 코드가 키워드 규칙으로 교정한다 (근거: 제목·설명만)
             logger.warning("classifier가 후보 밖 값을 냈다: %r — 키워드로 교정", pred.category)
-            category = classify_by_keywords(text)
+            category = classify_by_keywords(user_text)
         elif pred.confidence < CLASSIFY_MIN_CONFIDENCE:
             # 저확신 — 결정적 규칙으로 폴백. AI가 유일한 출처라 추측을 확정값으로
             # 쓰지 않는다(위 상수 주석 참조).
-            category = classify_by_keywords(text)
-            logger.info("classifier 저확신(%.2f) — 키워드 폴백: %s → %s",
+            category = classify_by_keywords(user_text)
+            logger.info("classifier 저확신(%.2f) — 키워드 폴백(제목·설명 기준): %s → %s",
                         pred.confidence, pred.category, category)
-        elif pred.category == fallback and (kw := keyword_category_or_none(text)):
+        elif pred.category == fallback and (kw := keyword_category_or_none(user_text)):
             # **'기타'는 확신도와 무관하게 키워드에게 한 번 더 묻는다 (2026-08-06 실측 발견).**
             #
             # 저확신 폴백만으로는 안 걸리는 구멍이 있었다. '기타'가 카탈로그의 정식
@@ -127,9 +135,11 @@ async def classify_category(state: ReviewState) -> dict:
             #
             # 그래서 '기타'를 "분류 결과"가 아니라 "모르겠다는 신호"로 취급한다. 키워드가
             # 아는 것이 있으면 그것을 쓰고, 키워드도 모르면 그때 비로소 기타로 남긴다.
-            # 키워드에서 '구입'처럼 아무 데나 붙는 낱말을 걷어냈기에 이 위임이 안전하다.
+            # 이 위임이 안전한 조건 두 가지: '구입'처럼 아무 데나 붙는 낱말을 걷어냈고
+            # (카탈로그), 조회 대상이 사용자가 쓴 제목·설명뿐이다(상호명 금지 — B-1).
             category = kw
-            logger.info("classifier가 '기타'로 답했으나 키워드가 안다 — %s로 교정", kw)
+            logger.info("classifier가 '기타'로 답했으나 키워드가 안다 — %s로 교정 "
+                        "(근거: 제목·설명 키워드 — 영수증 상호는 쓰지 않음)", kw)
         else:
             category = pred.category
     except Exception:

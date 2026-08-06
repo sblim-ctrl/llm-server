@@ -341,3 +341,67 @@ async def test_unreadable_receipt_does_not_break_classification():
              "receipt_data": ReceiptData(parse_ok=False, parse_error="판독 불가")}
     result = await classify_category(state)
     assert result["claim"].category == "식비"
+
+
+# ── 상호명은 키워드 매칭에 쓰지 않는다 (B-1, 2026-08-06 리뷰) ─────────────
+#
+# 상호는 업종과 무관한 낱말을 흔히 품는다. 키워드 매칭은 부분 문자열이라 그 낱말을
+# 해석 없이 삼키므로, 키워드 계열(재질의·저확신 폴백·환각 교정)은 사용자가 쓴
+# 제목·설명만 본다. 상호명·품목은 문맥을 읽는 LLM에게만 전달한다.
+
+def _receipt(merchant: str):
+    from app.schemas.common import ReceiptData
+
+    return ReceiptData(amount=50_000, date="2026-07-10", merchant=merchant,
+                       items=[], parse_ok=True)
+
+
+async def test_merchant_word_cannot_flip_confident_etc():
+    """상호의 업종 무관 낱말이 팀 합의를 뒤집으면 안 된다 — 리뷰 B-1의 실제 사례.
+
+    '회원 경조사 조화'는 카탈로그가 명시적으로 기타로 정한 합의인데
+    (test_personal_gifts_are_other_not_activity), 상호 'OO화원 플라워카페'의
+    '카페' 두 글자가 재질의에서 식비로 뒤집었다. LLM이 낸 '기타'가 정답인 자리다.
+    """
+    from unittest.mock import AsyncMock, patch
+
+    from app.graphs.review.nodes.classify_category import CategoryPrediction
+
+    state = {"claim": ExpenseClaim(title="회원 경조사 조화", amount=50_000, category="",
+                                   date="2026-07-10", description=""),
+             "receipt_data": _receipt("OO화원 플라워카페")}
+    with patch("app.graphs.review.nodes.classify_category.chat_structured",
+               AsyncMock(return_value=(CategoryPrediction(category="기타", confidence=0.9), {}))):
+        result = await classify_category(state)
+    assert result["claim"].category == "기타", "상호의 '카페'가 합의를 뒤집으면 안 된다"
+
+
+async def test_merchant_word_cannot_hijack_low_confidence_fallback():
+    """저확신 폴백도 같은 원칙 — '월 정산'+카페24(호스팅 업체)가 식비가 되면 안 된다."""
+    from unittest.mock import AsyncMock, patch
+
+    from app.graphs.review.nodes.classify_category import CategoryPrediction
+
+    state = {"claim": ExpenseClaim(title="월 정산", amount=33_000, category="",
+                                   date="2026-07-10", description=""),
+             "receipt_data": _receipt("카페24")}
+    with patch("app.graphs.review.nodes.classify_category.chat_structured",
+               AsyncMock(return_value=(CategoryPrediction(category="비품", confidence=0.4), {}))):
+        result = await classify_category(state)
+    assert result["claim"].category == "기타", "제목·설명에 단서가 없으면 기타가 맞다"
+
+
+async def test_hints_still_reach_the_llm():
+    """상호명·품목은 LLM user 메시지에는 들어간다 — 힌트 실측 개선(8건 중 5건)의 주 경로 보존."""
+    from unittest.mock import AsyncMock, patch
+
+    from app.graphs.review.nodes.classify_category import CategoryPrediction
+
+    state = {"claim": ExpenseClaim(title="6월 모임", amount=90_000, category="",
+                                   date="2026-07-10", description=""),
+             "receipt_data": _receipt("가평 솔밭펜션")}
+    fake = AsyncMock(return_value=(CategoryPrediction(category="장소_대관", confidence=0.9), {}))
+    with patch("app.graphs.review.nodes.classify_category.chat_structured", fake):
+        result = await classify_category(state)
+    assert result["claim"].category == "장소_대관"
+    assert "가평 솔밭펜션" in fake.call_args.kwargs["user"], "상호명이 LLM 입력에서 빠지면 안 된다"
