@@ -86,9 +86,14 @@ def run_checks(args: argparse.Namespace, client: httpx.Client) -> None:
         record("CRITICAL", "지출 상세 GET /organizations/{org}/expenses/{id}", False, repr(e))
 
     # 2. team_settings — 없으면 auto_approve=False fail-safe → 전건 에스컬레이션
+    #
+    # escalation_threshold는 PR #12(마법사 2단계 개편)로 백엔드가 삭제하기로 한
+    # 컬럼이라 필수에서 뺐다 — policy_params.py가 이미 이 키 없이도
+    # auto_approve_limit과 같은 값으로 읽는다. 필수로 두면 컬럼 삭제 후 배포
+    # 당일 CRITICAL 오탐이 난다.
     try:
         d = get_json(client, f"/internal/agent/organizations/{tid}/team-settings")
-        ok, note = check_keys(d, ["auto_approve", "auto_approve_limit", "escalation_threshold"])
+        ok, note = check_keys(d, ["auto_approve", "auto_approve_limit"], ["escalation_threshold"])
         record("CRITICAL", "설정 GET /organizations/{org}/team-settings", ok, note)
     except Exception as e:  # noqa: BLE001
         record("CRITICAL", "설정 GET /organizations/{org}/team-settings", False, repr(e))
@@ -145,7 +150,12 @@ def run_checks(args: argparse.Namespace, client: httpx.Client) -> None:
             params={"doc_type": "rule", "version": 1},
         )
         if r.status_code == 404:
-            record("DEGRADED", "회칙 GET /teams/{id}/policy-document", True, "404 — 회칙 없는 팀이면 정상")
+            record(
+                "DEGRADED",
+                "회칙 GET /teams/{id}/policy-document",
+                True,
+                "404 — 회칙 없는 팀이면 정상",
+            )
         else:
             r.raise_for_status()
             ok, note = check_keys(r.json(), ["text"])
@@ -159,8 +169,12 @@ def run_checks(args: argparse.Namespace, client: httpx.Client) -> None:
             r = client.get(args.receipt_path)
             r.raise_for_status()
             ok = len(r.content) > 0
-            record("DEGRADED", f"영수증 GET {args.receipt_path}", ok,
-                   f"{len(r.content)} bytes, {r.headers.get('content-type', '?')}")
+            record(
+                "DEGRADED",
+                f"영수증 GET {args.receipt_path}",
+                ok,
+                f"{len(r.content)} bytes, {r.headers.get('content-type', '?')}",
+            )
         except Exception as e:  # noqa: BLE001
             record("DEGRADED", f"영수증 GET {args.receipt_path}", False, repr(e))
     else:
@@ -210,7 +224,9 @@ def main() -> int:
     if degraded_fail:
         print(f"DEGRADED 실패 {len(degraded_fail)}건 — 심사는 되지만 자동 처리율·품질이 떨어진다.")
     if not critical_fail and not degraded_fail:
-        print("전부 통과 — 계약 일치. 다음 단계: 실지출 1건 E2E (POST /v1/analyze → 콜백 수신 확인).")
+        print(
+            "전부 통과 — 계약 일치. 다음 단계: 실지출 1건 E2E (POST /v1/analyze → 콜백 수신 확인)."
+        )
     return 1 if critical_fail else 0
 
 
