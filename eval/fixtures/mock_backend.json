@@ -774,6 +774,13 @@
       "amount": 40000,
       "date": "2026-07-18",
       "description": "스터디 서버 월 이용료"
+    },
+    "90073": {
+      "label": "study-noauto-002",
+      "title": "스터디 월례비 정산",
+      "amount": 25000,
+      "date": "2026-07-19",
+      "description": "월 회비 사용 내역 정산"
     }
   }
 }

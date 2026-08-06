@@ -1,6 +1,6 @@
 {
   "version": "v1",
-  "description": "골든셋 72건 — sblim 60건(5개 모임 유형(실제 모임 생성 화면 기준) × 6개 시나리오, §9.2) + cowbro 전용 8건(브랜치 통합 2026-08-04: autoclassify 2·mismatch-002 3·gate-priority·boundary-003·budget-edge). 입력은 pull 모델 5필드(jobId/expenseId/organizationId/reviewGoal/receiptPath — bravo 설계서 TABLE 18): organizationId·expenseId는 eval/fixtures/mock_backend.json의 정수 키를 그대로 참조한다(T9 — 옛 문자열 규약, organizationId의 lowbudget/noauto 단서·expenseId의 ?title=&amount=&category=&date=&description= 쿼리는 폐기됐다). fixture의 organizations[id]가 조직별 잔액·auto_approve를 담고 있다 — lowbudget 계열은 잔액 부족(잔액 1,000원), noauto 계열은 auto_approve=False. receiptPath에는 여전히 mock://receipt?amount=&date=로 영수증 오버라이드를 건다. 기본 정책: 목 fixture가 auto_approve_limit=50000만 내려준다 — 2026-08-05 마법사 2단계 화면 개편(금액 칸 2개 → 1개)으로 백엔드가 escalation_threshold 컬럼을 삭제했고, 키가 없으면 force_escalation_amount는 auto_approve_limit과 같은 값이 된다(app/tools/policy_params.py). 금액 경계는 '이상'이다 — 50,000원은 자동 판정이 아니라 관리자 확인이고, 49,999원까지가 자동 판정 구간이다. | expected_gate_includes: Trajectory 검사 라벨(발동해야 할 가드레일 규칙)",
+  "description": "골든셋 73건 — sblim 60건(5개 모임 유형(실제 모임 생성 화면 기준) × 6개 시나리오, §9.2) + cowbro 전용 8건(브랜치 통합 2026-08-04: autoclassify 2·mismatch-002 3·gate-priority·boundary-003·budget-edge). 입력은 pull 모델 5필드(jobId/expenseId/organizationId/reviewGoal/receiptPath — bravo 설계서 TABLE 18): organizationId·expenseId는 eval/fixtures/mock_backend.json의 정수 키를 그대로 참조한다(T9 — 옛 문자열 규약, organizationId의 lowbudget/noauto 단서·expenseId의 ?title=&amount=&category=&date=&description= 쿼리는 폐기됐다). fixture의 organizations[id]가 조직별 잔액·auto_approve를 담고 있다 — lowbudget 계열은 잔액 부족(잔액 1,000원), noauto 계열은 auto_approve=False. receiptPath에는 여전히 mock://receipt?amount=&date=로 영수증 오버라이드를 건다. 기본 정책: 목 fixture가 auto_approve_limit=50000만 내려준다 — 2026-08-05 마법사 2단계 화면 개편(금액 칸 2개 → 1개)으로 백엔드가 escalation_threshold 컬럼을 삭제했고, 키가 없으면 force_escalation_amount는 auto_approve_limit과 같은 값이 된다(app/tools/policy_params.py). 금액 경계는 '이상'이다 — 50,000원은 자동 판정이 아니라 관리자 확인이고, 49,999원까지가 자동 판정 구간이다. | expected_gate_includes: Trajectory 검사 라벨(발동해야 할 가드레일 규칙)",
   "cases": [
     {
       "id": "club-approve-001",
@@ -1228,6 +1228,24 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "budget_insufficient"
+      ]
+    },
+    {
+      "id": "study-noauto-002",
+      "scenario": "auto_approve_disabled — 제목·설명만으로는 **사람도 못 맞히는** 지출. '기타'가 정답인 케이스(T7 실측). 억지로 8종에 밀어 넣지 않는다",
+      "team_type": "스터디",
+      "input": {
+        "jobId": "job-study-noauto-002",
+        "expenseId": 90073,
+        "organizationId": 9013,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "file://eval/golden/receipts/study-noauto-002.png"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "기타",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
       ]
     }
   ]
