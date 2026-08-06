@@ -1,6 +1,6 @@
 {
   "version": "v1",
-  "description": "골든셋 68건 — sblim 60건(5개 모임 유형(실제 모임 생성 화면 기준) × 6개 시나리오, §9.2) + cowbro 전용 8건(브랜치 통합 2026-08-04: autoclassify 2·mismatch-002 3·gate-priority·boundary-003·budget-edge). 입력은 pull 모델 5필드(jobId/expenseId/organizationId/reviewGoal/receiptPath — bravo 설계서 TABLE 18): organizationId·expenseId는 eval/fixtures/mock_backend.json의 정수 키를 그대로 참조한다(T9 — 옛 문자열 규약, organizationId의 lowbudget/noauto 단서·expenseId의 ?title=&amount=&category=&date=&description= 쿼리는 폐기됐다). fixture의 organizations[id]가 조직별 잔액·auto_approve를 담고 있다 — lowbudget 계열은 잔액 부족(잔액 1,000원), noauto 계열은 auto_approve=False. receiptPath에는 여전히 mock://receipt?amount=&date=로 영수증 오버라이드를 건다. 기본 정책: 목 fixture가 auto_approve_limit=50000만 내려준다 — 2026-08-05 마법사 2단계 화면 개편(금액 칸 2개 → 1개)으로 백엔드가 escalation_threshold 컬럼을 삭제했고, 키가 없으면 force_escalation_amount는 auto_approve_limit과 같은 값이 된다(app/tools/policy_params.py). 금액 경계는 '이상'이다 — 50,000원은 자동 판정이 아니라 관리자 확인이고, 49,999원까지가 자동 판정 구간이다. | expected_gate_includes: Trajectory 검사 라벨(발동해야 할 가드레일 규칙)",
+  "description": "골든셋 72건 — sblim 60건(5개 모임 유형(실제 모임 생성 화면 기준) × 6개 시나리오, §9.2) + cowbro 전용 8건(브랜치 통합 2026-08-04: autoclassify 2·mismatch-002 3·gate-priority·boundary-003·budget-edge). 입력은 pull 모델 5필드(jobId/expenseId/organizationId/reviewGoal/receiptPath — bravo 설계서 TABLE 18): organizationId·expenseId는 eval/fixtures/mock_backend.json의 정수 키를 그대로 참조한다(T9 — 옛 문자열 규약, organizationId의 lowbudget/noauto 단서·expenseId의 ?title=&amount=&category=&date=&description= 쿼리는 폐기됐다). fixture의 organizations[id]가 조직별 잔액·auto_approve를 담고 있다 — lowbudget 계열은 잔액 부족(잔액 1,000원), noauto 계열은 auto_approve=False. receiptPath에는 여전히 mock://receipt?amount=&date=로 영수증 오버라이드를 건다. 기본 정책: 목 fixture가 auto_approve_limit=50000만 내려준다 — 2026-08-05 마법사 2단계 화면 개편(금액 칸 2개 → 1개)으로 백엔드가 escalation_threshold 컬럼을 삭제했고, 키가 없으면 force_escalation_amount는 auto_approve_limit과 같은 값이 된다(app/tools/policy_params.py). 금액 경계는 '이상'이다 — 50,000원은 자동 판정이 아니라 관리자 확인이고, 49,999원까지가 자동 판정 구간이다. | expected_gate_includes: Trajectory 검사 라벨(발동해야 할 가드레일 규칙)",
   "cases": [
     {
       "id": "club-approve-001",
@@ -1040,7 +1040,7 @@
         "expenseId": 90061,
         "organizationId": 9004,
         "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
-        "receiptPath": "https://example.com/r/b4"
+        "receiptPath": "file://eval/golden/receipts/social-boundary-003.png"
       },
       "expected_verdict": "escalate",
       "expected_category": "장소_대관",
@@ -1095,7 +1095,7 @@
         "expenseId": 90064,
         "organizationId": 9009,
         "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
-        "receiptPath": "https://example.com/r/be1"
+        "receiptPath": "file://eval/golden/receipts/social-budget-edge-001.png"
       },
       "expected_verdict": "approve",
       "expected_category": "비품",
@@ -1110,7 +1110,7 @@
         "expenseId": 90065,
         "organizationId": 9002,
         "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
-        "receiptPath": "https://example.com/r/ac1"
+        "receiptPath": "file://eval/golden/receipts/club-autoclassify-001.png"
       },
       "expected_verdict": "approve",
       "expected_category": "교육",
@@ -1125,7 +1125,7 @@
         "expenseId": 90066,
         "organizationId": 9004,
         "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
-        "receiptPath": "https://example.com/r/ac2"
+        "receiptPath": "file://eval/golden/receipts/social-autoclassify-001.png"
       },
       "expected_verdict": "approve",
       "expected_category": "식비",
@@ -1140,7 +1140,7 @@
         "expenseId": 90067,
         "organizationId": 9010,
         "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
-        "receiptPath": "https://example.com/r/gp1"
+        "receiptPath": "file://eval/golden/receipts/hobby-gate-priority-001.png"
       },
       "expected_verdict": "escalate",
       "expected_category": "비품",
@@ -1165,6 +1165,69 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "receipt_mismatch"
+      ]
+    },
+    {
+      "id": "study-approve-004",
+      "scenario": "명백 승인 — 협업 도구 구독 (IT_인프라 커버리지)",
+      "team_type": "스터디",
+      "input": {
+        "jobId": "job-study-approve-004",
+        "expenseId": 90069,
+        "organizationId": 9003,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "file://eval/golden/receipts/study-approve-004.png"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "IT_인프라",
+      "must_not_approve": false
+    },
+    {
+      "id": "club-approve-005",
+      "scenario": "명백 승인 — 회의실 대관은 '회의' (장소_대관과의 경계, 회의 커버리지)",
+      "team_type": "동아리/학생회",
+      "input": {
+        "jobId": "job-club-approve-005",
+        "expenseId": 90070,
+        "organizationId": 9002,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "file://eval/golden/receipts/club-approve-005.png"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "회의",
+      "must_not_approve": false
+    },
+    {
+      "id": "social-approve-004",
+      "scenario": "명백 승인 — 9종에 자리가 없는 배송비. **미분류가 승인을 막지 않는다**는 설계 확인 (기타 커버리지. 배송비를 9종 중 어디에 둘지는 팀 미결 — 결론이 나면 이 기대값을 옮긴다)",
+      "team_type": "친목",
+      "input": {
+        "jobId": "job-social-approve-004",
+        "expenseId": 90071,
+        "organizationId": 9004,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "file://eval/golden/receipts/social-approve-004.png"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "기타",
+      "must_not_approve": false
+    },
+    {
+      "id": "study-reject-002",
+      "scenario": "명백 반려 — 잔액 부족 (잔액 1,000원 < 청구 40,000원). 신규 카테고리의 반려 경로",
+      "team_type": "스터디",
+      "input": {
+        "jobId": "job-study-reject-002",
+        "expenseId": 90072,
+        "organizationId": 9008,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "file://eval/golden/receipts/study-reject-002.png"
+      },
+      "expected_verdict": "reject",
+      "expected_category": "IT_인프라",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "budget_insufficient"
       ]
     }
   ]

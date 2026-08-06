@@ -113,13 +113,21 @@ def main() -> int:
         title = expense["title"]
         amount = expense["amount"]
         date = expense["date"]
-        category = expense["category"]
+        # 상호명 선택용 — fixture의 expenses에는 더 이상 category가 없다(2026-08-06:
+        # 심사 전 지출에 카테고리가 없는 것이 백엔드 계약). 사람이 매긴 정답은 골든셋의
+        # expected_category에 있으므로 그것을 쓴다. 없으면 _merchant_for가 '일반상점'으로 떨어진다.
+        category = case.get("expected_category", "")
 
         img = render_receipt(title, amount, date, category)
         out_path = RECEIPTS_DIR / f"{case['id']}.png"
         img.save(out_path)
 
-        rel_path = out_path.relative_to(ROOT)  # 저장소 루트 기준 상대경로 — 팀원 간 이식성
+        # 저장소 루트 기준 상대경로 — 팀원 간 이식성.
+        # **as_posix() 필수**: 윈도우에서 돌리면 relative_to가 역슬래시 경로를 주고
+        # (`eval\golden\receipts\x.png`), 그대로 골든셋에 박히면 CI(우분투)·macOS의
+        # 실모드 평가에서 파일을 못 연다. 이 파일은 OS를 가리지 않고 공유되므로
+        # 경로 구분자를 POSIX로 고정한다 (2026-08-06 실제로 밟은 함정).
+        rel_path = out_path.relative_to(ROOT).as_posix()
         case["input"]["receiptPath"] = f"file://{rel_path}"
         generated += 1
 
