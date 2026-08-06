@@ -38,7 +38,7 @@ GET /internal/agent/organizations/{organizationId}/expenses/{expenseId}
 - 용도: pull 모델의 핵심. 심사할 지출의 내용을 가져온다 (`load_context` 노드)
 - 기대 응답
   ```json
-  { "title": "스터디 교재 구입", "amount": 32000, "category": "교재/자료비",
+  { "title": "스터디 교재 구입", "amount": 32000, "category": null,
     "date": "2026-07-01", "description": "알고리즘 교재 2권" }
   ```
 - **`category`는 비워서 주세요** (2026-08-06 회신 반영). 8/4 회의로 사용자 직접 입력이
