@@ -14,6 +14,8 @@ COPY prompts ./prompts
 COPY templates ./templates
 COPY reference_docs ./reference_docs
 COPY eval ./eval
+# 배포 직후 컨테이너 안에서 verify_backend_contract.py를 돌려야 한다 (T8 배포 검증 §3-2)
+COPY scripts ./scripts
 COPY models.yaml ./models.yaml
 EXPOSE 8000
 # entrypoint는 compose에서 지정 (llm-api: uvicorn / llm-worker: python -m app.worker)
