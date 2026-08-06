@@ -121,7 +121,12 @@ async def main() -> int:
             await indexing_graph.ainvoke({"team_id": t, "doc_type": "rule", "version": 1})
         print(f"골든 팀 {len(teams)}개 회칙 실인덱싱 완료 — 실행 시작\n")
 
+        # cat_* — 분류 정확도(관측). 목 모드(run_eval)의 숫자는 실LLM을 안 부르는
+        # 키워드 규칙 정확도라 실서비스 품질이 아니다. 실LLM이 분류하는 **여기가 진짜
+        # 숫자가 나오는 자리**다 (T9 검토 §3). 판정 통과·실패에는 관여하지 않는다.
         rows, correct, false_appr, cost_total = [], 0, [], 0.0
+        cat_total = cat_correct = 0
+        cat_misses: list[tuple[str, str, str]] = []
         for case in cases:
             req = AnalyzeRequest.model_validate(case["input"])
             final = await review_graph.ainvoke(
@@ -144,7 +149,21 @@ async def main() -> int:
                 false_appr.append(case["id"])
             gate = final.get("gate_result")
             gate_rules = "|".join(gate.triggered_rules) if gate else ""
-            rows.append([case["id"], exp, actual, ok, fa, gate_rules, f"{cost:.5f}"])
+
+            # 분류 채점 — 기대값 없는 케이스는 분모에서 뺀다(0점 처리하지 않는다)
+            claim = final.get("claim")
+            cat_act = (claim.category if claim else "") or ""
+            cat_exp = case.get("expected_category") or ""
+            if cat_exp:
+                cat_total += 1
+                if cat_act == cat_exp:
+                    cat_correct += 1
+                else:
+                    cat_misses.append((case["id"], cat_exp, cat_act))
+
+            rows.append(
+                [case["id"], exp, actual, ok, fa, gate_rules, f"{cost:.5f}", cat_exp, cat_act]
+            )
             mark = "O" if ok else "X"
             print(
                 f" [{mark}] {case['id']:30s} 기대={exp:8s} 실제={actual:8s} ${cost:.4f}"
@@ -156,12 +175,24 @@ async def main() -> int:
         out = RESULTS_DIR / f"golden_realmode_{date.today().isoformat()}.csv"
         with out.open("w", newline="", encoding="utf-8-sig") as f:
             w = csv.writer(f)
-            w.writerow(["id", "expected", "actual", "correct", "false_approve", "gate", "cost_usd"])
+            w.writerow(
+                ["id", "expected", "actual", "correct", "false_approve", "gate", "cost_usd",
+                 "expected_category", "actual_category"]
+            )
             w.writerows(rows)
 
         acc = correct / n if n else 0.0
         print(f"\n정확도: {correct}/{n} = {acc:.1%} (실모드 목표 ≥ {ACCURACY_TARGET:.0%})")
         print(f"오승인(하드 게이트): {len(false_appr)}건 {false_appr or ''}")
+
+        # 분류 정확도 — 실LLM 기준. 목 모드 숫자와 나란히 놓고 봐야 의미가 있다.
+        if cat_total:
+            print(
+                f"분류 정확도: {cat_correct}/{cat_total} = {cat_correct / cat_total:.1%} "
+                "(실LLM 기준 — 목 모드 숫자는 키워드 규칙 정확도라 별개다)"
+            )
+            for case_id, want, got in cat_misses:
+                print(f"  오분류 {case_id:30s} 기대={want:10s} 실제={got}")
 
         # 판정 지표 (§4 Sprint 2) — rows에서 expected·actual만 추려 순수 계산
         from app.eval_metrics import verdict_metrics
