@@ -24,7 +24,10 @@ class ExpenseClaim(BaseModel):
     """지출 청구 내용 — pull 모델에서는 요청에 없고 load_context가 백엔드
     get_expense_detail 조회 결과로 구성한다 (직접 그래프 호출 시엔 초기 상태로 주입).
 
-    category는 선택 — 비어 있으면 classify_category 노드가 AI 분류로 채운다 (팀 합의 사항).
+    category는 어떤 값이 오든 **classify_category가 AI 분류로 확정한다** (T7,
+    2026-08-06) — 들어온 값은 라벨로 쓰이지 않는다. 백엔드 계약상 null이 정상이고
+    (등록 시 null 저장, 첫 심사 콜백의 suggestedCategory로 채움 — 8/6 회신), 채워져
+    오는 값은 대부분 그 콜백 값이 재심사 때 되돌아온 에코다.
     """
 
     title: str
