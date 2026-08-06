@@ -1,4 +1,5 @@
 """라이터 골든셋 평가기 테스트 — expect 대조 규칙 + 목 이력 규약."""
+
 from app.eval_writers import evaluate_expectations
 from app.graphs.writers.report import HIGH_SHARE, LOW_SHARE, aggregate_pure
 from app.tools.backend_client import get_expense_history
@@ -37,11 +38,11 @@ def test_missing_actual_key_is_a_failure():
 
 
 async def test_noexpense_team_returns_empty_history():
-    assert await get_expense_history("eval-writers-report-noexpense") == []
+    assert await get_expense_history(9022) == []  # eval-writers-report-noexpense
 
 
 async def test_balanced_team_has_no_share_outliers():
-    expenses = await get_expense_history("eval-writers-report-balanced")
+    expenses = await get_expense_history(9023)  # eval-writers-report-balanced
     figures = aggregate_pure("2026-06", expenses)
     assert figures.by_category
     for cat in figures.by_category:
@@ -49,5 +50,5 @@ async def test_balanced_team_has_no_share_outliers():
 
 
 async def test_default_team_history_unchanged():
-    expenses = await get_expense_history("golden-club-1")
+    expenses = await get_expense_history(9021)  # eval-writers-report-club
     assert len(expenses) == 8  # 기존 규약 보존 — 리포트 기본 시나리오가 의존

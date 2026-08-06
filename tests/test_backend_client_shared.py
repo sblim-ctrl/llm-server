@@ -185,11 +185,23 @@ async def test_get_expense_detail_keeps_blank_category_blank(monkeypatch, blank)
     assert not (detail["category"] or "").strip()
 
 
-async def test_get_expense_detail_mock_category_is_not_normalized():
-    """목 규약은 접지 않는다 — 골든셋이 카탈로그 밖 값(다과·대관·도서)을 쓴다.
+async def test_get_expense_detail_mock_does_not_normalize(monkeypatch):
+    """목 분기는 normalize_expense_category를 타지 않는다 — fixture 값을 그대로 반환한다.
 
-    §7 '규약을 깨지 말 것'. 여기서 접으면 골든셋 60여 건이 통째로 다른 코드 경로를
-    타므로, 이력과 마찬가지로 실모드 응답에만 적용한다.
+    fixture 자체는 이미 9종만 담지만(tests/test_mock_fixture.py가 강제), 이 함수가
+    실모드처럼 접지 않는다는 계약은 별도로 지켜야 한다 — 나중에 mock 분기에도
+    정규화를 추가하면 fixture가 의도적으로 담은 값이 조용히 바뀐다.
     """
-    detail = await backend_client.get_expense_detail(1, "exp-1?category=다과")
-    assert detail["category"] == "다과"
+    monkeypatch.setattr(
+        backend_client,
+        "_fixture_expense",
+        lambda expense_id: {
+            "title": "레거시 값 테스트",
+            "amount": 1000,
+            "category": "교재/자료비",  # 정규화하면 "교육"이 될 값
+            "date": "2026-07-01",
+            "description": "",
+        },
+    )
+    detail = await backend_client.get_expense_detail(9002, 90001)
+    assert detail["category"] == "교재/자료비"
