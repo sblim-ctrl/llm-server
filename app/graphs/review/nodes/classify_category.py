@@ -3,21 +3,25 @@
 카테고리는 **AI가 고정 9종 안에서 골라 채운다.** 카테고리 동적 추가 금지 —
 후보 목록 밖의 값은 절대 만들지 않는다.
 
-풀스택 협의 2026-08-04로 **지출 등록 화면의 카테고리 직접 입력이 없어졌다.** 그래서
-평상시 `claim.category`는 비어 오고 AI 분류가 **유일한 카테고리 출처**가 된다. 이게
-설계에 두 가지 영향을 준다.
+풀스택 협의 2026-08-04로 **지출 등록 화면의 카테고리 직접 입력이 없어졌다.** 백엔드도
+`expenses.category`를 nullable로 바꿔 항상 빈 값으로 보내기로 회신했다(2026-08-06).
+그래서 AI 분류가 **유일한 카테고리 출처**가 된다.
 
-1. 오분류가 곧 통계 오염이다. 되물어볼 사람이 없으므로 확신 없는 추측을 그대로 확정값
-   으로 쓰면 안 된다 — 아래 `CLASSIFY_MIN_CONFIDENCE` 폴백이 그 장치다.
-2. 사용자 지정 카테고리와의 불일치 대조(`_check_category_mismatch`)는 평상시 돌지
-   않는다. **코드는 남겨둔다** — 백엔드가 어떤 경로로든 카테고리를 실어 보내면 그때
-   검증이 있는 편이 안전하고, 되살리는 비용보다 두는 비용이 싸다.
+**AI 권한의 범위 (T7, 2026-08-06)**
+- AI는 `all_categories()` 9종 **안에서만** 고른다. 목록 밖 값을 내면 코드가 키워드로
+  교정한다 — 환각 카테고리가 백엔드 ENUM에 닿지 못하게 하는 마지막 방어다.
+- 확신도 0.8 미만이면 AI 답을 **쓰지 않는다.** 키워드 규칙이라는 결정적 대체 경로로
+  간다. 되물어볼 사람이 없으므로 확신 없는 추측을 확정값으로 쓰면 통계가 조용히 오염된다.
+- 분류 실패는 심사를 막지 않는다 — '기타'로 채우고 진행한다. 카테고리는 안전 문제가
+  아니라 분류 문제라, 이것 때문에 관리자를 부르면 과잉 보류가 된다.
+
+**값이 채워져 오면** 화면에 입력 수단이 없으므로 계약 위반이다. 존중하지 않고 AI 분류로
+덮되 경고 로그를 남긴다 — 조용히 덮으면 계약이 어긋난 사실 자체가 묻힌다.
+(종전의 `_check_category_mismatch`는 사용자 선택이 있던 시절의 대조 장치라 제거했다.
+`guardrail_gate`의 `category_mismatch` 규칙은 이제 아무도 세우지 않는다 — 그 파일은
+소유가 갈려 있어 제거 여부는 팀장 판단으로 남긴다.)
 
 - 카탈로그: templates/category_catalog.yaml (tools/category_catalog.py가 로드)
-- 사용자 카테고리가 오면 존중한다 — 라벨은 바꾸지 않는다. 단 AI가 **확신을 갖고 다르게
-  판단**하면 category_mismatch를 세워 가드레일이 관리자 확인으로 보류시킨다. AI가
-  라벨을 고치는 게 아니라(추천만 원칙) 사람 확인으로 넘기는 것이다.
-- 분류 실패는 심사를 막지 않는다: '기타'로 채우고 진행한다.
 
 목 모드: 카탈로그의 키워드 규칙 기반 결정적 분류.
 실모드: gpt-4o-mini 구조화 출력 — 후보 9종을 프롬프트에 강제하고, 목록 밖 답변은
@@ -31,14 +35,10 @@ from app.graphs.review.state import ReviewState
 from app.llm.client import chat_structured
 from app.llm.prompts import load_prompt
 from app.tools.category_catalog import (
-    all_categories, classify_by_keywords, fallback_category, keyword_category_or_none,
+    all_categories, classify_by_keywords, fallback_category,
 )
 
 logger = logging.getLogger(__name__)
-
-# 사용자 카테고리와의 불일치를 인정하는 최소 확신도 — 이 미만이면 사용자가 맥락을
-# 더 안다고 보고 비교하지 않는다 (과잉 보류 방지, adjudicate θ와 같은 값)
-CATEGORY_MISMATCH_MIN_CONFIDENCE = 0.8
 
 # 분류 결과를 그대로 확정값으로 쓰기 위한 최소 확신도. 미만이면 키워드 규칙으로
 # 폴백한다(미적중이면 '기타').
@@ -59,53 +59,26 @@ class CategoryPrediction(BaseModel):
     confidence: float = 1.0
 
 
-async def _check_category_mismatch(state: ReviewState,
-                                   candidates: list[str], text: str) -> dict:
-    """사용자 지정 카테고리 vs AI 분류 — 확신 있는 불일치만 표식.
-
-    목 모드: 키워드 적중 시에만 비교(미적중 = 사용자와 일치 취급 — 오탐 방지).
-    실모드: gpt-4o-mini 분류가 confidence≥0.8이고 후보 안의 값일 때만 비교.
-    실패는 비교 생략(fail-open) — 이 검사가 심사를 막아선 안 된다.
-    """
-    claim = state["claim"]
-    # 카탈로그 후보 밖의 카테고리는 다른 어휘 체계(구 백엔드 명칭 등) — 비교 자체가
-    # 무의미하므로 건너뛴다(오탐 방지, 골든셋 실측으로 확인된 결함). 실서비스는
-    # 카테고리가 고정 9개 드롭다운(동적 추가 금지)이라 항상 후보 안 = 검사 활성.
-    if claim.category not in candidates:
-        return {"category_source": "user"}
-    kw = keyword_category_or_none(text)
-    try:
-        spec = load_prompt("classifier")
-        pred, meta = await chat_structured(
-            agent="classifier",
-            system=spec.system_with_few_shot(),
-            user=f"카테고리 후보(이 중에서만 선택): {', '.join(candidates)}\n\n"
-                 f"지출 내용: {text}",
-            schema=CategoryPrediction,
-            mock_response=CategoryPrediction(category=kw or claim.category,
-                                             confidence=1.0 if kw else 0.0),
-            mask_with=state.get("team_members") or [],
-            prompt_version=spec.version,
-        )
-        ai_cat = pred.category if pred.category in candidates else kw
-        confident = ai_cat is not None and pred.confidence >= CATEGORY_MISMATCH_MIN_CONFIDENCE
-        mismatch = bool(confident and ai_cat != claim.category)
-        return {"category_source": "user",
-                "ai_suggested_category": ai_cat if mismatch else None,
-                "category_mismatch": mismatch,
-                "llm_meta": {"classifier": meta}}
-    except Exception:
-        logger.exception("category mismatch check failed — 비교 생략(사용자 분류 유지)")
-        return {"category_source": "user"}
-
-
 async def classify_category(state: ReviewState) -> dict:
+    """지출 카테고리를 AI가 정한다 — **항상 실행된다** (T7, 2026-08-06).
+
+    종전에는 `claim.category`에 값이 있으면 분류를 건너뛰고 그 값을 존중했다. 사용자가
+    화면에서 카테고리를 고르던 시절의 동작이다. 8/4 회의로 **사용자 선택 기능이
+    삭제**되면서 AI 분류가 유일한 출처가 됐고, 백엔드도 `expenses.category`를 nullable로
+    바꿔 항상 빈 값으로 보내기로 회신했다(2026-08-06).
+
+    그래서 값이 채워져 오는 것은 **더 이상 정상 경로가 아니다.** 화면에 입력 수단이
+    없는데 값이 왔다는 건 어딘가 잘못됐다는 뜻이라, 존중하지 않고 AI 분류로 덮되
+    **경고 로그를 남긴다** — 조용히 덮으면 계약이 어긋난 사실 자체가 묻힌다.
+    """
     claim = state["claim"]
     candidates = all_categories()
     if claim.category:
-        # 사용자 선택 존중(라벨 불변) — 단 확신 있는 불일치면 가드레일이 보류
-        return await _check_category_mismatch(
-            state, candidates, f"{claim.title} {claim.description}")
+        logger.warning(
+            "지출에 category가 채워져 왔다 — 화면에 입력 수단이 없으므로 계약 위반이다. "
+            "AI 분류로 덮는다 (받은 값: %r, expense=%s)",
+            claim.category, state.get("expense_id"),
+        )
     text = f"{claim.title} {claim.description}"
 
     llm_meta = {}

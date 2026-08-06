@@ -111,41 +111,41 @@ async def test_empty_category_gets_classified():
     assert result["claim"].category in all_categories()
 
 
-async def test_user_category_is_respected():
-    result = await classify_category(_state("장소_대관"))
-    assert result["category_source"] == "user"
-    assert "claim" not in result  # claim 미변경
+# ── T7 (2026-08-06): 분류는 항상 실행된다 ─────────────────────────────────
+#
+# 종전에는 category에 값이 있으면 분류를 건너뛰고 그 값을 존중했다. 사용자가 화면에서
+# 카테고리를 고르던 시절의 동작이다. 8/4 회의로 그 입력 수단이 사라졌고, 백엔드도
+# expenses.category를 nullable로 바꿔 항상 빈 값을 보내기로 회신했다(2026-08-06).
+# 이제 값이 오는 것은 정상 경로가 아니라 계약 위반이므로 존중하지 않고 AI 분류로 덮는다.
 
 
-async def test_confident_disagreement_flags_mismatch():
-    """숙박 지출을 식비로 등록 → 확신 있는 불일치 → 가드레일 보류 대상."""
-    result = await classify_category(_state("식비"))
-    assert result["category_source"] == "user"
-    assert "claim" not in result                     # 라벨은 사용자 것 유지
-    assert result["category_mismatch"] is True
-    assert result["ai_suggested_category"] == "장소_대관"
+async def test_incoming_category_is_overwritten_by_ai():
+    """값이 채워져 와도 AI 분류로 덮는다 — 화면에 입력 수단이 없으므로 계약 위반이다."""
+    result = await classify_category(_state("식비"))          # 숙박인데 식비로 옴
+    assert result["category_source"] == "ai"
+    assert result["claim"].category == "장소_대관", "AI 분류가 이겨야 한다"
 
 
-async def test_agreeing_category_is_not_flagged():
-    state = {"claim": ExpenseClaim(title="회식 저녁", amount=40_000, category="식비",
-                                   date="2026-07-10", description="정기 모임 식사")}
-    result = await classify_category(state)
-    assert result["category_mismatch"] is False
-    assert result["ai_suggested_category"] is None
+async def test_overwrite_is_logged_not_silent(caplog):
+    """덮는 사실을 로그로 남긴다 — 조용히 덮으면 계약이 어긋난 사실 자체가 묻힌다."""
+    import logging
+
+    with caplog.at_level(logging.WARNING):
+        await classify_category(_state("식비"))
+    assert any("category가 채워져" in r.message for r in caplog.records), "경고 로그가 있어야 한다"
 
 
-async def test_no_keyword_hit_is_not_flagged():
-    """키워드 미적중(확신 없음) → 비교하지 않음 — 과잉 보류 방지."""
-    state = {"claim": ExpenseClaim(title="정체불명 지출", amount=10_000, category="식비",
-                                   date="2026-07-10", description="")}
-    result = await classify_category(state)
-    assert result["category_mismatch"] is False
+async def test_stale_vocabulary_category_is_also_overwritten():
+    """구 30종 시절 라벨이 와도 덮는다 — 카탈로그 밖 값이 백엔드로 나가면 ENUM 저장이 실패한다."""
+    result = await classify_category(_state("숙박/여행비"))
+    assert result["claim"].category == "장소_대관"
 
 
-async def test_category_outside_catalog_is_skipped():
-    """후보 밖 카테고리(구 어휘 체계) → 비교 불가, 건너뜀 — 오탐 회귀 방지."""
-    result = await classify_category(_state("숙박/여행비"))   # 구 30종 시절 라벨
-    assert result == {"category_source": "user"}
+async def test_result_never_leaves_catalog():
+    """어떤 값이 들어와도 결과는 9종 안이다 — 백엔드 ENUM에 닿는 마지막 방어."""
+    for incoming in ("", "식비", "숙박/여행비", "존재하지않는카테고리", "IT/인프라"):
+        result = await classify_category(_state(incoming))
+        assert result["claim"].category in all_categories(), f"입력 {incoming!r}에서 벗어났다"
 
 
 # ── 저확신 폴백 (카테고리 직접 입력 삭제 대응) ──────────────────────────────
