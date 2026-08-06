@@ -20,3 +20,22 @@ def test_node_labels_match_review_graph():
     g = build_review_graph()
     graph_nodes = set(g.get_graph().nodes) - {"__start__", "__end__"}
     assert graph_nodes == set(NODE_LABELS)
+
+
+def test_node_labels_order_follows_graph_wiring():
+    """NODE_LABELS의 나열 순서가 그래프 배선의 위상 순서인지 — set 비교로는 못 잡는다.
+
+    화면 단계 목록이 이 dict 순서 그대로 프론트에 실려 나가는데(steps 이벤트),
+    2026-08-06 그래프 순서 변경(intake_receipt를 classify_category 앞으로) 때
+    여기가 옛 순서로 남아 3번째 단계가 2번째보다 먼저 켜지는 표시 어긋남이 있었다.
+    모든 간선 (u→v)에 대해 u가 v보다 먼저 나열돼야 한다로 잠근다 — 다음 순서
+    변경 때는 이 테스트가 잡는다.
+    """
+    g = build_review_graph().get_graph()
+    pos = {n: i for i, n in enumerate(NODE_LABELS)}
+    for e in g.edges:
+        if e.source in pos and e.target in pos:
+            assert pos[e.source] < pos[e.target], (
+                f"배선은 {e.source} → {e.target}인데 화면 단계 목록은 "
+                f"{e.target}를 먼저 그린다 — NODE_LABELS 순서를 graph.py에 맞출 것"
+            )

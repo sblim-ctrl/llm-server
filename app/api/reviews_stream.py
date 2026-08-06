@@ -46,11 +46,13 @@ router = APIRouter()
 # (워커의 review_graph와 노드는 동일, 체크포인터만 MemorySaver)
 hitl_graph = build_review_graph(checkpointer=MemorySaver())
 
-# 그래프 노드 → 화면 표시명 (심사 그래프 13노드, graph.py 배선 순서 기준)
+# 그래프 노드 → 화면 표시명 (심사 그래프 13노드, graph.py 배선 순서 기준 —
+# 나열 순서가 화면 단계 목록 순서다. 배선과 어긋나면 test_reviews_stream의
+# 위상 순서 테스트가 잡는다. 2026-08-06 순서 변경(영수증 판독 → 분류) 반영.)
 NODE_LABELS = {
     "load_context": "컨텍스트 로드",
-    "classify_category": "카테고리 분류",
     "intake_receipt": "영수증 판독",
+    "classify_category": "카테고리 분류",
     "mismatch_gate": "증빙 심사관",
     "rule_auditor": "회칙 심사관",
     "budget_auditor": "예산 심사관",
