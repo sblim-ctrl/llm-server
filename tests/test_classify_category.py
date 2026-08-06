@@ -238,17 +238,55 @@ def test_prompt_few_shot_anchors_low_confidence():
 # ── '기타' 재질의 · OCR 단서 (2026-08-06 실측 발견) ───────────────────────
 
 async def test_etc_answer_is_rechecked_against_keywords():
-    """모델이 '기타'라고 **확신 있게** 답해도 키워드에게 한 번 더 묻는다.
+    """엉성한 제목이 목 모드 끝까지 통과하는지 — 재질의 도입 배경의 회귀 그물.
 
-    저확신 폴백만으로는 안 걸리는 구멍이었다. '기타'가 카탈로그의 정식 후보라서,
-    모델은 모를 때 저확신 대신 "기타"를 확신 있게 고른다. 엉성한 제목 20건 실측에서
-    11건이 기타로 갔고 `대관료`·`비품 구매`처럼 **카탈로그에 키워드가 버젓이 있는
-    것들**까지 기타가 됐다(확신도 0.85라 폴백 문턱 0.8을 넘어 키워드를 볼 기회조차 없음).
+    배경: '기타'가 카탈로그의 정식 후보라서, 실모드 모델은 모를 때 저확신 대신
+    "기타"를 확신 있게 고른다. 엉성한 제목 20건 실측에서 11건이 기타로 갔고 `대관료`·
+    `비품 구매`처럼 **카탈로그에 키워드가 버젓이 있는 것들**까지 기타가 됐다
+    (확신도 0.85라 폴백 문턱 0.8을 넘어 키워드를 볼 기회조차 없음).
+
+    주의: 목 모드 mock_response는 키워드 분류 결과를 그대로 내므로 "기타인데 키워드는
+    안다" 조합이 여기서는 나올 수 없다 — 이 테스트는 재질의 분기를 **직접 타지 못한다**
+    (키워드 경로로 같은 답에 도달할 뿐). 분기 자체의 커버는 바로 아래 주입 테스트가
+    맡는다(분기를 무력화하면 아래 테스트만 실패한다 — 뮤테이션으로 확인).
     """
     state = {"claim": ExpenseClaim(title="대관료", amount=50_000, category="",
                                    date="2026-07-10", description="")}
     result = await classify_category(state)
     assert result["claim"].category == "장소_대관", "키워드가 아는 것을 기타로 두면 안 된다"
+
+
+async def test_etc_recheck_fires_even_at_high_confidence():
+    """재질의 분기의 실제 커버 — 실모드에서 실측된 답('기타', 0.85)을 직접 주입한다.
+
+    확신도 0.85는 저확신 폴백(0.8 미만)에 안 걸린다. 재질의 분기가 없으면 이 답이
+    그대로 확정돼 이 테스트가 실패한다 — 위 테스트와 달리 키워드 경로로는 통과할 수
+    없게 만든 것이다.
+    """
+    from unittest.mock import AsyncMock, patch
+
+    from app.graphs.review.nodes.classify_category import CategoryPrediction
+
+    state = {"claim": ExpenseClaim(title="대관료", amount=50_000, category="",
+                                   date="2026-07-10", description="")}
+    with patch("app.graphs.review.nodes.classify_category.chat_structured",
+               AsyncMock(return_value=(CategoryPrediction(category="기타", confidence=0.85), {}))):
+        result = await classify_category(state)
+    assert result["claim"].category == "장소_대관", "확신 있는 '기타'도 키워드가 알면 교정돼야 한다"
+
+
+async def test_etc_recheck_respects_keyword_ignorance():
+    """주입된 '기타'라도 키워드가 모르면 그대로 둔다 — 재질의는 아는 것만 고친다."""
+    from unittest.mock import AsyncMock, patch
+
+    from app.graphs.review.nodes.classify_category import CategoryPrediction
+
+    state = {"claim": ExpenseClaim(title="알 수 없는 지출", amount=10_000, category="",
+                                   date="2026-07-10", description="")}
+    with patch("app.graphs.review.nodes.classify_category.chat_structured",
+               AsyncMock(return_value=(CategoryPrediction(category="기타", confidence=0.85), {}))):
+        result = await classify_category(state)
+    assert result["claim"].category == "기타"
 
 
 async def test_etc_stays_when_keywords_also_dont_know():
