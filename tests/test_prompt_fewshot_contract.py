@@ -235,7 +235,9 @@ def test_classifier_few_shot_labels_are_in_catalog():
     from app.tools.category_catalog import all_categories
 
     cats = set(all_categories())
-    for v in ("v3", "v4", "v5"):
+    # v6이 현재 활성 기본 버전이다 — 빠뜨리면 정작 런타임이 쓰는 버전만 무검사가 된다
+    # (2026-08-06 T7 후속: v6 승격 때 이 목록을 늘리지 않아 실제로 그 상태였다).
+    for v in ("v3", "v4", "v5", "v6"):
         spec = load_prompt("classifier", v)
         for i, ex in enumerate(spec.few_shot, 1):
             label = json.loads(ex["output"])["category"]

@@ -101,6 +101,7 @@ async def classify_category(state: ReviewState) -> dict:
     text = " ".join([user_text, *hints]).strip()              # LLM 입력 전용
 
     llm_meta = {}
+    llm_failed = False   # 예외 경로 표식 — 아래 로그가 원인(분류기 장애)을 가리지 않게 한다
     try:
         spec = load_prompt("classifier")
         pred, meta = await chat_structured(
@@ -157,8 +158,15 @@ async def classify_category(state: ReviewState) -> dict:
         # 없으면 키워드 규칙으로 간다. 전면 장애는 저확신의 극단이고, 이 파일은 이미
         # 저확신에서 결정적 규칙으로 폴백한다(위 분기) — 같은 원칙을 여기에도 적용한다.
         # 키워드도 모르면 classify_by_keywords가 '기타'를 돌려주므로 종전 동작이 하한이다.
+        #
+        # **incoming은 후보 안에서만 신뢰한다.** 이 절은 LLM을 못 불렀으므로 위쪽의
+        # `pred.category not in candidates` 방어를 통과하지 않는다 — 검증 없이 쓰면
+        # 카탈로그 밖 값이 그대로 확정돼 이 파일의 불변식("9종 밖 값은 절대 만들지
+        # 않는다")이 예외 경로에서만 뚫린다. 목 모드는 읽기 경계 정규화를 적용하지
+        # 않으므로(골든셋 규약 보존, 3b70de5) `다과`·`대관` 같은 구 어휘가 실제로 온다.
         logger.exception("classify_category failed — 확정값 유지 또는 키워드 폴백")
-        category = incoming or classify_by_keywords(user_text)
+        category = (incoming if incoming in candidates else None) or classify_by_keywords(user_text)
+        llm_failed = True
 
     if incoming and incoming != category:
         # 사람이 봐야 할 신호만 경고로: 이전 확정값(또는 구화면 입력)과 이번 AI 판단이
@@ -167,6 +175,12 @@ async def classify_category(state: ReviewState) -> dict:
             "들어온 category(%r)와 AI 분류(%r)가 다르다 — AI 값으로 덮는다 (expense=%s)",
             incoming, category, state.get("expense_id"),
         )
+    elif incoming and llm_failed:
+        # 값은 같지만 **재확정된 것이 아니다** — 분류기를 못 불러 이전 값을 그대로 들고
+        # 나갔다. 여기서 '에코 일치·정상'을 찍으면 관측이 원인을 가린다(장애가 정상으로
+        # 보인다). 값이 맞다는 것과 검증됐다는 것은 다르다.
+        logger.warning("category %r 유지 — 분류기 장애로 재확정하지 못했다 (expense=%s)",
+                       incoming, state.get("expense_id"))
     elif incoming:
         # 재심사 에코 — 우리가 지난 심사에서 내보낸 값이 그대로 재확정됐다. 정상.
         logger.debug("category 재심사 에코 일치: %r (expense=%s)",
