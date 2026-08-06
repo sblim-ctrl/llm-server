@@ -33,6 +33,7 @@ from app.schemas.proposals import (
 )
 from app.schemas.writers import BriefingRequest, DigestRequest, ReportRequest
 from app.tools.backend_client import close_backend_client, send_callback
+from app.tools.document_parser import DocumentParseError
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 logger = logging.getLogger("worker")
@@ -233,9 +234,22 @@ async def handle_job(job: dict[str, Any]) -> None:
             #
             # 메시지는 관리자에게 그대로 보여도 되는 수준으로 쓰여 있다(document_parser).
             # 내부 스택은 넣지 않는다 — 화면에 나가도 안전해야 하고 상세는 로그에 있다.
+            #
+            # 그 "안전하다" 보장은 DocumentParseError 계열에만 성립한다(그 클래스의
+            # 계약이다) — 다른 예외의 str()은 안전을 보장하지 않는다. 예: run_review_job의
+            # AnalyzeRequest.model_validate 실패 시 pydantic ValidationError가 지출 제목
+            # 원문을 담고(2026-08-06 CI 로그로 실측), httpx 오류는 내부 백엔드 URL을 담는다.
+            # 이 result는 명세상 관리자 화면에 그대로 나갈 수 있는 자리라 무차별로 흘리면
+            # 안 된다.
+            message = (
+                str(exc)
+                if isinstance(exc, DocumentParseError)
+                else "처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+            )
             await finish_job(
-                job_id, "dead",
-                result={"error": type(exc).__name__, "message": str(exc)},
+                job_id,
+                "dead",
+                result={"error": type(exc).__name__, "message": message},
             )
             # fail-safe: 재시도 소진 → ESCALATED 콜백 (§8) — 합집합 (7/20 팀 합의 ②):
             # · review 잡 한정 (B-7 — 비-review 잡의 지출 에스컬레이션 오발송 방지)

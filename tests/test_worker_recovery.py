@@ -105,6 +105,37 @@ async def test_dead_non_review_job_sends_no_callback(monkeypatch):
     await worker.handle_job(_job("report", payload={"team_id": 11, "period": "2026-06"}))
     assert fin.calls and fin.calls[0][0][1] == "dead"
     assert cb.calls == []
+    # 2026-08-06 후속: DocumentParseError 계열이 아닌 예외는 result.message에
+    # str(exc) 원문이 아니라 정형 문구가 담긴다 — 이 자리는 관리자 화면에 그대로
+    # 나갈 수 있는 자리라(§내부API 명세 §⑤) 예외 원문(그래프 내부 실패 사유)이
+    # 새어 나가면 안 된다.
+    res = fin.calls[0][1]["result"]
+    assert res["error"] == "RuntimeError"
+    assert res["message"] == "처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+    assert "graph fail" not in res["message"]
+
+
+async def test_dead_document_parse_error_keeps_original_message(monkeypatch):
+    """DocumentParseError 계열은 관리자에게 그대로 보여도 되는 문장으로 설계돼 있어
+    (document_parser 클래스 독스트링의 계약) result.message가 원문 그대로 남아야 한다.
+    """
+    from app.tools.document_parser import EmptyDocumentError
+
+    fin, cb = Recorder(), Recorder(ret=True)
+    monkeypatch.setattr(worker, "finish_job", fin)
+    monkeypatch.setattr(worker, "send_callback", cb)
+
+    async def boom(state, config=None):
+        raise EmptyDocumentError(
+            "파일에서 회칙 내용을 읽지 못했습니다. 스캔한 이미지 PDF는 글자를 인식할 "
+            "수 없으니, 텍스트가 들어 있는 PDF나 Word 파일로 다시 올려 주세요."
+        )
+
+    monkeypatch.setattr(worker, "report_graph", SimpleNamespace(ainvoke=boom))
+    await worker.handle_job(_job("report", payload={"team_id": 11, "period": "2026-06"}))
+    res = fin.calls[0][1]["result"]
+    assert res["error"] == "EmptyDocumentError"
+    assert res["message"].startswith("파일에서 회칙 내용을 읽지 못했습니다.")
 
 
 async def test_dead_review_job_sends_escalate_callback(monkeypatch):
