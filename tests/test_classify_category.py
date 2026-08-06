@@ -477,6 +477,60 @@ async def test_llm_failure_without_incoming_uses_keyword_rule():
     assert result["claim"].category == "식비", "키워드가 아는데 '기타'로 떨어뜨렸다"
 
 
+async def test_llm_failure_never_emits_out_of_catalog_category():
+    """예외 경로도 9종 밖 값을 내보내면 안 된다 — 이 파일의 불변식은 경로를 가리지 않는다.
+
+    `incoming`을 검증 없이 쓰면, LLM을 못 불러 위쪽의 `pred.category not in candidates`
+    방어를 지나치지 않은 채 카탈로그 밖 값이 그대로 확정된다. 목 모드는 읽기 경계
+    정규화를 적용하지 않으므로(골든셋 규약 보존) `다과`·`대관` 같은 구 어휘가 실제로
+    들어오는 경로가 있다. 백엔드 ENUM에 닿는 마지막 방어라 예외 경로만 뚫리면 안 된다.
+    """
+    from unittest.mock import AsyncMock, patch
+
+    for stale in ("숙박/여행비", "다과", "대관", "존재하지않는카테고리"):
+        state = {"claim": ExpenseClaim(title="숙소", amount=90_000, category=stale,
+                                       date="2026-07-10", description=""),
+                 "expense_id": 7}
+        with patch("app.graphs.review.nodes.classify_category.chat_structured",
+                   AsyncMock(side_effect=RuntimeError("LLM 장애"))):
+            result = await classify_category(state)
+        assert result["claim"].category in all_categories(), (
+            f"예외 경로가 카탈로그 밖 값 {stale!r}을 그대로 내보냈다")
+
+
+async def test_llm_failure_keyword_path_ignores_merchant():
+    """예외 경로의 키워드 조회도 상호명을 보면 안 된다 — 리뷰 ③이 만든 새 지점의 B-1 그물."""
+    from unittest.mock import AsyncMock, patch
+
+    state = {"claim": ExpenseClaim(title="회원 경조사 조화", amount=50_000, category="",
+                                   date="2026-07-10", description=""),
+             "receipt_data": _receipt("OO화원 플라워카페")}
+    with patch("app.graphs.review.nodes.classify_category.chat_structured",
+               AsyncMock(side_effect=RuntimeError("LLM 장애"))):
+        result = await classify_category(state)
+    assert result["claim"].category == "기타", "예외 경로가 상호의 '카페'를 물었다"
+
+
+async def test_llm_failure_is_logged_as_failure_not_normal_echo(caplog):
+    """장애로 값을 유지했으면 '에코 일치·정상'이 아니라 장애로 기록돼야 한다.
+
+    값이 같다는 이유로 정상 경로와 같은 DEBUG를 찍으면, 관측이 원인(분류기 장애)을
+    가린다 — 대시보드·로그만 보는 사람에게는 아무 일도 없던 것으로 보인다.
+    """
+    import logging
+    from unittest.mock import AsyncMock, patch
+
+    state = {"claim": ExpenseClaim(title="여름 MT 펜션 2박", amount=90_000,
+                                   category="장소_대관", date="2026-07-10", description=""),
+             "expense_id": 42}
+    with caplog.at_level(logging.WARNING):
+        with patch("app.graphs.review.nodes.classify_category.chat_structured",
+                   AsyncMock(side_effect=RuntimeError("LLM 장애"))):
+            await classify_category(state)
+    assert any("재확정하지 못했다" in r.message for r in caplog.records), (
+        "장애가 정상 에코처럼 기록되면 원인을 못 찾는다")
+
+
 async def test_llm_failure_still_falls_back_to_etc_when_nothing_known():
     """확정값도 키워드 적중도 없으면 종전대로 '기타' — 하한은 그대로다."""
     from unittest.mock import AsyncMock, patch
