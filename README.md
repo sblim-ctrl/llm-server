@@ -58,11 +58,11 @@ Inspector로 붙을 때는 `Authorization: Bearer <SERVICE_TOKEN>` 헤더를 설
 
 ```powershell
 # 심사 잡 생성 (202) — pull 모델 5필드 (PROGRESS §0-2): 지출 상세는 payload에 없고
-# 서버가 되물어 조회. 목 규약: expenseId의 ?쿼리로 상세 오버라이드
+# 서버가 되물어 조회. 목 모드: expenseId로 eval/fixtures/mock_backend.json에서 상세 조회
 curl -X POST http://localhost:8000/v1/analyze `
   -H "Authorization: Bearer dev-service-token-change-me" `
   -H "Content-Type: application/json" `
-  -d '{\"jobId\":\"be-job-1\",\"expenseId\":\"exp-1?title=교재 구입&amount=32000&category=도서&date=2026-07-07\",\"organizationId\":\"team-1\",\"reviewGoal\":\"회칙·예산·판례에 근거해 심사하라\",\"receiptPath\":\"https://example.com/r1\"}'
+  -d '{\"jobId\":\"be-job-1\",\"expenseId\":90001,\"organizationId\":9002,\"reviewGoal\":\"회칙·예산·판례에 근거해 심사하라\",\"receiptPath\":\"file://eval/golden/receipts/club-approve-001.png\"}'
 
 # 잡 상태 조회
 curl http://localhost:8000/v1/jobs/{job_id} -H "Authorization: Bearer dev-service-token-change-me"

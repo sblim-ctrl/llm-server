@@ -10,8 +10,12 @@
 금지를 evaluator로 채점 → LangSmith 웹에 Experiment로 기록된다(프롬프트 버전·비용·
 노드 트레이스까지). CSV 하니스(run_eval_real.py)의 웹 버전 — 팀 공유·발표용.
 
-비용: 42건 실 LLM ≈ $0.3. 실행 전 골든 팀 회칙 실인덱싱, 실행 후 정리
-(목 골든셋 게이트 무오염) — run_eval_real.py와 동일 절차.
+비용: 데이터셋 건수만큼 실 LLM 호출(건당 ≈ $0.006~0.01). 실행 전 골든 팀 회칙
+실인덱싱, 실행 후 정리(목 골든셋 게이트 무오염) — run_eval_real.py와 동일 절차.
+
+주의(T9): golden_v1.json의 organizationId·expenseId가 문자열→정수로 바뀌었다
+(fixture 기반 재설계). 이 스크립트가 읽는 LangSmith 데이터셋은 구 문자열 값으로
+업로드돼 있으므로, 실행 전 upload_langsmith_dataset.py로 재업로드해야 한다.
 
 주의(무료/저티어 계정): 심사 1건이 gpt-4o를 3회 호출하고 프롬프트가 커서,
 TPM 30k/min 한도에서는 순차 실행이어도 후반부 1~2건이 429를 맞을 수 있다.
@@ -19,7 +23,9 @@ TPM 30k/min 한도에서는 순차 실행이어도 후반부 1~2건이 429를 �
 넘긴다(fail-safe) — 정확도 지표엔 1~2건 반영되지만 **오승인은 절대 발생하지
 않는다**(안전 원칙 유지). 근본 회피는 계정 티어 상향 몫.
 """
+
 import asyncio
+import logging
 import sys
 from pathlib import Path
 
@@ -29,9 +35,9 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-from app.config import get_settings                                     # noqa: E402
-from app.db.pool import apply_schema, close_pool, open_pool   # noqa: E402
-from eval.run_eval_real import clean_golden_teams                       # noqa: E402
+from app.config import get_settings  # noqa: E402
+from app.db.pool import apply_schema, close_pool, open_pool  # noqa: E402
+from eval.run_eval_real import clean_golden_teams  # noqa: E402
 
 DATASET_NAME = "budgetops-golden"
 
@@ -73,35 +79,41 @@ async def main() -> int:
     await open_pool()
     try:
         await apply_schema()
+        teams = sorted(
+            {
+                (ex.inputs or {}).get("organizationId")
+                for ex in client.list_examples(dataset_name=DATASET_NAME)
+            }
+            - {None}
+        )
         await clean_golden_teams()
-        teams = sorted({
-            (ex.inputs or {}).get("organizationId")
-            for ex in client.list_examples(dataset_name=DATASET_NAME)
-        } - {None})
         for t in teams:
             await indexing_graph.ainvoke({"team_id": t, "doc_type": "rule", "version": 1})
         versions = {a: load_prompt(a).version for a in ("rule_auditor", "adjudicator")}
         print(f"골든 팀 {len(teams)}개 회칙 실인덱싱 완료 — 프롬프트 {versions}")
 
         async def target(inputs: dict) -> dict:
-            final = await review_graph.ainvoke({
-                "job_id": f"lsexp-{inputs['expenseId'][:40]}",
-                "external_job_id": inputs.get("jobId"),
-                "expense_id": inputs["expenseId"],
-                "team_id": inputs["organizationId"],
-                "review_goal": inputs.get("reviewGoal", ""),
-                "receipt_text": inputs.get("receipt_text"),
-            })
+            final = await review_graph.ainvoke(
+                {
+                    "job_id": f"lsexp-{str(inputs['expenseId'])[:40]}",
+                    "external_job_id": inputs.get("jobId"),
+                    "expense_id": inputs["expenseId"],
+                    "team_id": inputs["organizationId"],
+                    "review_goal": inputs.get("reviewGoal", ""),
+                    "receipt_text": inputs.get("receipt_text"),
+                }
+            )
             gate = final.get("gate_result")
-            return {"verdict": final.get("verdict") or "escalate",
-                    "gate": gate.triggered_rules if gate else []}
+            return {
+                "verdict": final.get("verdict") or "escalate",
+                "gate": gate.triggered_rules if gate else [],
+            }
 
-        prefix = ("golden-"
-                  + "-".join(v.replace("/", "") for v in versions.values()))
-        print(f"Experiment 실행 시작: {prefix} (42건 실 LLM ≈ $0.3)")
+        prefix = "golden-" + "-".join(v.replace("/", "") for v in versions.values())
+        print(f"Experiment 실행 시작: {prefix} (데이터셋 {len(teams)}개 팀, 실 LLM)")
         # max_concurrency=1(순차) — 심사 1건이 gpt-4o를 3회(rule·precedent·adjudicator)
         # 호출하고 프롬프트가 커서, 병렬이면 저티어 TPM 한도(30k/min)를 넘겨 429가 난다.
-        # 순차면 분당 토큰이 분산돼 안정. 42건 ≈ 2분.
+        # 순차면 분당 토큰이 분산돼 안정.
         results = await aevaluate(
             target,
             data=DATASET_NAME,
@@ -116,7 +128,10 @@ async def main() -> int:
         print("LangSmith 웹 → Datasets → budgetops-golden → Experiments 탭에서 확인")
         return 0
     finally:
-        await clean_golden_teams()
+        try:
+            await clean_golden_teams()
+        except Exception:
+            logging.exception("골든 팀 데이터 사후 정리 실패 — 수동 정리 필요")
         await close_pool()
 
 

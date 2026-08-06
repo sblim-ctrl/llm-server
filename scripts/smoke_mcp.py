@@ -31,14 +31,14 @@ async def main() -> None:
             print("툴 목록:", [t.name for t in tools.tools])
 
             result = await session.call_tool(
-                "search_rules", {"team_id": "team-idx-1", "query": "회식비 한도", "version": 2}
+                "search_rules", {"team_id": 9001, "query": "회식비 한도", "version": 2}
             )
-            print("\nsearch_rules(team-idx-1, '회식비 한도', v2) 결과:")
+            print("\nsearch_rules(9001, '회식비 한도', v2) 결과:")
             for block in result.content[:2]:
                 print(" ", getattr(block, "text", block)[:120])
 
             result2 = await session.call_tool(
-                "get_budget_status", {"team_id": "demo-team-1", "category": "식비"}
+                "get_budget_status", {"team_id": 9001, "category": "식비"}
             )
             print("\nget_budget_status:", getattr(result2.content[0], "text", "")[:100])
 

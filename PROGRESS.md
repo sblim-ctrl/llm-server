@@ -498,9 +498,11 @@ Python 3.12 고정, uv로 패키지 관리, docker-compose 3컨테이너.
   Docker는 `up --build` 재빌드 필요. "고쳤는데 안 바뀌어요"의 원인 1순위.
 - **포트 8000 충돌**: llm-api(로컬이든 도커든)와 다른 프로젝트(hankyung은 8001로 옮겨둠),
   로컬 uv API와 도커 API 동시 실행 불가.
-- **골든셋/데모 팀 id 규약을 깨지 말 것**: `lowbudget` 포함=잔액부족, `club/study/social/hobby/company`
-  포함=유형 추론, `noexpense` 포함=지출 이력 없음, `balanced` 포함=편중·저활용 없는 균형 이력
-  (뒤 2개는 07-15 라이터 골든셋용 추가). 목 규약이 테스트 결정성의 기반.
+- **(T9로 폐기) 골든셋/데모 팀 id 문자열 규약** — `lowbudget`/`noauto`/`club·study·...`/
+  `noexpense`/`balanced` 같은 team_id 문자열 단서는 더 이상 없다. BIGINT 전환 후
+  `eval/fixtures/mock_backend.json`(조직·지출 정수 키 조회)로 대체됐다 —
+  `app/tools/backend_client.py`의 목 분기 5곳이 이 파일을 참조한다. 테스트 결정성의
+  기반이라는 원칙은 그대로다.
 - **AGENT 자기 판례는 위험 신호에서 제외** (자기 오염 루프 방지) — precedent_auditor 수정 시 유지할 것.
 - **판례 검색 쿼리도 마스킹 필수**: 저장본이 마스킹돼 있으므로 `masked_claim_summary()` 사용.
   실명으로 검색하면 유사도가 어긋남 (실제 버그였음).

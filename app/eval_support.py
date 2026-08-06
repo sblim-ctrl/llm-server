@@ -2,6 +2,7 @@
 
 app 패키지 안에 둬야 Docker 이미지에도 포함되고, /ui 대시보드에서도 import 가능하다.
 """
+
 import csv
 import json
 from pathlib import Path
@@ -19,20 +20,21 @@ VERDICT_LABELS = {"approve": "승인", "reject": "반려", "escalate": "보류"}
 
 async def run_case(case: dict[str, Any]) -> dict[str, Any]:
     # pull 모델 — 워커(run_review_job)와 같은 초기 상태로 실행. 지출 상세는
-    # load_context가 expense_id의 목 규약("?title=..&amount=..")으로 되물어 채운다.
+    # load_context가 expense_id로 eval/fixtures/mock_backend.json을 되물어 채운다(T9).
     req = AnalyzeRequest.model_validate(case["input"])
-    final_state = await review_graph.ainvoke({
-        "job_id": f"eval-{case['id']}",
-        "external_job_id": req.job_id,
-        "expense_id": req.expense_id,
-        "team_id": req.organization_id,
-        "review_goal": req.review_goal,
-        "receipt_path": req.receipt_path,
-    })
+    final_state = await review_graph.ainvoke(
+        {
+            "job_id": f"eval-{case['id']}",
+            "external_job_id": req.job_id,
+            "expense_id": req.expense_id,
+            "team_id": req.organization_id,
+            "review_goal": req.review_goal,
+            "receipt_path": req.receipt_path,
+        }
+    )
     actual = final_state.get("verdict") or "escalate"
     expected = case["expected_verdict"]
-    gate = (final_state.get("gate_result").triggered_rules
-            if final_state.get("gate_result") else [])
+    gate = final_state.get("gate_result").triggered_rules if final_state.get("gate_result") else []
     # 영수증 불일치는 mismatch_gate에서 가드레일 전에 escalate로 직행한다 (§4.1) —
     # 그 경로도 trajectory로 기록 (실제 상태의 mismatch 리스트에서 도출)
     if not gate and final_state.get("mismatch"):
@@ -40,8 +42,9 @@ async def run_case(case: dict[str, Any]) -> dict[str, Any]:
 
     # Trajectory 검사: 기대한 가드레일 규칙이 실제로 발동했는가 (가이드 'Trajectory 평가'의 로컬 버전)
     expected_gate = case.get("expected_gate_includes")
-    trajectory_ok = (all(rule in gate for rule in expected_gate)
-                     if expected_gate is not None else None)
+    trajectory_ok = (
+        all(rule in gate for rule in expected_gate) if expected_gate is not None else None
+    )
 
     return {
         "id": case["id"],
@@ -95,11 +98,31 @@ def export_results_csv(results: list[dict[str, Any]]) -> Path:
     path = RESULTS_DIR / "golden_run.csv"
     with path.open("w", newline="", encoding="utf-8-sig") as f:  # BOM — 엑셀 한글 호환
         writer = csv.writer(f)
-        writer.writerow(["id", "scenario", "expected", "actual", "correct",
-                         "false_approve", "expected_gate", "actual_gate", "trajectory_ok"])
+        writer.writerow(
+            [
+                "id",
+                "scenario",
+                "expected",
+                "actual",
+                "correct",
+                "false_approve",
+                "expected_gate",
+                "actual_gate",
+                "trajectory_ok",
+            ]
+        )
         for r in results:
-            writer.writerow([r["id"], r["scenario"], r["expected"], r["actual"],
-                             r["correct"], r["false_approve"],
-                             "|".join(r["expected_gate"]), "|".join(r["gate"]),
-                             "" if r["trajectory_ok"] is None else r["trajectory_ok"]])
+            writer.writerow(
+                [
+                    r["id"],
+                    r["scenario"],
+                    r["expected"],
+                    r["actual"],
+                    r["correct"],
+                    r["false_approve"],
+                    "|".join(r["expected_gate"]),
+                    "|".join(r["gate"]),
+                    "" if r["trajectory_ok"] is None else r["trajectory_ok"],
+                ]
+            )
     return path
