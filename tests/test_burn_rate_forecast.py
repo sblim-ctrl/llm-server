@@ -98,6 +98,19 @@ def test_depletion_date_equals_period_end_boundary():
     assert f.depletion_date == "2026-06-30"
 
 
+def test_tiny_spend_does_not_overflow():
+    """지출이 극히 적은 팀 — 2026-08-06 발견한 기존 결함.
+
+    소진 예정일이 date.max를 넘으면 `as_of + timedelta(...)`가 OverflowError로 죽었다.
+    월초에 커피 한 잔만 결제한 팀(예산 30만원·지출 1원)에서 재현되며, 같은 forecast()를
+    쓰는 Digest도 함께 죽는다. 기간 내 소진이 아님을 date 연산 **전에** 판정해 피한다.
+    """
+    f = forecast(
+        total_budget=300_000, spent=1, expenses=[], as_of="2026-06-20", period_end="2026-06-30"
+    )
+    assert f.depletion_date is None
+
+
 def test_empty_expenses_no_categories():
     f = forecast(
         total_budget=300_000,

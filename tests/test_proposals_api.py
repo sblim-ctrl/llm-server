@@ -9,9 +9,11 @@ import uuid
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
+from app.api import proposals as proposals_api
 from app.api.drafts import RULE_DRAFT
-from app.api.proposals import read_proposals
-from app.schemas.proposals import ProposalOut
+from app.api.proposals import create_budget_proposal_job, read_proposals
+from app.schemas.analyze import AnalyzeAccepted
+from app.schemas.proposals import ProposalBudgetRequest, ProposalOut
 
 RULE_AMENDMENT = "rule_amendment"
 
@@ -105,3 +107,30 @@ async def test_includes_rule_draft_when_type_explicitly_requested():
         out = await read_proposals(team_id=9001, type=RULE_DRAFT)
 
     assert [p.type for p in out] == [RULE_DRAFT]
+
+
+# ── 예산관리 AI 메시지 잡 등록 (LLM-016, `POST /v1/proposals/budget`) ──────────
+
+
+async def test_budget_route_enqueues_proposal_budget_job():
+    """202로 접수만 하고 워커가 3블록을 만든다 — 라우터는 LLM을 부르지 않는다."""
+    with patch("app.api.proposals.insert_job", AsyncMock(return_value="job-1")) as insert_job:
+        out = await create_budget_proposal_job(
+            ProposalBudgetRequest(team_id=9001, period="2026-06")
+        )
+
+    assert out.job_id == "job-1"
+    insert_job.assert_awaited_once_with(
+        team_id=9001,
+        job_type="proposal_budget",
+        payload={"team_id": 9001, "period": "2026-06"},
+    )
+
+
+def test_budget_route_is_registered_as_202_accepted():
+    """상태코드는 데코레이터에 선언돼 있어 코루틴 직접 호출로는 안 보인다 — 라우터를 본다."""
+    route = next(
+        r for r in proposals_api.router.routes if getattr(r, "path", None) == "/v1/proposals/budget"
+    )
+    assert route.status_code == 202
+    assert route.response_model is AnalyzeAccepted

@@ -51,8 +51,10 @@ def forecast(
     elif daily_burn <= 0:
         depletion = None  # 지출 0 — 소진 없음
     else:
-        d = as_of_d + timedelta(days=math.ceil(remaining / daily_burn))
-        depletion = d.isoformat() if d <= end_d else None  # 기간 내 미소진이면 None
+        # 기간 내 소진 여부를 date 연산 **전에** 일수로 판정한다 — 지출이 극히 적으면
+        # 소진 예정일이 date.max를 넘어 timedelta가 OverflowError로 죽는다 (2026-08-06 발견).
+        days = math.ceil(remaining / daily_burn)
+        depletion = (as_of_d + timedelta(days=days)).isoformat() if days <= remaining_days else None
 
     # 카테고리 비중 (expenses 기준 — 총액 수치와 의미 분리, 위 docstring 규칙)
     by_cat: dict[str, int] = {}

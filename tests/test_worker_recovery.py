@@ -246,3 +246,41 @@ async def test_poll_loop_reclaims_each_cycle(monkeypatch):
         worker._shutdown.clear()
     assert len(rec.calls) == 1
     assert rec.calls[0][0][0] == worker.get_settings().worker_visibility_timeout_sec
+
+
+# ── 잡 핸들러 레지스트리 (C6 계약) ─────────────────────────────────────────
+
+
+async def test_proposal_budget_handler_is_registered_and_honours_the_contract(monkeypatch):
+    """레지스트리 등록을 지키는 테스트 — 2026-08-06 적대적 리뷰가 지적한 커버리지 공백.
+
+    등록이 빠져도 `handle_job`은 `unknown_job_type`으로 **succeeded 처리**하므로
+    실패로 드러나지 않는다. 예산관리 페이지가 조용히 비고 아무 데도 기록이 남지 않는다.
+
+    핸들러 계약(팀 합의 7/20)은 `async (job) -> (result, final_state)`이고, final_state가
+    llm_meta를 실어야 B-7 잡 비용 계측(_meta_totals)이 동작한다. 목 모드에서는 합산값이
+    0이라 금액을 단언해도 의미가 없어, llm_meta가 실려 오는지를 본다.
+    """
+    import app.graphs.writers.budget_planner as bp
+
+    assert worker.JOB_HANDLERS["proposal_budget"] is worker.run_proposal_budget_job
+
+    async def fake_save_proposal(team_id, proposal_type, payload):
+        return "pid-worker"
+
+    monkeypatch.setattr(bp, "save_proposal", fake_save_proposal)
+    result, final = await worker.run_proposal_budget_job(
+        _job("proposal_budget", payload={"team_id": 1, "period": "2026-06"})
+    )
+
+    assert result["proposal_id"] == "pid-worker"
+    assert set(result["payload"]) == {
+        "category_analysis",
+        "budget_status_analysis",
+        "recommendation",
+        "figures",
+        "verified",
+    }
+    assert final is not None and "budget_planner" in final["llm_meta"], (
+        "final_state에 llm_meta가 없으면 B-7 비용 계측이 조용히 0으로 죽는다"
+    )

@@ -7,22 +7,32 @@ from app.db.pool import insert_job
 from app.schemas.analyze import AnalyzeAccepted
 from app.schemas.ids import BigIntId
 from app.schemas.proposals import (
+    ProposalBudgetRequest,
     ProposalOut,
     ProposalPatch,
     RuleAmendmentRequest,
-)  # [MVP 제외] budget_planner — ProposalBudgetRequest 제거
+)
 from app.tools.proposal_store import list_proposals, update_proposal_status
 
 router = APIRouter(prefix="/v1", tags=["proposals"])
 
 
-# [MVP 제외] budget_planner — MVP 이후 복원: 아래 라우트 전체 주석 해제 + import 복원 필요
-# @router.post("/proposals/budget", response_model=AnalyzeAccepted, status_code=202)
-# async def create_budget_proposal_job(req: ProposalBudgetRequest) -> AnalyzeAccepted:
-#     job_id = await insert_job(
-#         team_id=req.team_id, job_type="proposal_budget", payload=req.model_dump(mode="json")
-#     )
-#     return AnalyzeAccepted(job_id=job_id)
+@router.post("/proposals/budget", response_model=AnalyzeAccepted, status_code=202)
+async def create_budget_proposal_job(req: ProposalBudgetRequest) -> AnalyzeAccepted:
+    """예산관리 페이지 AI 메시지 생성 잡 접수 (LLM-016).
+
+    결과는 `GET /v1/jobs/{job_id}` 또는 `GET /v1/proposals?type=budget`으로 받는다.
+    payload는 Figma 확정 3블록(category_analysis·budget_status_analysis·recommendation)
+    + figures + verified다.
+
+    `verified=false`는 "본문 수치와 집계값의 대조가 통과하지 못했다"는 뜻이지 "쓸 수 없는
+    값"이라는 뜻이 아니다 — 그때는 집계로 조립한 안전한 문장으로 교체해 저장하므로
+    **3블록은 언제나 그대로 화면에 띄워도 된다.**
+    """
+    job_id = await insert_job(
+        team_id=req.team_id, job_type="proposal_budget", payload=req.model_dump(mode="json")
+    )
+    return AnalyzeAccepted(job_id=job_id)
 
 
 @router.post("/proposals/rule-amendment", response_model=AnalyzeAccepted, status_code=202)

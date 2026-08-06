@@ -938,6 +938,33 @@
         "title": "PrecedentCreated",
         "type": "object"
       },
+      "ProposalBudgetRequest": {
+        "properties": {
+          "period": {
+            "anyOf": [
+              {
+                "pattern": "^[1-9]\\d{3}-(0[1-9]|1[0-2])$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period"
+          },
+          "team_id": {
+            "description": "양의 백엔드 BIGINT 기본키",
+            "format": "int64",
+            "title": "Team Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "team_id"
+        ],
+        "title": "ProposalBudgetRequest",
+        "type": "object"
+      },
       "ProposalOut": {
         "properties": {
           "created_at": {
@@ -1836,6 +1863,48 @@
           }
         },
         "summary": "제안 목록 조회 (LLM-015, type 미지정 시 마법사 회칙 초안 rule_draft 제외)",
+        "tags": [
+          "proposals"
+        ]
+      }
+    },
+    "/v1/proposals/budget": {
+      "post": {
+        "description": "예산관리 페이지 AI 메시지 생성 잡 접수 (LLM-016).\n\n결과는 `GET /v1/jobs/{job_id}` 또는 `GET /v1/proposals?type=budget`으로 받는다.\npayload는 Figma 확정 3블록(category_analysis·budget_status_analysis·recommendation)\n+ figures + verified다.\n\n`verified=false`는 \"본문 수치와 집계값의 대조가 통과하지 못했다\"는 뜻이지 \"쓸 수 없는\n값\"이라는 뜻이 아니다 — 그때는 집계로 조립한 안전한 문장으로 교체해 저장하므로\n**3블록은 언제나 그대로 화면에 띄워도 된다.**",
+        "operationId": "create_budget_proposal_job_v1_proposals_budget_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProposalBudgetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyzeAccepted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Budget Proposal Job",
         "tags": [
           "proposals"
         ]

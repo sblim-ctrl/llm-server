@@ -36,7 +36,7 @@ def _register():
     from app.graphs.review.nodes.classify_category import CategoryPrediction
     from app.graphs.review.nodes.rule_auditor import RewrittenQuery
     from app.graphs.writers.briefing import BriefingText
-    from app.graphs.writers.budget_planner import ProposalText
+    from app.graphs.writers.budget_planner import BudgetMessage, ProposalText
     from app.graphs.writers.digest import DigestText
     from app.graphs.writers.policy_draft import ExtraRules
     from app.graphs.writers.report import ReportText
@@ -45,7 +45,7 @@ def _register():
     from app.schemas.dashboard import DashboardSummary
 
     for m in (JudgeResult, AdjudicationResult, CategoryPrediction, RewrittenQuery,
-              BriefingText, ProposalText, DigestText, ExtraRules, ReportText,
+              BriefingText, ProposalText, BudgetMessage, DigestText, ExtraRules, ReportText,
               AmendmentText, Opinion, ReceiptData, DashboardSummary):
         _SCHEMA_REGISTRY[m.__name__] = m
 
@@ -194,6 +194,34 @@ def test_dashboard_few_shot_passes_its_verifier():
         out = json.loads(ex["output"])
         doc = DashboardSummaryDoc(figures=fig, message=out["message"], verified=False)
         assert verify_summary_pure(doc), f"dashboard_writer 예시{i}이 자기 검증기에서 폐기된다"
+
+
+def test_budget_planner_few_shot_passes_its_verifier():
+    """④ budget_planner 3블록 예시가 verify_budget_message_pure를 통과하는가.
+
+    이 검증기는 금액·백분율·날짜·카테고리명을 한꺼번에 대조하고 잔액 언급까지 요구해서,
+    예시를 손으로 쓰면 어딘가 하나는 어긋나기 쉽다. 예시가 스스로 불합격이면 모델에게
+    불합격을 가르치는 셈이다.
+    """
+    from app.graphs.writers.budget_planner import (
+        BudgetFigures,
+        BudgetMessage,
+        verify_budget_message_pure,
+    )
+    from app.llm.prompts import load_prompt
+
+    spec = load_prompt("budget_planner")
+    assert spec.few_shot, "budget_planner few_shot이 비어 있다"
+    for i, ex in enumerate(spec.few_shot, 1):
+        fig = BudgetFigures.model_validate_json(ex["input"].strip())
+        msg = BudgetMessage.model_validate_json(ex["output"].strip())
+        assert verify_budget_message_pure(msg, fig), (
+            f"budget_planner 예시{i}이 자기 검증기에서 폐기된다"
+        )
+        # few_shot 입력은 런타임 model_dump_json()과 **바이트 단위로** 같아야 한다.
+        assert fig.model_dump_json() == ex["input"].strip(), (
+            f"budget_planner 예시{i} 입력이 런타임 직렬화와 다르다 — 필드 순서·float 표기 확인"
+        )
 
 
 def test_classifier_few_shot_labels_are_in_catalog():

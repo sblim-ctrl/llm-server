@@ -12,7 +12,10 @@ class ProposalBudgetRequest(BaseModel):
     # "YYYY-MM" — 미지정 시 실행 시점의 당월. 형식 검증 필수: 무검증 시 잘못된
     # 값이 202로 수락된 뒤 워커의 date.fromisoformat에서 ValueError → 3회
     # 재시도 후 dead로 소진된다 (리뷰 발견 — 조기 422 거부로 대체).
-    period: str | None = Field(default=None, pattern=r"^\d{4}-(0[1-9]|1[0-2])$")
+    # 연도 첫 자리를 [1-9]로 두어 "0000-01"도 막는다 — \d{4}는 이걸 통과시키고
+    # date.fromisoformat이 뒤늦게 죽는다. 부정 선읽기 `(?!0000)`는 쓸 수 없다:
+    # pydantic v2의 Rust 정규식 엔진이 look-around를 거부해 임포트가 통째로 실패한다.
+    period: str | None = Field(default=None, pattern=r"^[1-9]\d{3}-(0[1-9]|1[0-2])$")
 
 
 class RuleAmendmentRequest(BaseModel):
