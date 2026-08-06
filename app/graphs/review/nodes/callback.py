@@ -52,10 +52,10 @@ def build_callback_payload(state: ReviewState) -> CallbackPayload:
         expense_id=state["expense_id"],
         team_id=state["team_id"],
         verdict=verdict,
-        # 카테고리 불일치 보류 시엔 AI 분류 의견을 전달(관리자 화면 "AI는 X로 봤어요"),
-        # 평상시엔 확정 카테고리 — API-045/046 suggestedCategory 의미와 정합
-        suggested_category=state.get("ai_suggested_category")
-                           or state["claim"].category or None,
+        # AI가 확정한 카테고리 (T7 — AI 분류가 유일한 출처). 백엔드는 첫 심사 콜백의
+        # 이 값으로 expenses.category를 채운다(8/6 회신) — API-045/046 suggestedCategory.
+        # (구 ai_suggested_category 우선 참조는 필드 제거와 함께 정리 — 2026-08-06)
+        suggested_category=state["claim"].category or None,
         processed_by=resolve_processed_by(verdict, state.get("admin_decision")),
         confidence=state.get("confidence"),
         opinions=list(state.get("opinions", {}).values()),

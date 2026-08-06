@@ -38,18 +38,11 @@ class ReviewState(TypedDict, total=False):
     rule_version: int
     team_type: str              # 모임 유형 — 유형별 카테고리 카탈로그 선택에 사용
     team_members: list[dict]    # PII 마스킹용 멤버 명단 — 조회 실패 시에도 [] 보장 (B2)
-    # 분류 (classify_category가 씀) — 지금은 항상 "ai"다. 사용자 카테고리 입력이
+    # 분류 (classify_category가 씀) — 항상 "ai"다. 사용자 카테고리 입력이
     # 화면에서 사라져(8/4 회의) AI 분류가 유일한 출처가 됐다 (T7, 2026-08-06).
+    # 사용자 선택과 대조하던 category_mismatch·ai_suggested_category 필드는
+    # 가드레일 규칙·테스트와 함께 제거했다 (2026-08-06 팀장 승인 — 세우는 코드 0곳).
     category_source: str
-    # ⚠️ 아래 둘은 **더 이상 아무도 세우지 않는다** (T7). 사용자가 고른 카테고리와
-    # AI 분류를 대조하던 장치인데, 고르는 화면이 없어져 대조 대상 자체가 사라졌다.
-    # 값이 채워져 오면 이제 계약 위반으로 보고 AI 분류로 덮는다(경고 로그).
-    #
-    # 필드를 남겨 둔 이유: `guardrail_gate`가 아직 `category_mismatch`를 읽는다(항상
-    # False). 그 파일은 소유가 갈려 있어 규칙 제거는 팀장 판단으로 남겼다 —
-    # 여기서 필드만 지우면 읽는 쪽과 어긋난 채로 보이지 않게 된다.
-    category_mismatch: bool
-    ai_suggested_category: str | None
     # 진행 산출물
     receipt_data: ReceiptData | None
     mismatch: list[Mismatch]

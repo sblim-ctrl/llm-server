@@ -18,8 +18,7 @@
 **값이 채워져 오면** 화면에 입력 수단이 없으므로 계약 위반이다. 존중하지 않고 AI 분류로
 덮되 경고 로그를 남긴다 — 조용히 덮으면 계약이 어긋난 사실 자체가 묻힌다.
 (종전의 `_check_category_mismatch`는 사용자 선택이 있던 시절의 대조 장치라 제거했다.
-`guardrail_gate`의 `category_mismatch` 규칙은 이제 아무도 세우지 않는다 — 그 파일은
-소유가 갈려 있어 제거 여부는 팀장 판단으로 남긴다.)
+`guardrail_gate`의 `category_mismatch` 규칙·state 필드도 함께 제거 — 2026-08-06 팀장 승인.)
 
 - 카탈로그: templates/category_catalog.yaml (tools/category_catalog.py가 로드)
 
