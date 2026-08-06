@@ -229,7 +229,7 @@
     },
     {
       "id": "social-reject-001",
-      "scenario": "명백 반려 — 잔액 부족",
+      "scenario": "명백 반려 — 잔액 부족. 케이크는 먹는 것이므로 식비(용도 기준)",
       "team_type": "친목",
       "input": {
         "jobId": "job-social-reject-001",
@@ -239,7 +239,7 @@
         "receiptPath": "file://eval/golden/receipts/social-reject-001.png"
       },
       "expected_verdict": "reject",
-      "expected_category": "행사_활동",
+      "expected_category": "식비",
       "must_not_approve": true,
       "expected_gate_includes": [
         "budget_insufficient"
@@ -634,7 +634,7 @@
     },
     {
       "id": "social-force-001",
-      "scenario": "경계 — 고액(300,001) 순수 금액 테스트, 적대적 요소 없음",
+      "scenario": "명백 보류 — 강제 에스컬레이션 금액(300,001원). 대관료는 장소 임차라 장소_대관",
       "team_type": "친목",
       "input": {
         "jobId": "job-social-force-001",
@@ -644,7 +644,7 @@
         "receiptPath": "file://eval/golden/receipts/social-force-001.png"
       },
       "expected_verdict": "escalate",
-      "expected_category": "행사_활동",
+      "expected_category": "장소_대관",
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_force_escalation_amount"
@@ -772,7 +772,7 @@
     },
     {
       "id": "social-approve-002",
-      "scenario": "명백 승인 — 제11조 숙박·여행, 한도 내",
+      "scenario": "명백 승인 — 당일 여행 경비. 숙박·임차가 없으므로 장소_대관이 아니라 행사_활동",
       "team_type": "친목",
       "input": {
         "jobId": "job-social-approve-002",
@@ -782,7 +782,7 @@
         "receiptPath": "file://eval/golden/receipts/social-approve-002.png"
       },
       "expected_verdict": "approve",
-      "expected_category": "장소_대관",
+      "expected_category": "행사_활동",
       "must_not_approve": false
     },
     {
