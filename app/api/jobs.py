@@ -1,4 +1,5 @@
 """GET /v1/jobs/{job_id} — 잡 상태·결과 조회 (백엔드 폴링 fallback, §7.1)."""
+
 from fastapi import APIRouter, HTTPException
 
 from app.db.pool import get_job
@@ -7,8 +8,9 @@ from app.schemas.analyze import JobStatusResponse
 router = APIRouter(prefix="/v1", tags=["jobs"])
 
 
-@router.get("/jobs/{job_id}", response_model=JobStatusResponse,
-            summary="잡 상태·결과 조회 (콜백 안전망)")
+@router.get(
+    "/jobs/{job_id}", response_model=JobStatusResponse, summary="잡 상태·결과 조회 (콜백 안전망)"
+)
 async def read_job(job_id: str) -> JobStatusResponse:
     """심사·생성 잡의 진행 상태와 결과를 조회한다.
 
@@ -17,6 +19,10 @@ async def read_job(job_id: str) -> JobStatusResponse:
 
     `status`: `queued` → `running` → `succeeded` / `failed` / `dead`.
     `succeeded`면 `result`에 심사 결과(verdict·reasons·opinions 등)가 담긴다.
+    `dead`(재시도 소진 최종 실패)면 `result`가
+    `{"error": "<예외 클래스명>", "message": "<실패 사유>"}`로 채워진다 —
+    `message`는 회칙 파싱 실패(`DocumentParseError` 계열)일 때만 원문이고, 그 외
+    예외는 정형 문구라 관리자에게 그대로 보여줘도 된다.
     """
     job = await get_job(job_id)
     if job is None:

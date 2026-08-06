@@ -1529,7 +1529,7 @@
     },
     "/v1/jobs/{job_id}": {
       "get": {
-        "description": "심사·생성 잡의 진행 상태와 결과를 조회한다.\n\n콜백이 유실됐을 때의 **폴링 안전망**(§7.1). `job_id`는 우리 내부 id와 백엔드가\n발급한 jobId **둘 다** 받는다.\n\n`status`: `queued` → `running` → `succeeded` / `failed` / `dead`.\n`succeeded`면 `result`에 심사 결과(verdict·reasons·opinions 등)가 담긴다.",
+        "description": "심사·생성 잡의 진행 상태와 결과를 조회한다.\n\n콜백이 유실됐을 때의 **폴링 안전망**(§7.1). `job_id`는 우리 내부 id와 백엔드가\n발급한 jobId **둘 다** 받는다.\n\n`status`: `queued` → `running` → `succeeded` / `failed` / `dead`.\n`succeeded`면 `result`에 심사 결과(verdict·reasons·opinions 등)가 담긴다.\n`dead`(재시도 소진 최종 실패)면 `result`가\n`{\"error\": \"<예외 클래스명>\", \"message\": \"<실패 사유>\"}`로 채워진다 —\n`message`는 회칙 파싱 실패(`DocumentParseError` 계열)일 때만 원문이고, 그 외\n예외는 정형 문구라 관리자에게 그대로 보여줘도 된다.",
         "operationId": "read_job_v1_jobs__job_id__get",
         "parameters": [
           {
