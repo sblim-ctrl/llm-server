@@ -581,8 +581,8 @@
             "title": "Dues"
           },
           "force_escalation_amount": {
-            "description": "원 단위 기준 금액",
-            "exclusiveMinimum": 0.0,
+            "description": "원 단위 기준 금액. 0 = 전건 관리자 확인",
+            "minimum": 0.0,
             "title": "Force Escalation Amount",
             "type": "integer"
           },
@@ -646,6 +646,7 @@
             "type": "string"
           },
           "team_type": {
+            "description": "모임 유형. 백엔드 ENUM 언더바 표기('동아리_학생회')도 받는다 — 수신 시 내부 표기로 변환",
             "enum": [
               "동아리/학생회",
               "스터디",
@@ -782,8 +783,8 @@
             "title": "Dues"
           },
           "force_escalation_amount": {
-            "description": "원 단위 기준 금액",
-            "exclusiveMinimum": 0.0,
+            "description": "원 단위 기준 금액. 0 = 전건 관리자 확인",
+            "minimum": 0.0,
             "title": "Force Escalation Amount",
             "type": "integer"
           },
@@ -848,6 +849,7 @@
             "type": "string"
           },
           "team_type": {
+            "description": "모임 유형. 백엔드 ENUM 언더바 표기('동아리_학생회')도 받는다 — 수신 시 내부 표기로 변환",
             "enum": [
               "동아리/학생회",
               "스터디",

@@ -16,6 +16,7 @@ from typing import Any
 import httpx
 
 from app.config import get_settings
+from app.schemas.writers import normalize_team_type
 from app.tools.category_catalog import all_categories, fallback_category
 
 logger = logging.getLogger(__name__)
@@ -375,7 +376,12 @@ async def get_team_profile(team_id: int) -> dict[str, Any]:
         return {"team_type": "동아리/학생회"}  # 기본값
     r = await _client().get(f"/internal/agent/teams/{team_id}/profile")
     r.raise_for_status()
-    return r.json()
+    profile = r.json()
+    # 백엔드 ENUM은 언더바 표기(2026-08-06 확정) — 템플릿·카탈로그 키는 슬래시라
+    # 경계에서 접는다. 접지 않으면 유형별 카탈로그가 조용히 기본 유형으로 fallback.
+    if "team_type" in profile:
+        profile["team_type"] = normalize_team_type(profile["team_type"])
+    return profile
 
 
 async def get_team_members(team_id: int) -> list[dict[str, Any]]:

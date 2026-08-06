@@ -257,6 +257,39 @@ def test_unknown_rule_source_rejected():
         PolicyDraftRequest(**BASE_KW, rule_source="번역")
 
 
+@pytest.mark.parametrize("spelling", ["동아리_학생회", "동아리학생회"])
+def test_team_type_accepts_backend_underscore_spelling(spelling):
+    """백엔드 ENUM은 언더바 표기(2026-08-06 확정) — 경계에서 내부 표기로 접는다.
+
+    변환 없이는 템플릿·카탈로그 조회가 조용히 기본 유형으로 fallback한다."""
+    ok = PolicyDraftRequest(**{**BASE_KW, "team_type": spelling, "rule_source": "ai"})
+    assert ok.team_type == "동아리/학생회"
+
+
+def test_team_type_unknown_value_still_rejected():
+    with pytest.raises(ValidationError):
+        PolicyDraftRequest(**{**BASE_KW, "team_type": "밴드", "rule_source": "ai"})
+
+
+def test_force_escalation_amount_zero_accepted():
+    """'모든 지출 직접 확인' 토글이면 백엔드가 0을 보낸다 — 0 = 전건 관리자 확인
+    (백엔드 확인 2026-08-06). 심사 쪽 해석(policy_params: 한도 없음→전건 확인)과 동일."""
+    ok = PolicyDraftRequest(**{**BASE_KW, "force_escalation_amount": 0, "rule_source": "ai"})
+    assert ok.force_escalation_amount == 0
+
+
+def test_force_escalation_amount_negative_still_rejected():
+    with pytest.raises(ValidationError):
+        PolicyDraftRequest(**{**BASE_KW, "force_escalation_amount": -1, "rule_source": "ai"})
+
+
+async def test_ai_draft_with_zero_amount_stays_verified():
+    """0원 기준도 조항 금액 정합 검사를 통과한다 — '0원 이상 = 전건 관리자 확인' 조항."""
+    draft = await _draft_for(force_escalation_amount=0)
+    assert "0원" in "\n".join(draft.rules)
+    assert _verify(draft, force=0) is None
+
+
 def test_ai_source_tolerates_leftover_rule_text():
     """FE 관용 — 3단계에서 '직접 입력'을 쓰다 'AI 초안'으로 바꾸면 rule_text가 남을 수 있다.
 
