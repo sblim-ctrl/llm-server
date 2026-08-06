@@ -219,10 +219,24 @@ async def handle_job(job: dict[str, Any]) -> None:
             tokens_out=tokens_out,
         )
         logger.info("job %s succeeded: %s", job_id, result.get("verdict"))
-    except Exception:
+    except Exception as exc:
         logger.exception("job %s failed", job_id)
         if job["attempts"] >= job["max_attempts"]:
-            await finish_job(job_id, "dead")
+            # **실패 사유를 jobs.result에 남긴다** (2026-08-06). 종전에는 status만
+            # 'dead'로 적어서 `GET /v1/jobs/{id}`가 `result: null`을 돌려줬다 — 백엔드는
+            # "실패했다"만 알고 왜인지 알 방법이 없었고, 사유는 서버 로그에만 있었다.
+            #
+            # 회칙 파일 파싱(T2)에서 이 구멍이 드러났다. "스캔한 이미지 PDF는 글자를
+            # 인식할 수 없으니 텍스트가 든 파일로 다시 올려 주세요" 같은 안내를 만들어
+            # 놓고도 관리자에게 닿을 경로가 없었다. 관리자는 회칙을 올렸는데 심사에
+            # 반영이 안 된 이유를 영영 모른다 — 이 프로젝트가 반복해 겪은 '조용한 실패'다.
+            #
+            # 메시지는 관리자에게 그대로 보여도 되는 수준으로 쓰여 있다(document_parser).
+            # 내부 스택은 넣지 않는다 — 화면에 나가도 안전해야 하고 상세는 로그에 있다.
+            await finish_job(
+                job_id, "dead",
+                result={"error": type(exc).__name__, "message": str(exc)},
+            )
             # fail-safe: 재시도 소진 → ESCALATED 콜백 (§8) — 합집합 (7/20 팀 합의 ②):
             # · review 잡 한정 (B-7 — 비-review 잡의 지출 에스컬레이션 오발송 방지)
             # · 정식 CallbackPayload camelCase + 백엔드 발급 jobId echo (A-5 —
