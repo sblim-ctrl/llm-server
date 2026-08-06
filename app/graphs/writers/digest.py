@@ -26,6 +26,9 @@ from pydantic import BaseModel
 from typing_extensions import TypedDict
 
 from app.db.pool import get_pool
+# 과장 표현 그물은 dashboard와 **같은 상수를 쓴다** — writer마다 복사해 두면 한쪽만
+# 고쳐지는 사고가 난다(2026-08-05에 _MONEY_RE가 정확히 그래서 양쪽 다 결함이었다).
+from app.graphs.writers.dashboard import _OVERSTATE_RE
 from app.llm.client import chat_structured
 from app.llm.prompts import load_prompt
 from app.schemas.common import LLMCallMeta
@@ -319,15 +322,44 @@ def verify_digest_pure(doc: DigestDoc, f: DigestFigures) -> bool:
         f"{f.forecast.total_budget:,}원", f"{f.forecast.spent:,}원",
         f"{f.forecast.total_budget - f.forecast.spent:,}원",   # 잔액 표현 허용
     }
-    return all(tok in allowed_money for tok in _MONEY_RE.findall(doc.advice))
+    if not all(tok in allowed_money for tok in _MONEY_RE.findall(doc.advice)):
+        return False
+
+    # 잔액이 남았는데 "다 썼다"고 하는 과장 — dashboard와 같은 그물이다(같은 상수를
+    # 쓴다). advice는 자유 서술이라 오히려 이런 표현이 나오기 쉬운 자리인데 검사가
+    # 없었다. 잔액이 0 이하면 사실 보고이므로 검사하지 않는다(`> 0` — dashboard와 동일).
+    remaining = f.forecast.total_budget - f.forecast.spent
+    return not (remaining > 0 and _OVERSTATE_RE.search(doc.advice + " " + doc.summary))
 
 
 async def verify_digest(state: DigestState) -> dict:
-    doc = state["digest"]
-    ok = verify_digest_pure(doc, state["figures"])
-    if not ok:
-        logger.error("digest verification failed — 수치 불일치, verified=false로 강등")
-    return {"digest": doc.model_copy(update={"verified": ok})}
+    """검증 실패 시 **집계로 조립한 안전한 브리핑으로 교체**한다 (verified=false는 유지).
+
+    dashboard의 같은 처리와 한 쌍이다. 종전에는 실패해도 AI 문구를 그대로 두고
+    verified=false만 내렸는데, 그러면 화면이 비거나 멀쩡한 주에도 '확인 필요'가 달린다.
+    2026-08-05에 검증기 결함(음수 잔액)으로 실제로 그 상태가 됐다.
+
+    폴백은 `_mock_digest_text` — 집계값만으로 조립하므로 정의상 검증을 통과한다.
+    **verified는 정직하게 false로 남긴다** (백엔드 계약상 "수치 대조 통과 여부"이고,
+    폴백을 썼다고 true로 올리면 AI 품질 저하가 영영 안 보인다).
+    """
+    doc, figures = state["digest"], state["figures"]
+    if verify_digest_pure(doc, figures):
+        return {"digest": doc.model_copy(update={"verified": True})}
+
+    logger.error(
+        "digest 검증 실패 — 집계 기반 문구로 교체(verified=false 유지). 거부된 원문: "
+        "summary=%r advice=%r", doc.summary, doc.advice,
+    )
+    safe = _mock_digest_text(figures)
+    fallback = doc.model_copy(update={
+        "summary": safe.summary, "highlights": safe.highlights,
+        "advice": safe.advice, "verified": False,
+    })
+    if not verify_digest_pure(fallback, figures):
+        # 폴백까지 실패하면 집계 자체가 이상한 것이다 — 조용히 넘기지 않는다.
+        logger.critical("폴백 브리핑도 검증 실패 — 집계값 점검 필요: %r", safe.summary)
+    return {"digest": fallback}
 
 
 def build_digest_graph():

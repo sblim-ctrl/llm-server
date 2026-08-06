@@ -293,3 +293,99 @@ def test_request_rejects_bad_period():
     for bad in ["2026", "2026-13", "26-07", "2026-7"]:
         with pytest.raises(ValueError):
             DashboardSummaryRequest(team_id=9001, period=bad)
+
+
+# ── 과장 정규식 어미 처리 (2026-08-06, PR #11 리뷰 A-7) ───────────────────
+
+def test_overstate_regex_allows_conditional_endings():
+    """가정·미래형 어미 6가지가 오탐으로 걸리면 안 된다.
+
+    첫 구현은 `(사용|썼|소진)` 뒤에 부정 선읽기로 조건형을 뺐는데, `사용` 바로 뒤만
+    봐서 아래 6가지가 뚫렸다(A-7 지적). 특히 "사용하게 되면"처럼 띄어쓰기가 끼면
+    `\S*`로도 못 넘는다. 그래서 "조건형을 빼는" 대신 **"완료형만 잡는"** 쪽으로
+    뒤집었다 — 가정형은 애초에 매칭되지 않는다.
+
+    화면 피해는 폴백이 흡수하지만, `verified=false`를 AI 품질 지표로 쓰기로 했으므로
+    오탐이 그 지표를 오염시킨다.
+    """
+    f = _figures()
+    assert f.remaining > 0, "잔액이 남아 있어야 과장 검사가 켜진다"
+    for msg in ("예산을 모두 사용하게 되면 알려드릴게요.",
+                "예산을 전부 사용하게 될 것 같아요.",
+                "예산을 모두 사용한다면 알려주세요.",
+                "예산을 전부 사용하려면 시간이 걸려요.",
+                "예산을 모두 사용해도 괜찮아요.",
+                "예산을 전부 사용하기 전에 확인하세요."):
+        doc = DashboardSummaryDoc(figures=f, message=msg, verified=False)
+        assert verify_summary_pure(doc) is True, f"가정형을 과장으로 걸렀다: {msg}"
+
+
+def test_overstate_regex_catches_formal_and_passive_completions():
+    """격식체·수동태 완료형도 과장으로 잡는다 — 목록에 빠져 있던 것을 실측으로 확인.
+
+    "사용하였습니다"·"소진했습니다"·"사용되었습니다"가 첫 목록(사용했·사용함·소진됐·
+    소진되었·소진됨·썼)을 전부 빠져나갔다. 대시보드 문장은 격식체가 기본이라 오히려
+    이쪽이 실제로 나올 형태다. 아래 13개 문장이 정규식 주석의 "과장 문장 13개" 그 자체다.
+    """
+    f = _figures()
+    assert f.remaining > 0
+    for msg in ("이번 달 예산을 모두 사용했습니다.",
+                "예산을 전부 사용하였습니다.",
+                "예산이 모두 사용되었습니다.",
+                "예산이 전액 사용됐습니다.",
+                "회비를 모두 사용함.",
+                "배정액이 전부 사용됨.",
+                "예산을 전부 소진했습니다.",
+                "예산을 모두 소진하였습니다.",
+                "예산이 전부 소진되었습니다.",
+                "운영비가 모두 소진됐습니다.",
+                "예산을 다 썼습니다.",
+                "예산이 없습니다.",
+                "남은 예산이 없습니다."):
+        doc = DashboardSummaryDoc(figures=f, message=msg, verified=False)
+        assert verify_summary_pure(doc) is False, f"과장을 놓쳤다: {msg}"
+
+
+def test_overstate_regex_allows_past_conditional_and_speculation():
+    """완료형 어간에 가정·추측 어미가 붙으면 주장이 아니다 — 오탐으로 걸리면 안 된다.
+
+    "사용했**다면**"·"사용했**을** 때"·"썼**을** 수도"는 완료형 어간을 포함하지만
+    예산 소진을 단정하는 문장이 아니다. 어간·어미는 한 낱말이라 띄어쓰기가 낄 수 없어,
+    첫 구현의 "사용 바로 뒤만 본다" 문제없이 뒤 한 글자 선읽기로 정확히 제외된다.
+    수량어 없는 완료형("예산을 사용했습니다")도 소진 주장이 아니므로 함께 확인한다.
+    """
+    f = _figures()
+    assert f.remaining > 0
+    for msg in (# 과거가정·추측 — 완료형 어간 + 다면/더라면/을
+                "예산을 모두 사용했다면 알려주세요.",
+                "예산을 전부 사용했을 때 알림을 드릴게요.",
+                "예산을 모두 사용했더라면 어땠을까요.",
+                "예산을 다 썼을 수도 있습니다.",
+                "예산을 전부 소진했다면 다음 달 계획을 세우세요.",
+                "예산이 모두 사용되었을 가능성이 있습니다.",
+                # 수량어 없음 / 미래 계획 / 무관한 정상 문장
+                "예산을 사용했습니다.",
+                "지출 대부분을 사용했습니다.",
+                "예산을 모두 사용할 예정입니다.",
+                "남은 예산이 넉넉합니다.",
+                "남은 금액이 충분합니다.",
+                "예산 관리가 잘 되고 있습니다."):
+        doc = DashboardSummaryDoc(figures=f, message=msg, verified=False)
+        assert verify_summary_pure(doc) is True, f"정상 문장을 과장으로 걸렀다: {msg}"
+
+
+def test_overstate_check_skipped_when_budget_exceeded():
+    """예산을 넘겼으면 "다 썼다"는 과장이 아니라 사실 — 조건이 `> 0`인 이유.
+
+    `!= 0`이면 잔액이 음수일 때도 검사가 걸려, 관리자가 가장 알아야 할 "예산 초과"
+    보고가 폴백으로 밀려났다 (A-7 질문에 대한 답).
+    """
+    over = _figures(
+        expenses=[{"title": "행사", "amount": 399000, "category": "행사_활동",
+                   "date": "2026-07-10", "status": "APPROVED"}],
+        budget={"total_budget": 300000, "spent": 399000})
+    assert over.remaining == -99000
+    doc = DashboardSummaryDoc(
+        figures=over, verified=False,
+        message="이번 달 지출은 399,000원으로 예산을 모두 사용했습니다.")
+    assert verify_summary_pure(doc) is True
