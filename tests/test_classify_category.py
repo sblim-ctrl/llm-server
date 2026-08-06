@@ -312,24 +312,16 @@ async def test_etc_stays_when_keywords_also_dont_know():
     assert result["claim"].category == "기타"
 
 
-async def test_receipt_merchant_is_used_as_classification_hint():
-    """영수증 상호명이 분류 근거에 들어간다 — 제목만으로는 못 맞히는 지출을 살린다.
-
-    사용자 카테고리 입력이 사라진 뒤 제목이 "6월 모임"처럼 엉성하게 오는 것이 실측으로
-    확인됐다. 실모드 8건에서 상호명 덕에 5건이 기타를 벗어났다.
-    """
-    from app.schemas.common import ReceiptData
-
-    claim = ExpenseClaim(title="6월 모임", amount=90_000, category="",
-                         date="2026-07-10", description="")
-    without = await classify_category({"claim": claim, "expense_id": 1})
-    with_receipt = await classify_category({
-        "claim": claim, "expense_id": 1,
-        "receipt_data": ReceiptData(amount=90_000, date="2026-07-10",
-                                    merchant="가평 솔밭펜션", items=[], parse_ok=True),
-    })
-    assert without["claim"].category == "기타", "제목만으로는 분류 불가한 케이스여야 의미가 있다"
-    assert with_receipt["claim"].category == "장소_대관"
+# (test_receipt_merchant_is_used_as_classification_hint 삭제 — 2026-08-06 리뷰 ②)
+#
+# 그 테스트는 목 모드에서 '6월 모임'+'가평 솔밭펜션' → 장소_대관을 단언했는데, **그 단언이
+# 성립하는 유일한 경로가 목 응답의 키워드 매칭에 상호명을 먹이는 것**이었다. 즉 B-1이
+# 위험하다고 판정한 바로 그 메커니즘을 회귀 그물로 잠그고 있었다(팀장 지적).
+#
+# 잠그려던 의도("상호 단서가 분류에 도달한다")는 아래 test_hints_still_reach_the_llm이
+# 더 정확히 대체한다 — LLM 입력을 직접 검사하므로, 상호명이 실제로 작동하는 유일한
+# 경로를 본다. 목 모드 쪽은 test_mock_mode_ignores_merchant_in_keyword_matching이
+# 반대 방향(상호가 분류를 바꾸지 못한다)으로 대체한다.
 
 
 async def test_unreadable_receipt_does_not_break_classification():
@@ -376,6 +368,26 @@ async def test_merchant_word_cannot_flip_confident_etc():
     assert result["claim"].category == "기타", "상호의 '카페'가 합의를 뒤집으면 안 된다"
 
 
+async def test_merchant_word_cannot_hijack_hallucination_correction():
+    """환각 교정 경로도 상호명을 보면 안 된다 — 세 키워드 지점 중 유일하게 그물이 없던 곳.
+
+    후보 밖 값(환각)이 오면 코드가 키워드로 교정하는데, 그 조회에 상호명이 섞이면
+    나머지 두 경로와 같은 오탐이 난다. 이 지점만 뮤테이션해도 아무 테스트가 실패하지
+    않는 상태였다(2026-08-06 리뷰 지적).
+    """
+    from unittest.mock import AsyncMock, patch
+
+    from app.graphs.review.nodes.classify_category import CategoryPrediction
+
+    state = {"claim": ExpenseClaim(title="회원 경조사 조화", amount=50_000, category="",
+                                   date="2026-07-10", description=""),
+             "receipt_data": _receipt("OO화원 플라워카페")}
+    with patch("app.graphs.review.nodes.classify_category.chat_structured",
+               AsyncMock(return_value=(CategoryPrediction(category="꽃값", confidence=0.99), {}))):
+        result = await classify_category(state)
+    assert result["claim"].category == "기타", "환각 교정이 상호의 '카페'를 물면 안 된다"
+
+
 async def test_merchant_word_cannot_hijack_low_confidence_fallback():
     """저확신 폴백도 같은 원칙 — '월 정산'+카페24(호스팅 업체)가 식비가 되면 안 된다."""
     from unittest.mock import AsyncMock, patch
@@ -389,6 +401,108 @@ async def test_merchant_word_cannot_hijack_low_confidence_fallback():
                AsyncMock(return_value=(CategoryPrediction(category="비품", confidence=0.4), {}))):
         result = await classify_category(state)
     assert result["claim"].category == "기타", "제목·설명에 단서가 없으면 기타가 맞다"
+
+
+@pytest.mark.parametrize("title,merchant,expected", [
+    # 팀장 리뷰(2026-08-06)가 목 모드에서 실제로 재현한 오탐 3건 + 성공 1건.
+    ("회원 경조사 조화", "OO화원 플라워카페", "기타"),      # '카페'가 식비로 끌어가던 것
+    ("월 정산", "카페24", "기타"),                        # 호스팅 업체인데 '카페'
+    ("6월 모임", "여행박사", "기타"),                      # 상호의 '여행'
+    ("6월 모임", "가평 솔밭펜션", "기타"),                  # 목은 상호를 못 읽는다(정직한 표현)
+])
+async def test_mock_mode_ignores_merchant_in_keyword_matching(title, merchant, expected):
+    """**패치 없이 목 경로 그대로** 도는 그물 — 상호명이 목 응답을 오염시키면 안 된다.
+
+    위 오탐 케이스들을 잠그는 다른 테스트들은 `chat_structured`를 패치해 실모드 분기를
+    강제로 태운다. 그건 실모드 로직을 정확히 잠그지만 **목 경로는 지나가지 않는다** —
+    그래서 목의 `mock_response`가 힌트 포함 텍스트를 쓰던 구멍을 못 잡았다(리뷰 지적).
+
+    목 모드는 골든셋·데모·대시보드가 도는 모드이고 T9(골든셋 재작업)가 이 PR 직후라,
+    여기서 상호명 동작이 굳으면 실모드가 내지 않을 답이 기대값으로 박힌다.
+
+    '가평 솔밭펜션'까지 기타인 것이 의도다: 상호명의 이득은 문맥을 읽는 LLM만 낼 수
+    있으므로, 키워드 매처인 목이 그 이득을 흉내내면 오탐만 물려받는다.
+    """
+    from app.schemas.common import ReceiptData
+
+    state = {"claim": ExpenseClaim(title=title, amount=30_000, category="",
+                                   date="2026-07-01", description=""),
+             "receipt_data": ReceiptData(merchant=merchant, items=[], parse_ok=True),
+             "expense_id": 1}
+    result = await classify_category(state)
+    assert result["claim"].category == expected, (
+        f"목 모드에서 상호명 '{merchant}'이 분류를 끌어갔다")
+
+
+async def test_mock_mode_still_classifies_from_user_text():
+    """상호명을 끊어도 제목·설명 기반 목 분류는 그대로 — 회귀 방지."""
+    from app.schemas.common import ReceiptData
+
+    state = {"claim": ExpenseClaim(title="정기 모임 뒤풀이 치킨", amount=40_000, category="",
+                                   date="2026-07-01", description=""),
+             "receipt_data": ReceiptData(merchant="무관한상호", items=[], parse_ok=True)}
+    result = await classify_category(state)
+    assert result["claim"].category == "식비"
+
+
+# ── 예외 경로가 확정값을 파괴하지 않는다 (리뷰 ③, 2026-08-06) ─────────────
+
+async def test_llm_failure_preserves_previously_confirmed_category():
+    """LLM 장애가 지난 심사의 확정 카테고리를 '기타'로 밀어버리면 안 된다.
+
+    종전 동작: except → 무조건 fallback_category(). 재심사 경로에서는 백엔드가 첫 심사
+    콜백으로 채운 값이 되돌아오므로, 일시 장애 한 번에 그 값이 '기타'가 되고 판례
+    임베딩·콜백 suggestedCategory로 나갔다 — 되돌릴 경로가 없다.
+    """
+    from unittest.mock import AsyncMock, patch
+
+    state = {"claim": ExpenseClaim(title="여름 MT 펜션 2박", amount=90_000,
+                                   category="장소_대관", date="2026-07-10", description=""),
+             "expense_id": 42}
+    with patch("app.graphs.review.nodes.classify_category.chat_structured",
+               AsyncMock(side_effect=RuntimeError("LLM 장애"))):
+        result = await classify_category(state)
+    assert result["claim"].category == "장소_대관", "확정값이 장애로 파괴됐다"
+
+
+async def test_llm_failure_without_incoming_uses_keyword_rule():
+    """확정값이 없으면 키워드 규칙으로 — 전면 장애는 저확신의 극단이고 처리도 같아야 한다."""
+    from unittest.mock import AsyncMock, patch
+
+    state = {"claim": ExpenseClaim(title="정기 모임 뒤풀이 치킨", amount=40_000, category="",
+                                   date="2026-07-10", description="")}
+    with patch("app.graphs.review.nodes.classify_category.chat_structured",
+               AsyncMock(side_effect=RuntimeError("LLM 장애"))):
+        result = await classify_category(state)
+    assert result["claim"].category == "식비", "키워드가 아는데 '기타'로 떨어뜨렸다"
+
+
+async def test_llm_failure_still_falls_back_to_etc_when_nothing_known():
+    """확정값도 키워드 적중도 없으면 종전대로 '기타' — 하한은 그대로다."""
+    from unittest.mock import AsyncMock, patch
+
+    state = {"claim": ExpenseClaim(title="정체불명 지출", amount=10_000, category="",
+                                   date="2026-07-10", description="")}
+    with patch("app.graphs.review.nodes.classify_category.chat_structured",
+               AsyncMock(side_effect=RuntimeError("LLM 장애"))):
+        result = await classify_category(state)
+    assert result["claim"].category == "기타"
+
+
+async def test_llm_failure_does_not_log_mismatch_warning(caplog):
+    """장애로 확정값을 유지했을 때 '분류가 흔들렸다'는 경고가 뜨면 원인을 가린다."""
+    import logging
+    from unittest.mock import AsyncMock, patch
+
+    state = {"claim": ExpenseClaim(title="여름 MT 펜션 2박", amount=90_000,
+                                   category="장소_대관", date="2026-07-10", description=""),
+             "expense_id": 42}
+    with caplog.at_level(logging.WARNING):
+        with patch("app.graphs.review.nodes.classify_category.chat_structured",
+                   AsyncMock(side_effect=RuntimeError("LLM 장애"))):
+            await classify_category(state)
+    assert not any("다르다" in r.message for r in caplog.records), (
+        "장애는 분류 불일치가 아니다 — 불일치 경고가 원인을 가린다")
 
 
 async def test_hints_still_reach_the_llm():

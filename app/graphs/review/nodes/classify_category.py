@@ -12,8 +12,9 @@
   교정한다 — 환각 카테고리가 백엔드 ENUM에 닿지 못하게 하는 마지막 방어다.
 - 확신도 0.8 미만이면 AI 답을 **쓰지 않는다.** 키워드 규칙이라는 결정적 대체 경로로
   간다. 되물어볼 사람이 없으므로 확신 없는 추측을 확정값으로 쓰면 통계가 조용히 오염된다.
-- 분류 실패는 심사를 막지 않는다 — '기타'로 채우고 진행한다. 카테고리는 안전 문제가
-  아니라 분류 문제라, 이것 때문에 관리자를 부르면 과잉 보류가 된다.
+- 분류 실패는 심사를 막지 않는다 — 이전 확정값이나 키워드 규칙으로 채우고 진행한다.
+  카테고리는 안전 문제가 아니라 분류 문제라, 이것 때문에 관리자를 부르면 과잉 보류가 된다.
+  단 **실패가 확정값을 파괴하지는 않는다** — 아래 except 절 주석 참조 (리뷰 ③).
 
 **값이 채워져 와도 라벨은 AI가 확정한다.** 채워져 오는 값의 대부분은 우리가 지난 심사
 콜백(suggestedCategory)으로 내보낸 것이 재심사 때 되돌아온 에코라 이상 신호가 아니다 —
@@ -108,7 +109,13 @@ async def classify_category(state: ReviewState) -> dict:
             user=f"카테고리 후보(이 중에서만 선택): {', '.join(candidates)}\n\n"
                  f"지출 내용: {text}",
             schema=CategoryPrediction,
-            mock_response=CategoryPrediction(category=classify_by_keywords(text)),
+            # 목 응답도 **키워드 매처**이므로 user_text만 본다 (B-1 후속, 리뷰 ② 지적).
+            # `text`(상호명 포함)를 넘기면 목이 상호를 해석하는 척하게 되는데, 부분 문자열
+            # 매칭에는 그 능력이 없어 이득 없이 오탐만 물려받는다('플라워카페'→식비).
+            # confidence 기본값이 1.0이라 그 답은 고확신으로 통과해 곧장 확정된다.
+            # 목 모드는 골든셋·데모가 도는 모드라, 여기서 굳으면 실모드가 내지 않을 답이
+            # 기대값으로 박힌다(T9 골든셋 재설계가 이 PR 직후라 특히 중요).
+            mock_response=CategoryPrediction(category=classify_by_keywords(user_text)),
             mask_with=state.get("team_members") or [],
             prompt_version=spec.version,
         )
@@ -143,8 +150,15 @@ async def classify_category(state: ReviewState) -> dict:
         else:
             category = pred.category
     except Exception:
-        logger.exception("classify_category failed — '기타'로 폴백")
-        category = fallback_category()
+        # **확정값을 파괴하지 않는다** (리뷰 ③, 2026-08-06). 종전에는 무조건 '기타'로
+        # 떨어져서, 지난 심사에서 확정한 카테고리가 LLM 일시 장애 한 번으로 '기타'가
+        # 되고 그 값이 판례 임베딩·콜백 suggestedCategory로 나갔다 — 되돌릴 경로가 없다.
+        #
+        # 없으면 키워드 규칙으로 간다. 전면 장애는 저확신의 극단이고, 이 파일은 이미
+        # 저확신에서 결정적 규칙으로 폴백한다(위 분기) — 같은 원칙을 여기에도 적용한다.
+        # 키워드도 모르면 classify_by_keywords가 '기타'를 돌려주므로 종전 동작이 하한이다.
+        logger.exception("classify_category failed — 확정값 유지 또는 키워드 폴백")
+        category = incoming or classify_by_keywords(user_text)
 
     if incoming and incoming != category:
         # 사람이 봐야 할 신호만 경고로: 이전 확정값(또는 구화면 입력)과 이번 AI 판단이

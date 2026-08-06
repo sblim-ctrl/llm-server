@@ -285,10 +285,22 @@ Python 3.12 고정, uv로 패키지 관리, docker-compose 3컨테이너.
 ## 2. 현재 상태 (뭐가 되고 뭐가 안 되나)
 
 ### 동작하는 것 (전부 목 모드 E2E 검증 완료)
-- **지출 심사 그래프** (`app/graphs/review/`): load_context → classify_category →
-  intake_receipt → mismatch_gate → [rule/budget/precedent 3-심사관 병렬 fan-out] →
+- **지출 심사 그래프** (`app/graphs/review/`): load_context → intake_receipt →
+  classify_category → mismatch_gate → [rule/budget/precedent 3-심사관 병렬 fan-out] →
   guardrail_gate → adjudicate → execute_decision/escalate → callback → persist_precedent.
   AsyncPostgresSaver 체크포인터로 재시도 시 완료 노드부터 재개.
+  (2026-08-06 T7: 영수증 판독을 분류보다 **앞으로** 옮겼다 — 상호명·품목을 분류 근거로
+  쓰기 위해서다.)
+
+  > ⚠️ **배포 주의 — 워커 배포 전 잡 큐를 비운다 (T8).** `jobs`에서
+  > `status IN ('queued','running')` 인 잡이 0건인지 확인하고 배포할 것. 남은 상태로
+  > 올리면 **구 배선으로 기록된 체크포인트가 신 배선에서 재개**되어 `intake_receipt`를
+  > 건너뛰거나(영수증 없이 심사) 분류기를 두 번 호출할 수 있다. 잡 소요가 수십 초라
+  > 잠깐 기다렸다 올리면 된다.
+  >
+  > 오승인으로 새지는 않는다 — `guardrail_gate`가 `receipt_parse_ok=False`면
+  > `receipt_unreadable`로 무조건 escalate시키므로, 최악은 "영수증 심사를 건너뛴 채
+  > 관리자에게 올라가는 건"이라는 품질 사고다(안전 사고 아님).
 - **판례 학습 루프**: 관리자 결정(`POST /v1/precedents`) → PIIMasker 익명화 → 임베딩 저장 →
   다음 유사 지출에서 PrecedentAuditor가 인용. 반려 판례→escalate 유도, **승인 판례→회칙
   애매(rule_ambiguous)를 상쇄해 자동 승인 유지** 양방향 모두 구현.
