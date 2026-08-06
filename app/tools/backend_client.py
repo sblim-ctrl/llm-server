@@ -6,6 +6,7 @@
 
 import asyncio
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
@@ -374,12 +375,30 @@ async def get_team_members(team_id: int) -> list[dict[str, Any]]:
     return r.json()
 
 
-async def get_policy_document(team_id: int, doc_type: str, version: int) -> str:
-    """회칙·카테고리 원문 조회 — 인덱싱 파이프라인 1단계 (REQ-041, §4.4-a).
+@dataclass(frozen=True)
+class PolicyDocumentSource:
+    """회칙 원본 — **텍스트이거나 파일이거나** 둘 중 하나다 (T2, 회의 4번).
+
+    관리자는 마법사 3단계에서 회칙을 ① 직접 입력하거나 ② PDF·docx로 올릴 수 있다.
+    ①이면 `text`, ②면 `file_bytes`가 채워진다. 어느 쪽인지는 백엔드만 아는 사실이라
+    같은 엔드포인트가 형식만 달리 답하게 두고, 분기를 이 경계에서 흡수한다.
+    """
+
+    text: str | None = None
+    file_bytes: bytes | None = None
+    filename: str | None = None
+
+
+async def get_policy_document(team_id: int, doc_type: str, version: int) -> PolicyDocumentSource:
+    """회칙·카테고리 원본 조회 — 인덱싱 파이프라인 1단계 (REQ-041, §4.4-a).
 
     /v1/context/refresh 이벤트에는 원문이 없고 team_id·변경유형·버전만 오므로,
-    실제 텍스트는 이 함수로 백엔드에 되물어야 한다. 정확한 엔드포인트 경로는
-    풀스택 팀과 아직 미확정(§7.2 목록에 없음) — 확정되면 아래 URL만 교체하면 됨.
+    실제 내용은 이 함수로 백엔드에 되물어야 한다.
+
+    반환은 텍스트일 수도 파일 바이트일 수도 있다(`PolicyDocumentSource`). 파일이면
+    호출부가 `document_parser.extract_text`로 텍스트를 뽑는다 — 파싱을 우리가 맡는
+    이유는 백엔드가 텍스트만 주면 파싱 실패가 "회칙 등록했는데 심사엔 반영 안 됨"이라는
+    조용한 실패로 나타나서다(회신요청 6-3).
     """
     s = get_settings()
     if s.mock_backend:
@@ -388,7 +407,7 @@ async def get_policy_document(team_id: int, doc_type: str, version: int) -> str:
             # 미커버로 rule_ambiguous escalate가 지배적 실패 원인이라 유형 공통
             # 카테고리 조항을 확장 (골든 시나리오 카테고리 커버). 목 골든셋은
             # 회칙 미인덱싱 팀이라 영향 없음(no_rules 경로).
-            return (
+            return PolicyDocumentSource(text=(
                 "제1조 (목적) 이 회칙은 모임 활동비 집행 기준을 정한다.\n\n"
                 "제2조 (회식비 한도) 1인당 회식비는 3만원을 초과할 수 없다.\n\n"
                 "제3조 (금지 항목) 개인 용도 물품 구입은 지출로 인정하지 않는다.\n\n"
@@ -401,14 +420,25 @@ async def get_policy_document(team_id: int, doc_type: str, version: int) -> str:
                 "제10조 (교육·수강) 모임 주제와 관련된 교육·강연·수강료는 인정한다.\n\n"
                 "제11조 (숙박·여행) 모임 공식 일정의 숙박·여행 경비는 인정한다.\n\n"
                 f"(mock rule text, team={team_id}, version={version})"
-            )
-        return f"(mock {doc_type} text, team={team_id}, version={version})"
+            ))
+        return PolicyDocumentSource(
+            text=f"(mock {doc_type} text, team={team_id}, version={version})")
     r = await _client().get(
         f"/internal/agent/teams/{team_id}/policy-document",
         params={"doc_type": doc_type, "version": version},
     )
     r.raise_for_status()
-    return r.json()["text"]
+    # 응답이 JSON이면 텍스트 회칙, 아니면 파일 원본이다 (BE-005 확장 — T2).
+    # **이 분기 덕에 LLM-006 계약도 워커도 안 바뀐다.** 회칙이 파일로 등록된 팀인지
+    # 아닌지는 백엔드만 아는 사실이라, 굳이 refresh 이벤트에 필드를 늘려 프론트·백엔드
+    # 양쪽 계약을 흔들 필요가 없다. 같은 엔드포인트가 형식만 달리 답하면 된다.
+    if "json" in r.headers.get("content-type", ""):
+        return PolicyDocumentSource(text=r.json()["text"])
+    filename = None
+    disposition = r.headers.get("content-disposition", "")
+    if "filename=" in disposition:
+        filename = disposition.split("filename=", 1)[1].strip().strip('"; ') or None
+    return PolicyDocumentSource(file_bytes=r.content, filename=filename)
 
 
 CALLBACK_MAX_ATTEMPTS = 3

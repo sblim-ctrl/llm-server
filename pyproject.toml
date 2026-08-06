@@ -17,6 +17,11 @@ dependencies = [
     "langgraph-checkpoint-postgres>=2.0",
     "langsmith>=0.1.140",
     "mcp>=1.28.1",
+    # 회칙 파일 파싱 (T2) — 마법사 3단계 파일 업로드 회칙을 심사에 반영하는 경로.
+    # 지원 형식은 pdf·docx 둘뿐이다(회의 4번 결정). 둘 다 순수 파이썬이라 시스템
+    # 의존성이 없어 GCP 배포 이미지가 무거워지지 않는다.
+    "pypdf>=5.1",
+    "python-docx>=1.1",
 ]
 
 [dependency-groups]

@@ -8,7 +8,8 @@ split_into_clauses는 순수 함수 — 단위 테스트 대상 (rule_auditor·g
   ③ 빈 줄 문단                — 자유 서식 문서
   ④ 문장 경계 존중 + overlap 고정 분할 — 구분자가 전혀 없는 문서 (최후 폴백)
 
-TODO(3주차+): PDF·이미지 회칙은 Indexer 앞단에 파서 추가 (§12 회칙 형식 다양화)
+파일 회칙(PDF·docx)은 앞단 `fetch` 노드가 `document_parser`로 텍스트를 뽑아 넘긴다
+(T2, 회의 4번). 여기 도달할 때는 항상 텍스트다 — 이 모듈은 형식을 모른다.
 """
 import re
 
