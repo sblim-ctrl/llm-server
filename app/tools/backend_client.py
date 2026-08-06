@@ -14,6 +14,7 @@ from urllib.parse import parse_qs, urlsplit
 import httpx
 
 from app.config import get_settings
+from app.tools.category_catalog import all_categories, fallback_category
 
 logger = logging.getLogger(__name__)
 
@@ -99,8 +100,79 @@ async def get_budget_status(team_id: int, category: str | None = None) -> dict[s
     return _normalize_budget(r.json())
 
 
+# 구 카테고리 → 전역 9종. 백엔드에서 읽어오는 값에만 쓴다(내보내는 값은 분류기가 이미 9종).
+#
+# 두 갈래가 섞여 있다. ① 2026-08-04 전역 9종 전환(830f0f7) 전에 우리가 유형별로 쓰던 28종
+# ② 백엔드 구 ENUM 7종 중 사라지는 `행사`·`디자인`. 백엔드 마이그레이션 시점이 미정이라
+# (2026-08-06 회신: "지출 등록·카테고리 변경 작업과 함께") 그때까지 지출 이력에 구 값이
+# 섞여 오는데, 그대로 두면 카테고리별 집계에 9종 밖 버킷이 조용히 생긴다 — 에러가 아니라
+# 리포트·브리핑·대시보드 숫자가 한 칸씩 어긋나는 형태라 눈에 잘 안 띈다.
+#
+# 대응이 애매했던 6건은 팀 결정(2026-08-06): 실습/프로젝트비·홍보/콘텐츠비는 행사_활동,
+# 숙박/여행비는 장소_대관, 인쇄/문구비는 비품, 레저/액티비티비는 행사_활동, 선물/기념비는
+# 기타. 9종에 자리가 없는 것만 기타로 접는다.
+_LEGACY_CATEGORY_ALIASES: dict[str, str] = {
+    # 우리가 쓰던 유형별 28종 (830f0f7 이전 카탈로그)
+    "식대/회식비": "식비",
+    "식비/간식비": "식비",
+    "식비/다과비": "식비",
+    "식비/모임비": "식비",
+    "교통비": "교통",
+    "교통/출장비": "교통",
+    "온라인/구독비": "IT_인프라",
+    "업무도구/소프트웨어비": "IT_인프라",
+    "교육/강연비": "교육",
+    "교육/도서비": "교육",
+    "교재/자료비": "교육",
+    "회의/운영비": "회의",
+    "회의/워크숍비": "회의",
+    "공간/대관비": "장소_대관",
+    "장소/예약비": "장소_대관",
+    "장소/시설비": "장소_대관",
+    "숙박/여행비": "장소_대관",
+    "행사/프로그램비": "행사_활동",
+    "활동/프로그램비": "행사_활동",
+    "대회/참가비": "행사_활동",
+    "레저/액티비티비": "행사_활동",
+    "실습/프로젝트비": "행사_활동",
+    "홍보/콘텐츠비": "행사_활동",
+    "물품/소모품비": "비품",
+    "비품/소모품비": "비품",
+    "장비/용품비": "비품",
+    "인쇄/문구비": "비품",
+    "선물/기념비": "기타",
+    # 백엔드 구 ENUM 중 9종에서 빠지는 2종 (유지 5종은 이름이 같아 손댈 것이 없다)
+    "행사": "행사_활동",
+    "디자인": "기타",
+}
+
+
+def normalize_expense_category(value: Any) -> str:
+    """지출 이력의 category를 전역 9종 중 하나로 접는다.
+
+    이미 9종이면 그대로 두고, 구 값이면 위 대응표로 옮긴다. 둘 다 아니면 `기타`로
+    접되 **경고 로그를 남긴다** — 조용히 접으면 계약이 어긋난 사실 자체가 묻힌다
+    (지출 요청 category가 채워져 올 때와 같은 처리, T7).
+    """
+    if not isinstance(value, str) or not value.strip():
+        return fallback_category()
+    name = value.strip()
+    if name in all_categories():
+        return name
+    mapped = _LEGACY_CATEGORY_ALIASES.get(name)
+    if mapped is not None:
+        return mapped
+    logger.warning("지출 이력에 알 수 없는 카테고리 — 기타로 접는다: %r", name)
+    return fallback_category()
+
+
 async def get_expense_history(team_id: int, **filters: Any) -> list[dict[str, Any]]:
-    """GET {BE}/internal/agent/teams/{id}/expenses — 중복 탐지·리포트 집계용."""
+    """GET {BE}/internal/agent/teams/{id}/expenses — 중복 탐지·리포트 집계용.
+
+    실모드 응답의 `category`는 9종으로 정규화해서 돌려준다(위 `normalize_expense_category`).
+    이 경계에서 접어 두면 이력을 쓰는 네 곳(digest·budget_planner·dashboard·report)이
+    각자 구 값을 신경 쓸 필요가 없다.
+    """
     s = get_settings()
     if s.mock_backend:
         team_key = str(team_id)
@@ -201,7 +273,11 @@ async def get_expense_history(team_id: int, **filters: Any) -> list[dict[str, An
         ]
     r = await _client().get(f"/internal/agent/teams/{team_id}/expenses", params=filters)
     r.raise_for_status()
-    return r.json()
+    rows = r.json()
+    for row in rows:
+        if isinstance(row, dict):
+            row["category"] = normalize_expense_category(row.get("category"))
+    return rows
 
 
 async def approve_expense(expense_id: int, idempotency_key: str, reason: str) -> dict[str, Any]:
@@ -407,22 +483,25 @@ async def get_policy_document(team_id: int, doc_type: str, version: int) -> Poli
             # 미커버로 rule_ambiguous escalate가 지배적 실패 원인이라 유형 공통
             # 카테고리 조항을 확장 (골든 시나리오 카테고리 커버). 목 골든셋은
             # 회칙 미인덱싱 팀이라 영향 없음(no_rules 경로).
-            return PolicyDocumentSource(text=(
-                "제1조 (목적) 이 회칙은 모임 활동비 집행 기준을 정한다.\n\n"
-                "제2조 (회식비 한도) 1인당 회식비는 3만원을 초과할 수 없다.\n\n"
-                "제3조 (금지 항목) 개인 용도 물품 구입은 지출로 인정하지 않는다.\n\n"
-                "제4조 (도서 구입) 스터디 관련 도서는 인당 연 5만원 한도로 인정한다.\n\n"
-                "제5조 (비품·물품) 모임 공동 사용 목적의 비품·물품·장비 구입은 인정한다.\n\n"
-                "제6조 (장소 대관) 모임 활동을 위한 장소 대관료는 인정한다.\n\n"
-                "제7조 (홍보·행사) 모임 홍보물 제작비와 행사 운영 경비는 인정한다.\n\n"
-                "제8조 (다과·간식) 모임 진행 중의 다과·간식 구입은 인정한다.\n\n"
-                "제9조 (교통·이동) 모임 활동 목적의 교통비는 인정한다.\n\n"
-                "제10조 (교육·수강) 모임 주제와 관련된 교육·강연·수강료는 인정한다.\n\n"
-                "제11조 (숙박·여행) 모임 공식 일정의 숙박·여행 경비는 인정한다.\n\n"
-                f"(mock rule text, team={team_id}, version={version})"
-            ))
+            return PolicyDocumentSource(
+                text=(
+                    "제1조 (목적) 이 회칙은 모임 활동비 집행 기준을 정한다.\n\n"
+                    "제2조 (회식비 한도) 1인당 회식비는 3만원을 초과할 수 없다.\n\n"
+                    "제3조 (금지 항목) 개인 용도 물품 구입은 지출로 인정하지 않는다.\n\n"
+                    "제4조 (도서 구입) 스터디 관련 도서는 인당 연 5만원 한도로 인정한다.\n\n"
+                    "제5조 (비품·물품) 모임 공동 사용 목적의 비품·물품·장비 구입은 인정한다.\n\n"
+                    "제6조 (장소 대관) 모임 활동을 위한 장소 대관료는 인정한다.\n\n"
+                    "제7조 (홍보·행사) 모임 홍보물 제작비와 행사 운영 경비는 인정한다.\n\n"
+                    "제8조 (다과·간식) 모임 진행 중의 다과·간식 구입은 인정한다.\n\n"
+                    "제9조 (교통·이동) 모임 활동 목적의 교통비는 인정한다.\n\n"
+                    "제10조 (교육·수강) 모임 주제와 관련된 교육·강연·수강료는 인정한다.\n\n"
+                    "제11조 (숙박·여행) 모임 공식 일정의 숙박·여행 경비는 인정한다.\n\n"
+                    f"(mock rule text, team={team_id}, version={version})"
+                )
+            )
         return PolicyDocumentSource(
-            text=f"(mock {doc_type} text, team={team_id}, version={version})")
+            text=f"(mock {doc_type} text, team={team_id}, version={version})"
+        )
     r = await _client().get(
         f"/internal/agent/teams/{team_id}/policy-document",
         params={"doc_type": doc_type, "version": version},
