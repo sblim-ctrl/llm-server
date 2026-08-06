@@ -35,7 +35,7 @@ from app.graphs.review.state import ReviewState
 from app.llm.client import chat_structured
 from app.llm.prompts import load_prompt
 from app.tools.category_catalog import (
-    all_categories, classify_by_keywords, fallback_category,
+    all_categories, classify_by_keywords, fallback_category, keyword_category_or_none,
 )
 
 logger = logging.getLogger(__name__)
@@ -79,7 +79,17 @@ async def classify_category(state: ReviewState) -> dict:
             "AI 분류로 덮는다 (받은 값: %r, expense=%s)",
             claim.category, state.get("expense_id"),
         )
-    text = f"{claim.title} {claim.description}"
+    # 영수증에서 읽은 **상호명·품목을 분류 근거에 넣는다** (2026-08-06).
+    # 사용자 카테고리 입력이 사라진 뒤 제목이 "6월 모임"·"물품"처럼 엉성하게 오는 것이
+    # 실측으로 확인됐다. 상호("○○펜션")·품목이 제목보다 강한 단서인 경우가 많다.
+    # 영수증이 없거나 판독 실패면 종전과 같이 제목·설명만으로 분류한다(fail-open).
+    receipt = state.get("receipt_data")
+    hints = []
+    if receipt is not None and receipt.parse_ok:
+        if receipt.merchant:
+            hints.append(receipt.merchant)
+        hints.extend(receipt.items or [])
+    text = " ".join([claim.title, claim.description, *hints]).strip()
 
     llm_meta = {}
     try:
@@ -95,6 +105,7 @@ async def classify_category(state: ReviewState) -> dict:
             prompt_version=spec.version,
         )
         llm_meta = {"classifier": meta}
+        fallback = fallback_category()
         if pred.category not in candidates:
             # 환각 카테고리 — 코드가 키워드 규칙으로 교정한다
             logger.warning("classifier가 후보 밖 값을 냈다: %r — 키워드로 교정", pred.category)
@@ -105,6 +116,20 @@ async def classify_category(state: ReviewState) -> dict:
             category = classify_by_keywords(text)
             logger.info("classifier 저확신(%.2f) — 키워드 폴백: %s → %s",
                         pred.confidence, pred.category, category)
+        elif pred.category == fallback and (kw := keyword_category_or_none(text)):
+            # **'기타'는 확신도와 무관하게 키워드에게 한 번 더 묻는다 (2026-08-06 실측 발견).**
+            #
+            # 저확신 폴백만으로는 안 걸리는 구멍이 있었다. '기타'가 카탈로그의 정식
+            # 후보라서, 모델은 모를 때 "모르겠다"(저확신) 대신 **"기타"라고 확신 있게**
+            # 답한다. 엉성한 제목 20건 실측에서 11건이 기타로 갔고, 그중 `대관료`·
+            # `비품 구매`처럼 **카탈로그에 키워드가 버젓이 있는 것들**까지 기타가 됐다.
+            # 확신도가 0.85라 폴백 문턱(0.8)을 넘어 키워드는 볼 기회조차 없었다.
+            #
+            # 그래서 '기타'를 "분류 결과"가 아니라 "모르겠다는 신호"로 취급한다. 키워드가
+            # 아는 것이 있으면 그것을 쓰고, 키워드도 모르면 그때 비로소 기타로 남긴다.
+            # 키워드에서 '구입'처럼 아무 데나 붙는 낱말을 걷어냈기에 이 위임이 안전하다.
+            category = kw
+            logger.info("classifier가 '기타'로 답했으나 키워드가 안다 — %s로 교정", kw)
         else:
             category = pred.category
     except Exception:

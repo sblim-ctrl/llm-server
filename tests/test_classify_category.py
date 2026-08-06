@@ -233,3 +233,58 @@ def test_prompt_few_shot_anchors_low_confidence():
                    for s in load_prompt("classifier").few_shot]
     assert any(c < 0.8 for c in confidences), "저확신 예시가 없다"
     assert any(c >= 0.9 for c in confidences), "고확신 예시가 없다"
+
+
+# ── '기타' 재질의 · OCR 단서 (2026-08-06 실측 발견) ───────────────────────
+
+async def test_etc_answer_is_rechecked_against_keywords():
+    """모델이 '기타'라고 **확신 있게** 답해도 키워드에게 한 번 더 묻는다.
+
+    저확신 폴백만으로는 안 걸리는 구멍이었다. '기타'가 카탈로그의 정식 후보라서,
+    모델은 모를 때 저확신 대신 "기타"를 확신 있게 고른다. 엉성한 제목 20건 실측에서
+    11건이 기타로 갔고 `대관료`·`비품 구매`처럼 **카탈로그에 키워드가 버젓이 있는
+    것들**까지 기타가 됐다(확신도 0.85라 폴백 문턱 0.8을 넘어 키워드를 볼 기회조차 없음).
+    """
+    state = {"claim": ExpenseClaim(title="대관료", amount=50_000, category="",
+                                   date="2026-07-10", description="")}
+    result = await classify_category(state)
+    assert result["claim"].category == "장소_대관", "키워드가 아는 것을 기타로 두면 안 된다"
+
+
+async def test_etc_stays_when_keywords_also_dont_know():
+    """키워드도 모르면 그때는 기타로 남긴다 — 억지로 8종에 밀어 넣지 않는다."""
+    state = {"claim": ExpenseClaim(title="기타 잡비", amount=10_000, category="",
+                                   date="2026-07-10", description="")}
+    result = await classify_category(state)
+    assert result["claim"].category == "기타"
+
+
+async def test_receipt_merchant_is_used_as_classification_hint():
+    """영수증 상호명이 분류 근거에 들어간다 — 제목만으로는 못 맞히는 지출을 살린다.
+
+    사용자 카테고리 입력이 사라진 뒤 제목이 "6월 모임"처럼 엉성하게 오는 것이 실측으로
+    확인됐다. 실모드 8건에서 상호명 덕에 5건이 기타를 벗어났다.
+    """
+    from app.schemas.common import ReceiptData
+
+    claim = ExpenseClaim(title="6월 모임", amount=90_000, category="",
+                         date="2026-07-10", description="")
+    without = await classify_category({"claim": claim, "expense_id": 1})
+    with_receipt = await classify_category({
+        "claim": claim, "expense_id": 1,
+        "receipt_data": ReceiptData(amount=90_000, date="2026-07-10",
+                                    merchant="가평 솔밭펜션", items=[], parse_ok=True),
+    })
+    assert without["claim"].category == "기타", "제목만으로는 분류 불가한 케이스여야 의미가 있다"
+    assert with_receipt["claim"].category == "장소_대관"
+
+
+async def test_unreadable_receipt_does_not_break_classification():
+    """영수증 판독 실패면 제목·설명만으로 분류한다 (fail-open) — 심사를 막지 않는다."""
+    from app.schemas.common import ReceiptData
+
+    state = {"claim": ExpenseClaim(title="회식 저녁", amount=40_000, category="",
+                                   date="2026-07-10", description="정기 모임"),
+             "receipt_data": ReceiptData(parse_ok=False, parse_error="판독 불가")}
+    result = await classify_category(state)
+    assert result["claim"].category == "식비"
