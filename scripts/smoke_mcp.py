@@ -37,9 +37,7 @@ async def main() -> None:
             for block in result.content[:2]:
                 print(" ", getattr(block, "text", block)[:120])
 
-            result2 = await session.call_tool(
-                "get_budget_status", {"team_id": 9001, "category": "식비"}
-            )
+            result2 = await session.call_tool("get_budget_status", {"team_id": 9001})
             print("\nget_budget_status:", getattr(result2.content[0], "text", "")[:100])
 
 
