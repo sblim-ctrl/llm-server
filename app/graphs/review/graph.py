@@ -1,6 +1,6 @@
 """지출 심사 그래프 조립 (§4.1 메인 워크플로우).
 
-START → load_context → intake_receipt → mismatch_gate
+START → load_context → intake_receipt → classify_category → mismatch_gate
       ─(불일치)→ escalate
       ─(일치)→ [rule / budget / precedent 병렬] → guardrail_gate
       ─(차단)→ escalate
