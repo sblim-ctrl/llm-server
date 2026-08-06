@@ -46,6 +46,15 @@ async def run_case(case: dict[str, Any]) -> dict[str, Any]:
         all(rule in gate for rule in expected_gate) if expected_gate is not None else None
     )
 
+    # 분류 채점 — 사람이 매긴 정답(expected_category) 대비 AI가 확정한 카테고리.
+    # T7 이후 카테고리는 AI가 유일하게 정하므로(들어온 값은 덮인다) 골든셋의 category를
+    # 입력이 아니라 기대값으로 옮겼고(2026-08-06), 여기서 그것과 대조한다.
+    # **판정 정확도와는 독립된 지표다** — 오분류가 판정을 바꾸지는 않지만 카테고리별
+    # 예산 집계·통계를 조용히 오염시키므로 따로 본다.
+    claim = final_state.get("claim")
+    actual_category = claim.category if claim else None
+    expected_category = case.get("expected_category")
+
     return {
         "id": case["id"],
         "scenario": case.get("scenario", ""),
@@ -56,6 +65,10 @@ async def run_case(case: dict[str, Any]) -> dict[str, Any]:
         "gate": gate,
         "expected_gate": expected_gate or [],
         "trajectory_ok": trajectory_ok,
+        "expected_category": expected_category,
+        "actual_category": actual_category,
+        # 기대값 없는 케이스는 채점 대상에서 제외(None) — 0점으로 깎지 않는다
+        "category_ok": (actual_category == expected_category) if expected_category else None,
     }
 
 
@@ -72,6 +85,18 @@ async def run_golden_set(golden_path: Path | None = None) -> dict[str, Any]:
     traj_cases = [r for r in results if r["trajectory_ok"] is not None]
     traj_correct = sum(1 for r in traj_cases if r["trajectory_ok"])
 
+    # 분류 정확도 — 기대값이 있는 케이스만 분모에 넣는다.
+    # **하드 게이트가 아니다.** 목 모드 분류는 키워드 규칙이라(실LLM 미호출) 여기 숫자는
+    # "키워드 규칙의 정확도"이지 실서비스 품질이 아니다. 게이트로 만들면 실모드에서만
+    # 나올 개선을 목 숫자로 막게 된다 — 임계값은 실모드 측정 후에 정한다.
+    cat_cases = [r for r in results if r["category_ok"] is not None]
+    cat_correct = sum(1 for r in cat_cases if r["category_ok"])
+    cat_misses = [
+        {"id": r["id"], "expected": r["expected_category"], "actual": r["actual_category"]}
+        for r in cat_cases
+        if not r["category_ok"]
+    ]
+
     summary = {
         "version": golden["version"],
         "total": len(results),
@@ -83,6 +108,11 @@ async def run_golden_set(golden_path: Path | None = None) -> dict[str, Any]:
         "trajectory_total": len(traj_cases),
         "trajectory_correct": traj_correct,
         "trajectory_accuracy": (traj_correct / len(traj_cases)) if traj_cases else None,
+        # 분류 정확도 (관측 지표 — passed에 반영하지 않는다, 위 주석 참조)
+        "category_total": len(cat_cases),
+        "category_correct": cat_correct,
+        "category_accuracy": (cat_correct / len(cat_cases)) if cat_cases else None,
+        "category_misses": cat_misses,
         # §4 Sprint 2 — 판정 분포·에스컬레이션 P/R·자동 처리율 (순수 함수 계산)
         "metrics": verdict_metrics(results),
         "passed": not false_approves and accuracy >= ACCURACY_THRESHOLD,
@@ -109,6 +139,9 @@ def export_results_csv(results: list[dict[str, Any]]) -> Path:
                 "expected_gate",
                 "actual_gate",
                 "trajectory_ok",
+                "expected_category",
+                "actual_category",
+                "category_ok",
             ]
         )
         for r in results:
@@ -123,6 +156,9 @@ def export_results_csv(results: list[dict[str, Any]]) -> Path:
                     "|".join(r["expected_gate"]),
                     "|".join(r["gate"]),
                     "" if r["trajectory_ok"] is None else r["trajectory_ok"],
+                    r["expected_category"] or "",
+                    r["actual_category"] or "",
+                    "" if r["category_ok"] is None else r["category_ok"],
                 ]
             )
     return path

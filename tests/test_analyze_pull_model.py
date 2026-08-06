@@ -65,11 +65,16 @@ def test_analyze_request_rejects_old_push_contract():
 
 
 async def test_expense_detail_mock_fixture_lookup():
-    """fixture(9002/90001 = club-approve-001)의 값을 그대로 돌려준다."""
+    """fixture(9002/90001 = club-approve-001)의 값을 그대로 돌려준다.
+
+    category는 **빈 값이 정상**이다 — 심사 전 지출에는 카테고리가 없다는 백엔드 계약
+    (BE-001 등록 시 null)과 같은 모양이고, T7 이후 classify_category가 채운다.
+    사람이 매긴 정답은 골든셋의 expected_category로 옮겼다 (2026-08-06).
+    """
     detail = await get_expense_detail(9002, 90001)
     assert detail["title"] == "동아리 스터디 교재"
     assert detail["amount"] == 32000
-    assert detail["category"] == "교육"
+    assert detail["category"] == "", "심사 전 지출은 카테고리가 비어 있어야 한다"
     assert detail["description"] == "알고리즘 스터디 교재 2권"
 
 

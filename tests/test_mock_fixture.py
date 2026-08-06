@@ -53,19 +53,35 @@ def test_expense_history_categories_are_canonical(history_name):
         assert row["category"] in VALID_CATEGORIES, row
 
 
-def test_expense_categories_are_canonical_or_blank():
-    for expense_id, expense in FIXTURE["expenses"].items():
-        assert expense["category"] in VALID_CATEGORIES, (expense_id, expense["category"])
+def test_expenses_carry_no_category():
+    """심사 전 지출에는 카테고리가 없다 — 백엔드 계약(BE-001 등록 시 null)과 같은 모양.
+
+    2026-08-06까지는 fixture가 category를 실어 보냈는데, T7 이후 classify_category가
+    **어떤 값이 와도 AI 분류로 덮으므로** 그 값은 판정에 쓰이지 않으면서 대조 경고만
+    찍었다(eval 1회에 14건). 사람이 매긴 정답은 골든셋의 expected_category로 옮겼다.
+    """
+    with_category = {
+        eid: e["category"] for eid, e in FIXTURE["expenses"].items() if e.get("category")
+    }
+    assert not with_category, (
+        f"expenses에 category가 남아 있다 — 기대값은 골든셋 expected_category로: {with_category}"
+    )
 
 
-def test_autoclassify_cases_keep_blank_category():
-    """분류기 경로를 태우는 골든 케이스 2건은 category가 비어 있어야 한다."""
-    autoclassify_ids = {c["id"] for c in GOLDEN["cases"] if "autoclassify" in c["id"]}
-    assert len(autoclassify_ids) == 2, autoclassify_ids
-    for case in GOLDEN["cases"]:
-        if case["id"] in autoclassify_ids:
-            expense_id = str(case["input"]["expenseId"])
-            assert FIXTURE["expenses"][expense_id]["category"] == ""
+def test_every_golden_case_has_expected_category():
+    """분류 채점의 분모 — 기대값이 빠진 케이스는 조용히 채점에서 빠진다."""
+    missing = [c["id"] for c in GOLDEN["cases"] if not c.get("expected_category")]
+    assert not missing, missing
+
+
+def test_expected_categories_are_canonical():
+    """기대값이 카탈로그 밖이면 영원히 못 맞히는 케이스가 된다 — 채점이 무의미해진다."""
+    bad = {
+        c["id"]: c["expected_category"]
+        for c in GOLDEN["cases"]
+        if c["expected_category"] not in VALID_CATEGORIES
+    }
+    assert not bad, bad
 
 
 def test_golden_case_ids_resolve_in_fixture():

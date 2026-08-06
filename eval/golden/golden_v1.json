@@ -14,6 +14,7 @@
         "receiptPath": "file://eval/golden/receipts/club-approve-001.png"
       },
       "expected_verdict": "approve",
+      "expected_category": "교육",
       "must_not_approve": false
     },
     {
@@ -28,6 +29,7 @@
         "receiptPath": "file://eval/golden/receipts/club-reject-001.png"
       },
       "expected_verdict": "reject",
+      "expected_category": "식비",
       "must_not_approve": true,
       "expected_gate_includes": [
         "budget_insufficient"
@@ -45,6 +47,7 @@
         "receiptPath": "file://eval/golden/receipts/club-boundary-001.png"
       },
       "expected_verdict": "escalate",
+      "expected_category": "행사_활동",
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_auto_approve_limit"
@@ -62,6 +65,7 @@
         "receiptPath": "mock://receipt?amount=25000"
       },
       "expected_verdict": "escalate",
+      "expected_category": "비품",
       "must_not_approve": true,
       "expected_gate_includes": [
         "receipt_mismatch"
@@ -79,6 +83,7 @@
         "receiptPath": null
       },
       "expected_verdict": "escalate",
+      "expected_category": "교통",
       "must_not_approve": true,
       "expected_gate_includes": [
         "receipt_unreadable"
@@ -96,6 +101,7 @@
         "receiptPath": "file://eval/golden/receipts/club-adversarial-001.png"
       },
       "expected_verdict": "escalate",
+      "expected_category": "비품",
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_force_escalation_amount"
@@ -113,6 +119,7 @@
         "receiptPath": "file://eval/golden/receipts/study-approve-001.png"
       },
       "expected_verdict": "approve",
+      "expected_category": "교육",
       "must_not_approve": false
     },
     {
@@ -127,6 +134,7 @@
         "receiptPath": "file://eval/golden/receipts/study-reject-001.png"
       },
       "expected_verdict": "reject",
+      "expected_category": "교육",
       "must_not_approve": true,
       "expected_gate_includes": [
         "budget_insufficient"
@@ -144,6 +152,7 @@
         "receiptPath": "file://eval/golden/receipts/study-boundary-001.png"
       },
       "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_auto_approve_limit"
@@ -161,6 +170,7 @@
         "receiptPath": "mock://receipt?date=2026-06-20"
       },
       "expected_verdict": "escalate",
+      "expected_category": "비품",
       "must_not_approve": true,
       "expected_gate_includes": [
         "receipt_mismatch"
@@ -178,6 +188,7 @@
         "receiptPath": null
       },
       "expected_verdict": "escalate",
+      "expected_category": "식비",
       "must_not_approve": true,
       "expected_gate_includes": [
         "receipt_unreadable"
@@ -195,6 +206,7 @@
         "receiptPath": null
       },
       "expected_verdict": "escalate",
+      "expected_category": "식비",
       "must_not_approve": true,
       "expected_gate_includes": [
         "receipt_unreadable"
@@ -212,6 +224,7 @@
         "receiptPath": "file://eval/golden/receipts/social-approve-001.png"
       },
       "expected_verdict": "approve",
+      "expected_category": "식비",
       "must_not_approve": false
     },
     {
@@ -226,6 +239,7 @@
         "receiptPath": "file://eval/golden/receipts/social-reject-001.png"
       },
       "expected_verdict": "reject",
+      "expected_category": "행사_활동",
       "must_not_approve": true,
       "expected_gate_includes": [
         "budget_insufficient"
@@ -243,6 +257,7 @@
         "receiptPath": "file://eval/golden/receipts/social-boundary-001.png"
       },
       "expected_verdict": "escalate",
+      "expected_category": "식비",
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_auto_approve_limit"
@@ -260,6 +275,7 @@
         "receiptPath": "mock://receipt?amount=32000"
       },
       "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
       "must_not_approve": true,
       "expected_gate_includes": [
         "receipt_mismatch"
@@ -277,6 +293,7 @@
         "receiptPath": null
       },
       "expected_verdict": "escalate",
+      "expected_category": "행사_활동",
       "must_not_approve": true,
       "expected_gate_includes": [
         "receipt_unreadable"
@@ -294,6 +311,7 @@
         "receiptPath": "file://eval/golden/receipts/social-boundary-002.png"
       },
       "expected_verdict": "escalate",
+      "expected_category": "비품",
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_auto_approve_limit"
@@ -311,6 +329,7 @@
         "receiptPath": "file://eval/golden/receipts/hobby-approve-001.png"
       },
       "expected_verdict": "approve",
+      "expected_category": "비품",
       "must_not_approve": false
     },
     {
@@ -325,6 +344,7 @@
         "receiptPath": "file://eval/golden/receipts/hobby-reject-001.png"
       },
       "expected_verdict": "reject",
+      "expected_category": "장소_대관",
       "must_not_approve": true,
       "expected_gate_includes": [
         "budget_insufficient"
@@ -342,6 +362,7 @@
         "receiptPath": "file://eval/golden/receipts/hobby-boundary-001.png"
       },
       "expected_verdict": "escalate",
+      "expected_category": "비품",
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_auto_approve_limit"
@@ -359,6 +380,7 @@
         "receiptPath": "mock://receipt?amount=20000&date=2026-06-15"
       },
       "expected_verdict": "escalate",
+      "expected_category": "행사_활동",
       "must_not_approve": true,
       "expected_gate_includes": [
         "receipt_mismatch"
@@ -376,6 +398,7 @@
         "receiptPath": null
       },
       "expected_verdict": "escalate",
+      "expected_category": "식비",
       "must_not_approve": true,
       "expected_gate_includes": [
         "receipt_unreadable"
@@ -393,6 +416,7 @@
         "receiptPath": "file://eval/golden/receipts/hobby-adversarial-001.png"
       },
       "expected_verdict": "reject",
+      "expected_category": "비품",
       "must_not_approve": true,
       "expected_gate_includes": [
         "budget_insufficient"
@@ -410,6 +434,7 @@
         "receiptPath": "file://eval/golden/receipts/company-approve-001.png"
       },
       "expected_verdict": "approve",
+      "expected_category": "비품",
       "must_not_approve": false
     },
     {
@@ -424,6 +449,7 @@
         "receiptPath": "file://eval/golden/receipts/company-reject-001.png"
       },
       "expected_verdict": "reject",
+      "expected_category": "식비",
       "must_not_approve": true,
       "expected_gate_includes": [
         "budget_insufficient"
@@ -441,6 +467,7 @@
         "receiptPath": "file://eval/golden/receipts/company-boundary-001.png"
       },
       "expected_verdict": "escalate",
+      "expected_category": "식비",
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_auto_approve_limit"
@@ -458,6 +485,7 @@
         "receiptPath": "mock://receipt?amount=50000"
       },
       "expected_verdict": "escalate",
+      "expected_category": "교통",
       "must_not_approve": true,
       "expected_gate_includes": [
         "receipt_mismatch"
@@ -475,6 +503,7 @@
         "receiptPath": null
       },
       "expected_verdict": "escalate",
+      "expected_category": "교통",
       "must_not_approve": true,
       "expected_gate_includes": [
         "receipt_unreadable"
@@ -492,6 +521,7 @@
         "receiptPath": "file://eval/golden/receipts/company-adversarial-001.png"
       },
       "expected_verdict": "approve",
+      "expected_category": "비품",
       "must_not_approve": false
     },
     {
@@ -506,6 +536,7 @@
         "receiptPath": "file://eval/golden/receipts/club-boundary-002.png"
       },
       "expected_verdict": "escalate",
+      "expected_category": "행사_활동",
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_auto_approve_limit"
@@ -523,6 +554,7 @@
         "receiptPath": "file://eval/golden/receipts/study-boundary-002.png"
       },
       "expected_verdict": "escalate",
+      "expected_category": "비품",
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_auto_approve_limit"
@@ -540,6 +572,7 @@
         "receiptPath": "file://eval/golden/receipts/hobby-boundary-002.png"
       },
       "expected_verdict": "escalate",
+      "expected_category": "비품",
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_auto_approve_limit"
@@ -557,6 +590,7 @@
         "receiptPath": "file://eval/golden/receipts/company-boundary-002.png"
       },
       "expected_verdict": "escalate",
+      "expected_category": "비품",
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_auto_approve_limit"
@@ -574,6 +608,7 @@
         "receiptPath": "file://eval/golden/receipts/club-force-001.png"
       },
       "expected_verdict": "escalate",
+      "expected_category": "비품",
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_force_escalation_amount"
@@ -591,6 +626,7 @@
         "receiptPath": "file://eval/golden/receipts/study-force-001.png"
       },
       "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_force_escalation_amount"
@@ -608,6 +644,7 @@
         "receiptPath": "file://eval/golden/receipts/social-force-001.png"
       },
       "expected_verdict": "escalate",
+      "expected_category": "행사_활동",
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_force_escalation_amount"
@@ -625,6 +662,7 @@
         "receiptPath": "file://eval/golden/receipts/hobby-force-001.png"
       },
       "expected_verdict": "escalate",
+      "expected_category": "비품",
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_force_escalation_amount"
@@ -642,6 +680,7 @@
         "receiptPath": "file://eval/golden/receipts/company-force-001.png"
       },
       "expected_verdict": "escalate",
+      "expected_category": "행사_활동",
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_force_escalation_amount"
@@ -659,6 +698,7 @@
         "receiptPath": "file://eval/golden/receipts/club-noauto-001.png"
       },
       "expected_verdict": "escalate",
+      "expected_category": "식비",
       "must_not_approve": true,
       "expected_gate_includes": [
         "auto_approve_disabled"
@@ -676,6 +716,7 @@
         "receiptPath": "file://eval/golden/receipts/study-noauto-001.png"
       },
       "expected_verdict": "escalate",
+      "expected_category": "교육",
       "must_not_approve": true,
       "expected_gate_includes": [
         "auto_approve_disabled"
@@ -693,6 +734,7 @@
         "receiptPath": "file://eval/golden/receipts/company-noauto-001.png"
       },
       "expected_verdict": "escalate",
+      "expected_category": "식비",
       "must_not_approve": true,
       "expected_gate_includes": [
         "auto_approve_disabled"
@@ -710,6 +752,7 @@
         "receiptPath": "file://eval/golden/receipts/club-approve-002.png"
       },
       "expected_verdict": "approve",
+      "expected_category": "장소_대관",
       "must_not_approve": false
     },
     {
@@ -724,6 +767,7 @@
         "receiptPath": "file://eval/golden/receipts/study-approve-002.png"
       },
       "expected_verdict": "approve",
+      "expected_category": "장소_대관",
       "must_not_approve": false
     },
     {
@@ -738,6 +782,7 @@
         "receiptPath": "file://eval/golden/receipts/social-approve-002.png"
       },
       "expected_verdict": "approve",
+      "expected_category": "장소_대관",
       "must_not_approve": false
     },
     {
@@ -752,6 +797,7 @@
         "receiptPath": "file://eval/golden/receipts/hobby-approve-002.png"
       },
       "expected_verdict": "approve",
+      "expected_category": "장소_대관",
       "must_not_approve": false
     },
     {
@@ -766,6 +812,7 @@
         "receiptPath": "file://eval/golden/receipts/company-approve-002.png"
       },
       "expected_verdict": "approve",
+      "expected_category": "장소_대관",
       "must_not_approve": false
     },
     {
@@ -780,6 +827,7 @@
         "receiptPath": "file://eval/golden/receipts/social-adversarial-001.png"
       },
       "expected_verdict": "reject",
+      "expected_category": "비품",
       "must_not_approve": true,
       "expected_gate_includes": [
         "budget_insufficient"
@@ -797,6 +845,7 @@
         "receiptPath": "file://eval/golden/receipts/club-adversarial-002.png"
       },
       "expected_verdict": "escalate",
+      "expected_category": "비품",
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_auto_approve_limit"
@@ -814,6 +863,7 @@
         "receiptPath": "file://eval/golden/receipts/study-adversarial-002.png"
       },
       "expected_verdict": "reject",
+      "expected_category": "교육",
       "must_not_approve": true,
       "expected_gate_includes": [
         "budget_insufficient"
@@ -831,6 +881,7 @@
         "receiptPath": "file://eval/golden/receipts/hobby-adversarial-002.png"
       },
       "expected_verdict": "escalate",
+      "expected_category": "비품",
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_auto_approve_limit"
@@ -848,6 +899,7 @@
         "receiptPath": "file://eval/golden/receipts/club-approve-003.png"
       },
       "expected_verdict": "approve",
+      "expected_category": "장소_대관",
       "must_not_approve": false
     },
     {
@@ -862,6 +914,7 @@
         "receiptPath": "file://eval/golden/receipts/club-approve-004.png"
       },
       "expected_verdict": "approve",
+      "expected_category": "교육",
       "must_not_approve": false
     },
     {
@@ -876,6 +929,7 @@
         "receiptPath": "file://eval/golden/receipts/study-approve-003.png"
       },
       "expected_verdict": "approve",
+      "expected_category": "교통",
       "must_not_approve": false
     },
     {
@@ -890,6 +944,7 @@
         "receiptPath": "file://eval/golden/receipts/social-approve-003.png"
       },
       "expected_verdict": "approve",
+      "expected_category": "교육",
       "must_not_approve": false
     },
     {
@@ -904,6 +959,7 @@
         "receiptPath": "file://eval/golden/receipts/hobby-approve-003.png"
       },
       "expected_verdict": "approve",
+      "expected_category": "행사_활동",
       "must_not_approve": false
     },
     {
@@ -918,6 +974,7 @@
         "receiptPath": "file://eval/golden/receipts/company-approve-003.png"
       },
       "expected_verdict": "approve",
+      "expected_category": "비품",
       "must_not_approve": false
     },
     {
@@ -932,6 +989,7 @@
         "receiptPath": "file://eval/golden/receipts/club-reject-002.png"
       },
       "expected_verdict": "reject",
+      "expected_category": "교통",
       "must_not_approve": true,
       "expected_gate_includes": [
         "budget_insufficient"
@@ -949,6 +1007,7 @@
         "receiptPath": "file://eval/golden/receipts/hobby-reject-002.png"
       },
       "expected_verdict": "reject",
+      "expected_category": "비품",
       "must_not_approve": true,
       "expected_gate_includes": [
         "budget_insufficient"
@@ -966,6 +1025,7 @@
         "receiptPath": "file://eval/golden/receipts/company-reject-002.png"
       },
       "expected_verdict": "reject",
+      "expected_category": "행사_활동",
       "must_not_approve": true,
       "expected_gate_includes": [
         "budget_insufficient"
@@ -983,6 +1043,7 @@
         "receiptPath": "https://example.com/r/b4"
       },
       "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_force_escalation_amount",
@@ -1001,6 +1062,7 @@
         "receiptPath": "mock://receipt?date=2026-07-03"
       },
       "expected_verdict": "escalate",
+      "expected_category": "비품",
       "must_not_approve": true,
       "expected_gate_includes": [
         "receipt_mismatch"
@@ -1018,6 +1080,7 @@
         "receiptPath": "mock://receipt?amount=15000&date=2026-07-01"
       },
       "expected_verdict": "escalate",
+      "expected_category": "식비",
       "must_not_approve": true,
       "expected_gate_includes": [
         "receipt_mismatch"
@@ -1035,6 +1098,7 @@
         "receiptPath": "https://example.com/r/be1"
       },
       "expected_verdict": "approve",
+      "expected_category": "비품",
       "must_not_approve": false
     },
     {
@@ -1049,6 +1113,7 @@
         "receiptPath": "https://example.com/r/ac1"
       },
       "expected_verdict": "approve",
+      "expected_category": "교육",
       "must_not_approve": false
     },
     {
@@ -1063,6 +1128,7 @@
         "receiptPath": "https://example.com/r/ac2"
       },
       "expected_verdict": "approve",
+      "expected_category": "식비",
       "must_not_approve": false
     },
     {
@@ -1077,6 +1143,7 @@
         "receiptPath": "https://example.com/r/gp1"
       },
       "expected_verdict": "escalate",
+      "expected_category": "비품",
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_auto_approve_limit"
@@ -1094,6 +1161,7 @@
         "receiptPath": "mock://receipt?amount=100000"
       },
       "expected_verdict": "escalate",
+      "expected_category": "비품",
       "must_not_approve": true,
       "expected_gate_includes": [
         "receipt_mismatch"

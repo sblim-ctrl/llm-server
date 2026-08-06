@@ -276,7 +276,10 @@ async def get_expense_detail(organization_id: int, expense_id: int) -> dict[str,
             return {
                 "title": expense["title"],
                 "amount": expense["amount"],
-                "category": expense["category"],
+                # fixture의 expenses에는 category가 없다 — 심사 전 지출은 카테고리가
+                # 정해지지 않은 것이 백엔드 계약이고(BE-001 등록 시 null), 사람이 매긴
+                # 정답은 골든셋의 expected_category로 옮겼다(2026-08-06). 아래 폴백과 같은 값.
+                "category": expense.get("category", ""),
                 "date": expense["date"],
                 "description": expense["description"],
             }

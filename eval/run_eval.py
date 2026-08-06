@@ -61,7 +61,21 @@ async def main() -> int:
               f"P={_pct(p['precision'])} R={_pct(p['recall'])} F1={_pct(p['f1'])}")
     print(f"  → 에스컬레이션 Recall(놓침 없음) = {_pct(m['escalation_recall'])} "
           "(안전 핵심 지표)")
-    print(f"결과 CSV: {summary['csv_path']}")
+
+    # 분류 정확도 — 판정과 독립된 관측 지표. 게이트가 아니다(아래 주석 참조).
+    if summary["category_total"]:
+        print(f"\n분류 정확도: {summary['category_correct']}/{summary['category_total']} "
+              f"= {summary['category_accuracy']:.1%}  (관측 지표 — 게이트 아님)")
+        if summary["category_misses"]:
+            print("  오분류:")
+            for miss in summary["category_misses"]:
+                print(f"    {miss['id']:28s} 기대={miss['expected']:8s} 실제={miss['actual']}")
+        # 목 모드에서는 classify_category가 실LLM을 안 부르고 키워드 규칙으로 답한다 —
+        # 이 숫자는 '키워드 규칙의 정확도'이지 실서비스 분류 품질이 아니다. 실모드
+        # 측정(eval/run_eval_real.py) 후에 임계값을 정하는 것이 맞다.
+        print("  ※ 목 모드 숫자는 키워드 규칙 정확도다 — 실서비스 품질은 실모드에서만 나온다")
+
+    print(f"\n결과 CSV: {summary['csv_path']}")
 
     if summary["false_approve_count"]:
         print("\n!! 오승인 발생 — 절대 머지 불가 케이스:")
