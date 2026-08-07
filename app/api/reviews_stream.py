@@ -13,9 +13,12 @@ POST /v1/reviews/{job_id}/decision 으로 승인/반려를 보내면 **같은 �
 재개**돼 콜백·판례 저장(decided_by='ADMIN')까지 이어간다 — 관리자 결정이 판례로
 학습되는 루프(REQ-042)의 사람 축.
 
-체크포인터는 MemorySaver(프로세스 메모리) — 데모 특성상 서버 재시작 시 진행 중
-스레드는 소멸한다(정식 경로의 Postgres 체크포인터와 별개). 그래프 부수 효과
-(콜백·판례 저장)는 워커 경로와 동일하게 일어난다(목 백엔드에선 무해).
+체크포인터는 워커와 같은 Postgres(AsyncPostgresSaver) — lifespan(main.py)이 수명을
+관리하고 기동 시 init_hitl_graph()로 주입한다. 종전 MemorySaver(프로세스 메모리)는
+`--workers 2`에서 멈춤과 재개가 서로 다른 프로세스에 떨어지면 409가 났고, 서버
+재시작 시 대기 중 심사가 소멸했다 — Postgres 전환으로 둘 다 해소(2026-08-07 팀장
+합의). 그래프 부수 효과(콜백·판례 저장)는 워커 경로와 동일하게 일어난다(목
+백엔드에선 무해).
 
 인증: AuthMiddleware 그대로 적용 — 클라이언트는 EventSource 대신 fetch 스트리밍
 읽기를 써서 Authorization 헤더를 싣는다 (미들웨어 면제 경로 추가 없음).
@@ -31,7 +34,6 @@ from typing import Literal
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse, StreamingResponse
-from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import Command
 from pydantic import BaseModel
 
@@ -43,8 +45,16 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # HITL 데모 전용 그래프 — interrupt 재개에 체크포인터가 필수라 별도 컴파일.
-# (워커의 review_graph와 노드는 동일, 체크포인터만 MemorySaver)
-hitl_graph = build_review_graph(checkpointer=MemorySaver())
+# (워커의 review_graph와 노드는 동일, 체크포인터 인스턴스만 별도)
+# lifespan(main.py)이 AsyncPostgresSaver를 열어 init_hitl_graph()로 채운다 —
+# 체크포인터 연결의 수명이 앱과 같아야 해서 import 시점에 만들 수 없다.
+hitl_graph = None
+
+
+def init_hitl_graph(checkpointer) -> None:
+    """기동 시 1회 — 워커와 같은 Postgres 체크포인터로 HITL 그래프를 컴파일."""
+    global hitl_graph
+    hitl_graph = build_review_graph(checkpointer=checkpointer)
 
 # 그래프 노드 → 화면 표시명 (심사 그래프 13노드, graph.py 배선 순서 기준 —
 # 나열 순서가 화면 단계 목록 순서다. 배선과 어긋나면 test_reviews_stream의
@@ -171,7 +181,7 @@ async def resume_review(job_id: str, req: DecisionRequest):
     if not snap.next:  # 대기 중인 interrupt가 없음 — 모르는 잡이거나 이미 종결
         return JSONResponse(status_code=409, content={
             "detail": f"'{job_id}'는 관리자 결정 대기 상태가 아닙니다 "
-                      "(이미 종결됐거나 서버 재시작으로 소멸)"})
+                      "(이미 종결됐거나 알 수 없는 잡)"})
 
     async def gen():
         team_id = snap.values.get("team_id") or "unknown"

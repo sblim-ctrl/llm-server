@@ -7,6 +7,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import FileResponse
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 from app.api import (
     analyze,
@@ -25,6 +26,7 @@ from app.api import (
     reports,
     reviews_stream,
 )
+from app.config import get_settings
 from app.db.pool import apply_schema, close_pool, open_pool
 from app.mcp_server import mcp_app, mcp_session_manager
 from app.tools.backend_client import close_backend_client
@@ -42,8 +44,14 @@ async def lifespan(app: FastAPI):
     setup_langsmith()  # B3 — PolicyDrafter 동기 호출(§2.2 예외)도 트레이싱 대상
     await open_pool()
     await apply_schema()
-    async with mcp_session_manager():  # MCP Streamable HTTP 세션 (§5.2)
-        yield
+    # HITL 체크포인터 — 워커(worker.py main)와 같은 AsyncPostgresSaver를 앱 수명으로
+    # 연다. 멈춘 심사가 Postgres에 남아 --workers N의 다른 프로세스·재시작 후에도
+    # 재개된다 (reviews_stream 모듈 docstring 참고).
+    async with AsyncPostgresSaver.from_conn_string(get_settings().database_url) as checkpointer:
+        await checkpointer.setup()  # idempotent — checkpoint 테이블 마이그레이션
+        reviews_stream.init_hitl_graph(checkpointer)
+        async with mcp_session_manager():  # MCP Streamable HTTP 세션 (§5.2)
+            yield
     await close_backend_client()  # 공유 httpx 클라이언트 정리
     await close_pool()  # graceful shutdown (§10.2)
 
