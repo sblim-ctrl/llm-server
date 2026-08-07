@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from app.eval_metrics import verdict_metrics
+from app.eval_metrics import category_metrics, score_category, verdict_metrics
 from app.graphs.review.graph import review_graph
 from app.schemas.analyze import AnalyzeRequest
 
@@ -67,8 +67,7 @@ async def run_case(case: dict[str, Any]) -> dict[str, Any]:
         "trajectory_ok": trajectory_ok,
         "expected_category": expected_category,
         "actual_category": actual_category,
-        # 기대값 없는 케이스는 채점 대상에서 제외(None) — 0점으로 깎지 않는다
-        "category_ok": (actual_category == expected_category) if expected_category else None,
+        "category_ok": score_category(actual_category, expected_category),
     }
 
 
@@ -85,13 +84,11 @@ async def run_golden_set(golden_path: Path | None = None) -> dict[str, Any]:
     traj_cases = [r for r in results if r["trajectory_ok"] is not None]
     traj_correct = sum(1 for r in traj_cases if r["trajectory_ok"])
 
-    # 분류 정확도 — 기대값이 있는 케이스만 분모에 넣는다.
-    # **하드 게이트가 아니다.** 목 모드 분류는 키워드 규칙이라(실LLM 미호출) 여기 숫자는
-    # "키워드 규칙의 정확도"이지 실서비스 품질이 아니다. 게이트로 만들면 실모드에서만
-    # 나올 개선을 목 숫자로 막게 된다 — 임계값은 실모드 측정 후에 정한다.
+    # 분류 정확도는 `category_metrics`(순수 함수)가 센다 — 게이트가 아닌 이유는 그쪽
+    # docstring에 있다.
     #
     # **남은 오분류 9건은 부분 문자열 매칭의 구조적 한계다** (2026-08-06 전수 판정).
-    # 어휘를 더 넣어 고칠 수 있는 것은 이미 고쳤고(대여료·티셔츠·강습), 아래는 카탈로그
+    # 어휘를 더 넣어 고칠 수 있는 것은 이미 고쳤고(동아리방·티셔츠·강습), 아래는 카탈로그
     # 순서를 바꾸거나 키워드를 빼야 하는데 둘 다 더 큰 오탐을 만든다:
     #   · 수식어가 본체를 가로챈다 — "워크숍 숙박비"→회의, "지방 출장 숙박비"→교통,
     #     "정기모임 여행 경비"→회의 ('워크숍'·'출장'·'정기모임'을 빼면 진짜 그 지출을 놓친다)
@@ -100,14 +97,6 @@ async def run_golden_set(golden_path: Path | None = None) -> dict[str, Any]:
     #   · 상호·장소 낱말이 끌어간다 — "보드게임 카페"→식비 ('카페'를 빼면 진짜 카페 지출을 놓친다)
     #   · 어휘 자체가 모호하다 — "부서 소모임 비용"→기타 (사람도 제목만으론 애매)
     # 전부 **문맥을 읽는 실모드 LLM이 맞히는 영역**이다. 키워드는 폴백이라는 점을 기억할 것.
-    cat_cases = [r for r in results if r["category_ok"] is not None]
-    cat_correct = sum(1 for r in cat_cases if r["category_ok"])
-    cat_misses = [
-        {"id": r["id"], "expected": r["expected_category"], "actual": r["actual_category"]}
-        for r in cat_cases
-        if not r["category_ok"]
-    ]
-
     summary = {
         "version": golden["version"],
         "total": len(results),
@@ -119,11 +108,8 @@ async def run_golden_set(golden_path: Path | None = None) -> dict[str, Any]:
         "trajectory_total": len(traj_cases),
         "trajectory_correct": traj_correct,
         "trajectory_accuracy": (traj_correct / len(traj_cases)) if traj_cases else None,
-        # 분류 정확도 (관측 지표 — passed에 반영하지 않는다, 위 주석 참조)
-        "category_total": len(cat_cases),
-        "category_correct": cat_correct,
-        "category_accuracy": (cat_correct / len(cat_cases)) if cat_cases else None,
-        "category_misses": cat_misses,
+        # 분류 정확도 (관측 지표 — passed에 반영하지 않는다)
+        **category_metrics(results),
         # §4 Sprint 2 — 판정 분포·에스컬레이션 P/R·자동 처리율 (순수 함수 계산)
         "metrics": verdict_metrics(results),
         "passed": not false_approves and accuracy >= ACCURACY_THRESHOLD,
