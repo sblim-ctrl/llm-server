@@ -526,9 +526,13 @@ function buildReviewPayload(idPrefix) {
 function renderReviewResult(r, rawObj) {
   // 워커 폴링 결과(r.opinions 배열)와 스트리밍 결과(변환 후) 공용 렌더러
   $("rv-badge").innerHTML = verdictBadge(r.verdict, r.confidence);
+  // 분류 출처 — T7(2026-08-06)부터 category_source는 항상 "ai"다. 마법사에서 사용자
+  // 카테고리 입력이 사라져(8/4 회의) AI 분류가 유일한 출처가 됐다(state.py 주석).
+  // 값이 없으면 분류 노드 전에 끝난 심사이므로, 옛 코드처럼 '사용자 입력'으로 단정하지
+  // 않고 출처를 비운다 — 있을 수 없는 출처를 적으면 화면이 사실을 가린다.
   $("rv-category-result").innerHTML = r.category
-    ? `<span class="badge pending">카테고리: ${r.category}
-         ${r.category_source === "ai" ? "· AI 자동 분류" : "· 사용자 입력"}</span>`
+    ? `<span class="badge pending">카테고리: ${r.category}${
+         r.category_source === "ai" ? " · AI 자동 분류" : ""}</span>`
     : "";
   $("rv-opinions").innerHTML = (r.opinions || []).map(op => `
     <div class="op">
