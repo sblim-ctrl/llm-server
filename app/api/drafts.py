@@ -41,7 +41,11 @@ RULE_DRAFT = "rule_draft"
 async def _generate(req: PolicyDraftRequest) -> PolicyDraft:
     state = await policy_draft_graph.ainvoke({"request": req})
     if not state.get("verified"):
-        # 검증 실패한 초안은 절대 반환하지 않는다 (환각 수치 차단)
+        # 검증 실패한 초안은 절대 반환하지 않는다 (환각 수치 차단).
+        # report·briefing·dashboard 등 다른 writer는 검증 실패 시 집계 기반 안전한
+        # 문구로 교체해 verified=false와 함께 돌려주지만, 이 동기 마법사 API는 그
+        # 폴백을 두지 않는다 — 즉시 500으로 실패를 알리고 클라이언트가 재시도하게
+        # 한다(의도된 예외).
         raise HTTPException(status_code=500, detail=f"초안 검증 실패: {state.get('verify_error')}")
     return state["draft"]
 

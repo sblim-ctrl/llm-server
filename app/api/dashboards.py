@@ -4,10 +4,14 @@
 페이지를 열 때 뜨는 요약이라, 폴링하면 화면이 비어 있는 시간이 생긴다.
 `POST /v1/policy-draft`와 같은 결정이다.
 
-응답의 `verified`가 false면 요약문의 수치가 집계와 어긋난다는 뜻이다. 그때는 화면에
-띄우지 마시거나 '확인 필요'로 표시해 주시면 된다 — 대시보드는 관리자가 예산 판단을
-하는 화면이라 틀린 숫자가 그대로 보이는 것이 가장 나쁘다.
+응답의 `verified`가 false면 LLM이 만든 문장이 수치 검증을 통과하지 못해 집계값
+기반의 결정적 문구로 교체됐다는 뜻이다. 이 경우에도 `message`는 항상 안전한 값이므로
+그대로 화면에 띄우시면 된다 — 대시보드는 관리자가 예산 판단을 하는 화면이라 틀린
+숫자가 그대로 보이는 것이 가장 나쁘기 때문에, 화면을 비우거나 경고를 다는 대신 본문을
+안전하게 교체하는 쪽을 택했다. (예외: 동기 초안 생성 API인 `POST /v1/policy-draft`
+계열은 폴백 없이 5xx로 실패를 반환한다.)
 """
+
 from fastapi import APIRouter
 
 from app.graphs.writers.dashboard import dashboard_graph
@@ -16,8 +20,9 @@ from app.schemas.dashboard import DashboardSummaryDoc, DashboardSummaryRequest
 router = APIRouter(prefix="/v1", tags=["dashboard"])
 
 
-@router.post("/dashboard/summary", response_model=DashboardSummaryDoc,
-             summary="대시보드 AI 요약 생성")
+@router.post(
+    "/dashboard/summary", response_model=DashboardSummaryDoc, summary="대시보드 AI 요약 생성"
+)
 async def create_dashboard_summary(req: DashboardSummaryRequest) -> DashboardSummaryDoc:
     """이번 달 지출 집계를 바탕으로 대시보드에 띄울 요약 2~4문장을 만든다.
 
