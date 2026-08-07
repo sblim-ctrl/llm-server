@@ -48,12 +48,18 @@ def _camel(snake: str) -> str:
 
 
 def _euro(word: str) -> str:
-    """'로/으로' 조사 선택 — 받침이 있으면 '으로'. 배포 당일 사람이 읽는 문구다."""
+    """'로/으로' 조사 선택 — 배포 당일 사람이 읽는 문구다.
+
+    받침이 없거나 받침이 `ㄹ`이면 '로', 나머지는 '으로'다. `ㄹ` 예외를 빼면 '물로'를
+    '물으로'라고 쓴다. 지금 9종에는 ㄹ 받침이 없어 닿지 않지만 카탈로그는 바뀌는
+    파일이라 규칙 쪽을 맞춰 둔다.
+    """
     if not word:
         return "로"
     last = word[-1]
     if "가" <= last <= "힣":
-        return "로" if (ord(last) - 0xAC00) % 28 == 0 else "으로"
+        jongseong = (ord(last) - 0xAC00) % 28
+        return "로" if jongseong in (0, 8) else "으로"   # 8 = ㄹ
     return "로"
 
 
@@ -171,13 +177,18 @@ def run_checks(args: argparse.Namespace, client: httpx.Client) -> None:
             # 다만 몇 건이 접히는지는 보여준다: 전부 접히면 마이그레이션 전이라는
             # 뜻이고, 카테고리별 집계가 그만큼 뭉뚱그려진다.
             rows = [r for r in d if isinstance(r, dict)]
+            # 객체가 아닌 행은 셀 수가 없어 빼지만, **뺐다는 사실을 적는다.** 조용히
+            # 빼면 "2건 중 이상 없음"처럼 보여서 형태가 깨진 것 자체가 묻힌다.
+            malformed = len(d) - len(rows)
             graded = [describe_category(r.get("category")) for r in rows]
             outside = [desc for g, desc in graded if g == "warn"]
             blank = sum(1 for g, _ in graded if g == "ok")
             note = f"{len(rows)}건 중 9종 밖 {len(outside)}건 · 빈 값 {blank}건"
+            if malformed:
+                note += f" · 형태가 아닌 행 {malformed}건(집계 제외)"
             if outside:
                 note += f" (예: {outside[0]})"
-            record("DEGRADED", "이력 category 값 분포", not outside, note)
+            record("DEGRADED", "이력 category 값 분포", not outside and not malformed, note)
         else:
             record("DEGRADED", "이력 GET /teams/{id}/expenses", True, "빈 목록 (형태 검사 생략)")
     except Exception as e:  # noqa: BLE001
