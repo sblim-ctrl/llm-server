@@ -170,7 +170,7 @@
     <button data-tab="review" class="active">지출 심사</button>
     <button data-tab="draft">회칙·예산 초안</button>
     <button data-tab="report">정산 리포트</button>
-    <!-- [MVP 제외] budget_planner — 복원 시 아래 버튼 주석 해제 --><!-- <button data-tab="proposal">예산 제안</button> -->
+    <button data-tab="proposal">예산 제안</button>
     <button data-tab="digest">AI 총무 브리핑</button>
     <button data-tab="eval">골든셋 평가</button>
   </nav>
@@ -321,12 +321,11 @@
     </div>
   </section>
 
-  <!-- [MVP 제외] budget_planner — 복원 시 아래 패널 주석 해제 (원본 라벨: ④ 예산 제안 (A-8)) -->
-  <!--
+  <!-- ④ 예산 제안 (A-8) -->
   <section class="panel" id="panel-proposal">
     <div class="card">
       <h2>예산 조정 제안 (BudgetPlanner)</h2>
-      <div class="desc">POST /v1/proposals/budget(잡) → 폴링. 수치 검증(verified)을 통과한 제안만 proposals에 저장되며, 수락/기각이 PATCH로 기록됩니다 (§9 수락률 지표의 기록 경로).</div>
+      <div class="desc">POST /v1/proposals/budget(잡) → 폴링. 산출은 3블록(카테고리 분석·예산 현황 분석·권고)입니다. verified가 false여도 집계로 조립한 안전한 문장으로 교체되어 저장되므로 3블록은 언제나 그대로 띄웁니다. 수락/기각이 PATCH로 기록됩니다 (§9 수락률 지표의 기록 경로).</div>
       <div class="row">
         <div class="field"><label>팀 ID</label><input id="pp-team" type="number" value="9002"></div>
         <div class="field"><label>기간(YYYY-MM, 비우면 당월)</label><input id="pp-period" value="2026-06"></div>
@@ -336,8 +335,18 @@
 
       <div class="result empty" id="pp-result">
         <div id="pp-verified"></div>
-        <p style="margin:10px 0 0;font-size:13px" id="pp-rationale"></p>
-        <ul class="recs" id="pp-adjustments"></ul>
+        <div class="summary-strip" style="margin-top:10px">
+          <div class="stat"><div class="label">사용률</div><div class="value" id="pp-usage">-</div></div>
+          <div class="stat"><div class="label">잔액</div><div class="value" id="pp-remaining">-</div></div>
+          <div class="stat"><div class="label">일평균 소진</div><div class="value" id="pp-burn">-</div></div>
+          <div class="stat"><div class="label">기간말 예상 사용률</div><div class="value" id="pp-projected">-</div></div>
+        </div>
+        <div class="r" style="margin-top:10px"><b>카테고리 분석</b>
+          <p style="margin:6px 0 0;font-size:13px" id="pp-category"></p></div>
+        <div class="r" style="margin-top:10px"><b>예산 현황 분석</b>
+          <p style="margin:6px 0 0;font-size:13px" id="pp-budget-status"></p></div>
+        <div class="r" style="margin-top:10px"><b>권고</b>
+          <p style="margin:6px 0 0;font-size:13px" id="pp-recommendation"></p></div>
         <div class="row" style="margin-top:12px;align-items:center">
           <button class="btn" id="pp-accept">수락</button>
           <button class="btn" id="pp-dismiss">기각</button>
@@ -348,7 +357,6 @@
       </div>
     </div>
   </section>
-  -->
 
   <!-- ⑤ AI 총무 브리핑 (A-8) -->
   <section class="panel" id="panel-digest">
@@ -750,8 +758,7 @@ $("rp-submit").addEventListener("click", async () => {
   }
 });
 
-// [MVP 제외] budget_planner — 복원 시 아래 블록 주석 해제 (원본 라벨: ④ 예산 제안 (A-8))
-/*
+// ── ④ 예산 제안 (A-8) ────────────────────────────────────
 let ppProposalId = null;
 
 $("pp-submit").addEventListener("click", async () => {
@@ -774,14 +781,23 @@ $("pp-submit").addEventListener("click", async () => {
     });
     if (final.status !== "succeeded") throw new Error(`잡 실패: status=${final.status}`);
 
-    const r = final.result;                       // {proposal_id, payload:{figures, adjustments, rationale, verified}}
+    // {proposal_id, payload:{figures, verified, category_analysis, budget_status_analysis, recommendation}}
+    // T4(LLM-016)로 산출이 3블록으로 바뀌었다 — 옛 rationale·adjustments는 더 이상 없다.
+    const r = final.result, p = r.payload, f = p.figures;
     ppProposalId = r.proposal_id;
-    $("pp-status").textContent = "완료";
-    $("pp-verified").innerHTML = r.payload.verified
-      ? `<span class="badge approve">수치 검증 통과 · 저장됨</span>`
-      : `<span class="badge reject">수치 검증 실패 — 저장 안 됨</span>`;
-    $("pp-rationale").textContent = r.payload.rationale;
-    $("pp-adjustments").innerHTML = r.payload.adjustments.map(x => `<li>${x}</li>`).join("");
+    $("pp-status").textContent = `완료 (${f.as_of} 기준 · 기간말 ${f.period_end})`;
+    // verified=false는 "쓸 수 없는 값"이 아니라 본문 수치가 집계와 대조되지 않았다는 뜻이다 —
+    // 그때는 집계로 조립한 안전한 문장으로 교체해 저장하므로 3블록은 그대로 띄운다.
+    $("pp-verified").innerHTML = p.verified
+      ? `<span class="badge approve">수치 검증 통과</span>`
+      : `<span class="badge reject">수치 검증 실패 — 집계로 조립한 문장으로 교체됨</span>`;
+    $("pp-usage").textContent = `${(f.usage_ratio * 100).toFixed(0)}%`;
+    $("pp-remaining").textContent = f.remaining.toLocaleString() + "원";
+    $("pp-burn").textContent = f.daily_burn.toLocaleString() + "원";
+    $("pp-projected").textContent = `${(f.projected_usage_ratio * 100).toFixed(0)}%`;
+    $("pp-category").textContent = p.category_analysis;
+    $("pp-budget-status").textContent = p.budget_status_analysis;
+    $("pp-recommendation").textContent = p.recommendation;
     // 수락/기각은 저장된 제안(proposal_id 존재)에만 가능
     $("pp-accept").disabled = $("pp-dismiss").disabled = !ppProposalId;
     $("pp-raw").textContent = JSON.stringify(final, null, 2);
@@ -814,7 +830,6 @@ async function decideProposal(status) {
 }
 $("pp-accept").addEventListener("click", () => decideProposal("accepted"));
 $("pp-dismiss").addEventListener("click", () => decideProposal("dismissed"));
-*/
 
 // ── ⑤ AI 총무 브리핑 (A-8) ───────────────────────────────
 $("dg-submit").addEventListener("click", async () => {
