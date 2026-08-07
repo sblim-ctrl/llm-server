@@ -58,11 +58,14 @@ async def run_context_refresh_job(job: dict[str, Any]) -> tuple[dict[str, Any], 
         {
             "team_id": req.team_id,
             "doc_type": req.change_type,
-            "version": req.version,
         }
     )
     # 인덱싱 그래프는 llm_meta가 없음 — 계측 대상 아님 → final_state 대신 None
-    return {"status": "indexed", "chunks_indexed": final_state.get("chunks_indexed", 0)}, None
+    return {
+        "status": "indexed",
+        "chunks_indexed": final_state.get("chunks_indexed", 0),
+        "version": final_state.get("version"),
+    }, None
 
 
 async def run_review_job(job: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:

@@ -388,16 +388,15 @@ team_settings.auto_approve_limit = 사용자가 입력한 기준 금액
 POST /v1/context/refresh
 Authorization: Bearer {SERVICE_TOKEN}
 
-{ "team_id": 9001, "change_type": "rule", "version": 2 }
+{ "team_id": 9001, "change_type": "rule" }
 ```
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `team_id` | integer (int64) | O | 0단계 모임 생성 응답의 `teamId`와 같은 값 |
 | `change_type` | string | O | `rule` · `category` · `params` 중 하나. 회칙 등록·수정은 `rule` |
-| `version` | integer | O | 회칙 버전 (`policies.version`) |
 
-원문은 저희가 다시 조회하므로 위 세 값만 보내시면 된다. 202로 접수하고 인덱싱은
+원문은 저희가 다시 조회하므로 위 두 값만 보내시면 된다. 202로 접수하고 인덱싱은
 비동기로 처리한다. 응답의 `job_id`로 `GET /v1/jobs/{job_id}`를 조회하면 그 건의 처리
 결과를 볼 수 있다.
 
@@ -417,7 +416,6 @@ Authorization: Bearer {SERVICE_TOKEN}
 |---|---|---|
 | `indexed` | boolean | `false`면 회칙 기준 심사가 되지 않는다 |
 | `chunk_count` | integer | 인덱싱된 조항 수 |
-| `version` | integer \| null | 반영된 회칙 버전 |
 | `indexed_at` | string \| null | 인덱싱 시각 (ISO8601) |
 
 ```json
@@ -425,7 +423,6 @@ Authorization: Bearer {SERVICE_TOKEN}
   "team_id": 9001,
   "indexed": true,
   "chunk_count": 12,
-  "version": 2,
   "indexed_at": "2026-08-03T10:30:00"
 }
 ```

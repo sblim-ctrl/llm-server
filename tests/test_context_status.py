@@ -4,6 +4,7 @@
 그 상태로 두면 관리자는 마법사에서 회칙을 등록하고 설정 완료까지 눌렀는데 심사는 회칙
 없이 돌아가고 아무도 눈치채지 못한다. 조용한 실패라 더 나쁘다.
 """
+
 from unittest.mock import AsyncMock, patch
 
 from app.api.context import read_context_status
@@ -19,26 +20,25 @@ async def test_no_rules_reports_not_indexed():
         s = await read_context_status(11)
     assert s.indexed is False
     assert s.chunk_count == 0
-    assert s.version is None and s.indexed_at is None
+    assert s.indexed_at is None
 
 
 async def test_indexed_team_reports_counts():
     from datetime import datetime
 
     at = datetime(2026, 8, 3, 10, 30)
-    with patch("app.api.context.get_context_status",
-               new=AsyncMock(return_value=_rows(12, 2, at))):
+    with patch("app.api.context.get_context_status", new=AsyncMock(return_value=_rows(12, 2, at))):
         s = await read_context_status(11)
     assert s.indexed is True
     assert s.chunk_count == 12
-    assert s.version == 2
     assert s.indexed_at.startswith("2026-08-03")
 
 
 async def test_indexed_flag_follows_chunk_count():
     """조항이 하나라도 있으면 indexed다 — 화면이 이 값 하나로 분기할 수 있어야 한다."""
     for count, expected in ((0, False), (1, True), (99, True)):
-        with patch("app.api.context.get_context_status",
-                   new=AsyncMock(return_value=_rows(count, 1))):
+        with patch(
+            "app.api.context.get_context_status", new=AsyncMock(return_value=_rows(count, 1))
+        ):
             s = await read_context_status(11)
         assert s.indexed is expected, f"chunk_count={count}"

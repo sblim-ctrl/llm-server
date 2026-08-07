@@ -120,7 +120,7 @@ GET {receiptPath}   ← 심사 요청에 담겨 온 조회 경로를 그대로 �
 
 ### ⑤ 회칙 원문 조회 (파일 응답 확장 반영 — 2026-08-06)
 ```
-GET /internal/agent/teams/{teamId}/policy-document?doc_type=rule&version={n}
+GET /internal/agent/teams/{teamId}/policy-document?doc_type=rule
 ```
 - 용도: 회칙을 청킹·임베딩해 벡터 인덱스를 만든다(RAG). 회칙 심사관이 이 인덱스를 검색한다
 - 호출 시점: `POST /v1/context/refresh` 이벤트를 받은 직후. 회칙 등록·수정 시 백엔드가

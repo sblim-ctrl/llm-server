@@ -7,6 +7,7 @@ camelCase이므로 이 요청도 camelCase 키로 온다고 가정한다(reviewG
 정확한 키 이름 미확정 — 풀스택 질의요청서 회신 후 alias만 조정하면 됨).
 populate_by_name=True라 내부 도구·테스트의 snake_case 호출도 그대로 동작한다.
 """
+
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
@@ -25,7 +26,7 @@ class AnalyzeRequest(BaseModel):
     # 별도로 external_job_id 컬럼에 매핑 저장한다.
     job_id: str
     expense_id: BigIntId
-    organization_id: BigIntId       # 구 team_id — 내부 상태 키는 team_id를 유지한다
+    organization_id: BigIntId  # 구 team_id — 내부 상태 키는 team_id를 유지한다
     # 심사 목표 자연어 지시문. 받아서 상태·잡 페이로드에 보관만 하고 **판정에는
     # 반영하지 않는다**. 자유 텍스트를 심사관 프롬프트에 넣으면 백엔드를 경유한
     # 프롬프트 인젝션 경로가 된다 — "이 건은 승인하라" 같은 문자열이 그대로 지시가
@@ -41,6 +42,7 @@ class AnalyzeAccepted(BaseModel):
     백엔드는 자기가 발급한 jobId(external_job_id로 echo)로도 GET /v1/jobs/{id} 조회
     가능. 응답 키 형식(camelCase 여부)은 미확정이라 내부 관례(snake_case) 유지.
     """
+
     job_id: str
     external_job_id: str | None = None
     status: JobStatus = "queued"
@@ -57,6 +59,6 @@ class JobStatusResponse(BaseModel):
 
 class ContextRefreshRequest(BaseModel):
     """REQ-041 컨텍스트 갱신 이벤트."""
+
     team_id: BigIntId
     change_type: Literal["rule", "category", "params"]
-    version: int

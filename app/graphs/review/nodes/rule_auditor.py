@@ -11,10 +11,12 @@
 유형별 기본 조항을 근거로 보되 반려는 하지 않는다(_audit_by_default_policy 참조).
 전에는 무조건 pass여서 회칙 축이 통째로 비어 있었다.
 
-목 모드에서도 search_rules는 실제로 호출된다(검색 메커니즘 자체를 검증하기 위해) —
-다만 LLM 판정 자체는 mock_response 고정값. 실패 시에도 예외를 삼키고 error 소견을
-남긴다 — 부분 실패 격리 (§3.2).
+목 모드에서도(회칙이 인덱싱된 팀이면) search_rules는 실제로 호출된다(검색
+메커니즘 자체를 검증하기 위해) — 인덱싱 자체가 없는 팀은 활성 판번호가 없어
+호출 없이 no_rules로 바로 빠진다. LLM 판정 자체는 mock_response 고정값. 실패
+시에도 예외를 삼키고 error 소견을 남긴다 — 부분 실패 격리 (§3.2).
 """
+
 import logging
 
 from pydantic import BaseModel
@@ -38,6 +40,7 @@ RELEVANCE_MAX_DISTANCE = 0.65
 
 class RewrittenQuery(BaseModel):
     """query_rewriter 출력 — 회칙 검색용으로 재작성된 질의 한 줄."""
+
     query: str
 
 
@@ -47,7 +50,8 @@ def _fallback_query(claim: ExpenseClaim) -> str:
 
 
 async def _rewrite_query(
-    claim: ExpenseClaim, members: list[dict],
+    claim: ExpenseClaim,
+    members: list[dict],
 ) -> tuple[str, LLMCallMeta]:
     """CRAG 재작성기 (강의 08-03) — 1차 검색이 빗나간 청구를 규정 어휘 질의로 재작성.
 
@@ -68,7 +72,10 @@ async def _rewrite_query(
 
 
 async def _retrieve_with_correction(
-    team_id: int, claim: ExpenseClaim, version: int, members: list[dict],
+    team_id: int,
+    claim: ExpenseClaim,
+    version: int | None,
+    members: list[dict],
 ) -> tuple[list[dict], str, LLMCallMeta | None]:
     """CRAG 스타일 검색: 채점 → 재작성 재검색. (chunks, grade, rewrite_meta) 반환.
 
@@ -76,6 +83,10 @@ async def _retrieve_with_correction(
            | "no_rules"(인덱스 자체 없음) | "insufficient"(근거 못 찾음)
     rewrite_meta: 재작성 LLM 호출이 있었던 경우만 (비용·버전 계측용, 없으면 None)
     """
+    if version is None:
+        # 회칙이 인덱싱된 적 없는 팀 — search_rules를 부를 필요도 없이 확정.
+        return [], "no_rules", None
+
     primary_query = f"{claim.title} {claim.description}".strip()
     chunks = await search_rules(team_id, primary_query, version)
     if not chunks:
@@ -94,7 +105,9 @@ async def _retrieve_with_correction(
 
 
 async def _audit_by_default_policy(
-    state: ReviewState, claim: ExpenseClaim, members: list[dict],
+    state: ReviewState,
+    claim: ExpenseClaim,
+    members: list[dict],
 ) -> dict:
     """기본 정책 모드 — 회칙 미등록 팀을 유형별 기본 조항으로 본다 (마법사 3단계 건너뛰기).
 
@@ -107,10 +120,15 @@ async def _audit_by_default_policy(
     """
     rules = default_conduct_rules(state.get("team_type") or FALLBACK_TEAM_TYPE)
     if not rules:
-        return {"opinions": {"rule": Opinion(
-            auditor="rule", verdict="pass",
-            summary="이 팀에 인덱싱된 회칙이 없고 적용할 기본 정책 조항도 없음 — 예산·판례 심사로 판정",
-        )}}
+        return {
+            "opinions": {
+                "rule": Opinion(
+                    auditor="rule",
+                    verdict="pass",
+                    summary="이 팀에 인덱싱된 회칙이 없고 적용할 기본 정책 조항도 없음 — 예산·판례 심사로 판정",
+                )
+            }
+        }
 
     evidence_text = "\n".join(f"- {r}" for r in rules)
     spec = load_prompt("default_policy")
@@ -118,12 +136,13 @@ async def _audit_by_default_policy(
         agent="default_policy",
         system=spec.system_with_few_shot(),
         user=f"{claim.model_dump_json()}\n\n"
-             f"기본 정책 조항 (등록된 회칙 아님 — 유형별 기본값):\n{evidence_text}",
+        f"기본 정책 조항 (등록된 회칙 아님 — 유형별 기본값):\n{evidence_text}",
         schema=Opinion,
         mock_response=Opinion(
-            auditor="rule", verdict="pass",
+            auditor="rule",
+            verdict="pass",
             summary=f"'{claim.category}' 지출 — 등록된 회칙이 없어 유형별 기본 정책 기준으로 봤고 "
-                    f"어긋나는 점 없음 (mock)",
+            f"어긋나는 점 없음 (mock)",
             evidence=list(rules),
         ),
         mask_with=members,
@@ -142,7 +161,8 @@ async def rule_auditor(state: ReviewState) -> dict:
     members = state.get("team_members") or []
     try:
         chunks, grade, rewrite_meta = await _retrieve_with_correction(
-            state["team_id"], claim, state["rule_version"], members)
+            state["team_id"], claim, state["rule_version"], members
+        )
         rewrite_llm_meta = {"query_rewriter": rewrite_meta} if rewrite_meta else {}
 
         if grade == "no_rules":
@@ -150,10 +170,16 @@ async def rule_auditor(state: ReviewState) -> dict:
 
         if grade == "insufficient":
             # Self-RAG 원칙: 근거를 못 찾으면 지어내지 않는다 → 해석 애매로 관리자 확인
-            return {"opinions": {"rule": Opinion(
-                auditor="rule", verdict="warn",
-                summary="청구와 관련된 회칙 조항을 찾지 못함 — 해석 애매, 관리자 확인 권고",
-            )}, "llm_meta": rewrite_llm_meta}
+            return {
+                "opinions": {
+                    "rule": Opinion(
+                        auditor="rule",
+                        verdict="warn",
+                        summary="청구와 관련된 회칙 조항을 찾지 못함 — 해석 애매, 관리자 확인 권고",
+                    )
+                },
+                "llm_meta": rewrite_llm_meta,
+            }
 
         evidence_text = "\n".join(f"- {c['text']}" for c in chunks)
         spec = load_prompt("rule_auditor")
@@ -163,7 +189,8 @@ async def rule_auditor(state: ReviewState) -> dict:
             user=f"{claim.model_dump_json()}\n\n관련 회칙 조항 (검증된 근거만):\n{evidence_text}",
             schema=Opinion,
             mock_response=Opinion(
-                auditor="rule", verdict="pass",
+                auditor="rule",
+                verdict="pass",
                 summary=f"'{claim.category}' 카테고리 지출로 회칙상 금지 항목에 해당하지 않음 (mock)",
                 evidence=[c["text"] for c in chunks],
             ),
@@ -171,10 +198,18 @@ async def rule_auditor(state: ReviewState) -> dict:
             prompt_version=spec.version,
         )
         opinion.auditor = "rule"
-        return {"opinions": {"rule": opinion},
-                "llm_meta": {"rule_auditor": meta, **rewrite_llm_meta}}
+        return {
+            "opinions": {"rule": opinion},
+            "llm_meta": {"rule_auditor": meta, **rewrite_llm_meta},
+        }
     except Exception:
         logger.exception("rule_auditor failed")
-        return {"opinions": {"rule": Opinion(
-            auditor="rule", verdict="error", summary="회칙 심사 실패",
-        )}}
+        return {
+            "opinions": {
+                "rule": Opinion(
+                    auditor="rule",
+                    verdict="error",
+                    summary="회칙 심사 실패",
+                )
+            }
+        }
