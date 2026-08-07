@@ -78,7 +78,7 @@ async def test_default_policy_never_rejects():
     async def _fail_opinion(**kwargs):
         return (
             Opinion(auditor="rule", verdict="fail", summary="개인 용도 물품"),
-            LLMCallMeta(model="gpt-4o-mini", mock=True, prompt_version="default_policy/v1"),
+            LLMCallMeta(model="gpt-4o-mini", mock=True, prompt_version="default_policy/v2"),
         )
 
     with patch("app.graphs.review.nodes.rule_auditor.chat_structured", _fail_opinion):
@@ -95,7 +95,7 @@ async def test_default_policy_records_llm_meta():
     out = await _audit_by_default_policy(
         {"team_type": "스터디"}, CLAIM, members=[])
     meta = out["llm_meta"]["default_policy"]
-    assert meta.prompt_version == "default_policy/v1"
+    assert meta.prompt_version == "default_policy/v2"
 
 
 async def test_missing_team_type_does_not_crash():
