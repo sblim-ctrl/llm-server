@@ -198,24 +198,39 @@ def normalize_expense_category(value: Any) -> str:
     return fallback_category()
 
 
+def _in_period(row: dict[str, Any], period: str) -> bool:
+    """`YYYY-MM` 기간에 속하는 행인가. 날짜가 없으면 제외하지 않는다(판단 근거 없음)."""
+    date = row.get("date")
+    return not isinstance(date, str) or date.startswith(period)
+
+
 async def get_expense_history(team_id: int, **filters: Any) -> list[dict[str, Any]]:
     """GET {BE}/internal/agent/teams/{id}/expenses — 중복 탐지·리포트 집계용.
 
     실모드 응답의 `category`는 9종으로 정규화해서 돌려준다(위 `normalize_expense_category`).
     이 경계에서 접어 두면 이력을 쓰는 네 곳(digest·budget_planner·dashboard·report)이
     각자 구 값을 신경 쓸 필요가 없다.
+
+    **`period`는 받은 쪽에서도 한 번 더 거른다.** 명세상 백엔드의 `?period=`는 선택
+    파라미터라(`docs/백엔드_요구_내부API_명세.md` ⑪) 무시하고 전체를 돌려줄 수 있는데,
+    그러면 정산 리포트가 다른 달 지출을 그 달 것으로 집계한다. 목 모드는 아예 필터가
+    없어서 2026-07 리포트가 6월 데이터를 그대로 실어 냈다(2026-08-07 실측).
     """
     s = get_settings()
+    period = filters.get("period")
     if s.mock_backend:
         org = _fixture_org(team_id)
         history_name = org["expense_history"] if org is not None else "default"
-        return _fixture_history(history_name)
-    r = await _client().get(f"/internal/agent/teams/{team_id}/expenses", params=filters)
-    r.raise_for_status()
-    rows = r.json()
-    for row in rows:
-        if isinstance(row, dict):
-            row["category"] = normalize_expense_category(row.get("category"))
+        rows = _fixture_history(history_name)
+    else:
+        r = await _client().get(f"/internal/agent/teams/{team_id}/expenses", params=filters)
+        r.raise_for_status()
+        rows = r.json()
+        for row in rows:
+            if isinstance(row, dict):
+                row["category"] = normalize_expense_category(row.get("category"))
+    if period:
+        rows = [row for row in rows if isinstance(row, dict) and _in_period(row, period)]
     return rows
 
 

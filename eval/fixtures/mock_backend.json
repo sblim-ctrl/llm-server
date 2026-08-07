@@ -1,6 +1,6 @@
 {
   "version": "mock-backend-v1",
-  "description": "MOCK_BACKEND=true 전용 결정적 데이터 (T9). 구 '문자열 ID에 시나리오 인코딩' 규약을 대체한다 — organizationId에 lowbudget/noauto 같은 단서를 넣거나 expenseId를 ?title=&amount=... 쿼리로 확장하던 방식은 폐기됐다. category는 templates/category_catalog.yaml 9종만 사용하고, 빈 문자열은 '분류기를 돌려라'는 신호다(classify_category가 항상 실행되므로 실제 판정에는 영향 없음). fixture에 없는 조직/지출 ID는 app/tools/backend_client.py의 기본값 폴백으로 간다.",
+  "description": "MOCK_BACKEND=true 전용 결정적 데이터 (T9). 구 '문자열 ID에 시나리오 인코딩' 규약을 대체한다 — organizationId에 lowbudget/noauto 같은 단서를 넣거나 expenseId를 ?title=&amount=... 쿼리로 확장하던 방식은 폐기됐다. category는 templates/category_catalog.yaml 9종만 사용하고, 빈 문자열은 '분류기를 돌려라'는 신호다(classify_category가 항상 실행되므로 실제 판정에는 영향 없음). fixture에 없는 조직/지출 ID는 app/tools/backend_client.py의 기본값 폴백으로 간다. v4(2026-08-07): 팀별·월별로 숫자가 갈리도록 이력 2종(may_skewed 2026-05 편중형, two_months 2026-05~06)과 팀 3개(9024·9025·9026 — 예산·한도·이력이 서로 다름)를 덧붙였다. 기존 팀·이력은 그대로 두었다(골든셋 68건이 의존).",
   "organizations": {
     "9002": {
       "label": "golden-club-1",
@@ -177,6 +177,39 @@
         "spent": 118000
       },
       "expense_history": "balanced"
+    },
+    "9024": {
+      "label": "eval-writers-report-may",
+      "team_type": "동아리/학생회",
+      "auto_approve": true,
+      "auto_approve_limit": 50000,
+      "budget": {
+        "total_budget": 500000,
+        "spent": 372000
+      },
+      "expense_history": "may_skewed"
+    },
+    "9025": {
+      "label": "demo-two-months-club",
+      "team_type": "동호회",
+      "auto_approve": true,
+      "auto_approve_limit": 100000,
+      "budget": {
+        "total_budget": 800000,
+        "spent": 395000
+      },
+      "expense_history": "two_months"
+    },
+    "9026": {
+      "label": "demo-tight-budget-study",
+      "team_type": "스터디",
+      "auto_approve": true,
+      "auto_approve_limit": 30000,
+      "budget": {
+        "total_budget": 200000,
+        "spent": 178000
+      },
+      "expense_history": "balanced"
     }
   },
   "expense_histories": {
@@ -266,6 +299,73 @@
         "amount": 60000,
         "category": "회의",
         "date": "2026-06-27",
+        "status": "APPROVED"
+      }
+    ],
+    "may_skewed": [
+      {
+        "title": "동아리 MT 식대",
+        "amount": 250000,
+        "category": "식비",
+        "date": "2026-05-09",
+        "status": "APPROVED"
+      },
+      {
+        "title": "외부 강연 수강료",
+        "amount": 100000,
+        "category": "교육",
+        "date": "2026-05-14",
+        "status": "APPROVED"
+      },
+      {
+        "title": "협업 도구 구독",
+        "amount": 12000,
+        "category": "IT_인프라",
+        "date": "2026-05-20",
+        "status": "APPROVED"
+      },
+      {
+        "title": "사무용품 보충",
+        "amount": 10000,
+        "category": "비품",
+        "date": "2026-05-27",
+        "status": "APPROVED"
+      }
+    ],
+    "two_months": [
+      {
+        "title": "정기 회식",
+        "amount": 80000,
+        "category": "식비",
+        "date": "2026-05-08",
+        "status": "APPROVED"
+      },
+      {
+        "title": "연습실 대관",
+        "amount": 45000,
+        "category": "장소_대관",
+        "date": "2026-05-22",
+        "status": "APPROVED"
+      },
+      {
+        "title": "체육관 대관",
+        "amount": 60000,
+        "category": "장소_대관",
+        "date": "2026-06-05",
+        "status": "APPROVED"
+      },
+      {
+        "title": "대회 참가비",
+        "amount": 120000,
+        "category": "행사_활동",
+        "date": "2026-06-13",
+        "status": "APPROVED"
+      },
+      {
+        "title": "단체 티셔츠 제작",
+        "amount": 90000,
+        "category": "비품",
+        "date": "2026-06-20",
         "status": "APPROVED"
       }
     ]
