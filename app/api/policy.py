@@ -12,7 +12,7 @@
 
 from fastapi import APIRouter
 
-from app.schemas.ids import BigIntId
+from app.schemas.ids import BigIntQuery
 from app.schemas.policy import PolicyParamsStatus
 from app.tools.backend_client import get_team_settings
 from app.tools.policy_params import (
@@ -30,7 +30,7 @@ router = APIRouter(prefix="/v1", tags=["policy"])
     response_model=PolicyParamsStatus,
     summary="마법사 2단계 승인 정책이 심사에 어떻게 적용되는지 조회",
 )
-async def read_policy_params_status(organization_id: BigIntId) -> PolicyParamsStatus:
+async def read_policy_params_status(organization_id: BigIntQuery) -> PolicyParamsStatus:
     """2단계에서 저장한 값이 실제 심사에 어떤 기준으로 적용되는지 돌려준다.
 
     마법사 2단계나 관리자 설정 화면에서 저장 직후 호출해 `summary`를 그대로 보여주면,
