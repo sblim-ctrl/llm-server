@@ -26,7 +26,7 @@ async def test_mock_rewrite_returns_deterministic_template():
 async def test_rewrite_meta_has_prompt_version():
     """재작성 호출도 계측 대상 — prompt_version이 메타에 기록된다."""
     _, meta = await _rewrite_query(CLAIM, members=[])
-    assert meta.prompt_version == "query_rewriter/v1"
+    assert meta.prompt_version == "query_rewriter/v2"
 
 
 def test_empty_query_falls_back():
