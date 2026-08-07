@@ -44,9 +44,22 @@ def _register():
     from app.schemas.common import Opinion, ReceiptData
     from app.schemas.dashboard import DashboardSummary
 
-    for m in (JudgeResult, AdjudicationResult, CategoryPrediction, RewrittenQuery,
-              BriefingText, ProposalText, BudgetMessage, DigestText, ExtraRules, ReportText,
-              AmendmentText, Opinion, ReceiptData, DashboardSummary):
+    for m in (
+        JudgeResult,
+        AdjudicationResult,
+        CategoryPrediction,
+        RewrittenQuery,
+        BriefingText,
+        ProposalText,
+        BudgetMessage,
+        DigestText,
+        ExtraRules,
+        ReportText,
+        AmendmentText,
+        Opinion,
+        ReceiptData,
+        DashboardSummary,
+    ):
         _SCHEMA_REGISTRY[m.__name__] = m
 
 
@@ -56,6 +69,10 @@ _register()
 # 전부 실측으로 승격된 기본 버전이라, 형식을 바꾸면 그 실측 근거가 그대로 적용되지
 # 않는다("실측으로 재현된 개선만 승격"). 예정된 재측정 라운드에서 정리한다.
 # **새로 추가되는 위반은 이 목록에 없으므로 즉시 실패한다** — 그게 이 테스트의 목적이다.
+#
+# report_writer/v3(PR-5, 2026-08-08)은 예외: v2의 카탈로그 라벨만 고친 정합 수정이라
+# few_shot 구조를 v2와 바이트 단위로 동일하게 유지하기로 했다 — 그래서 이 부채도
+# v2 그대로 이어받는다. 새 위반이 아니라 기존 부채의 승계다.
 _MULTILINE_INPUT_DEBT = {
     ("briefing_writer", "v1"), ("briefing_writer", "v2"),
     ("budget_planner", "v1"), ("budget_planner", "v2"),
@@ -65,8 +82,12 @@ _MULTILINE_INPUT_DEBT = {
     # 계보(재측정 라운드)의 몫이다 (DEFAULT_VERSIONS의 dashboard_writer 주석 참조).
     ("dashboard_writer", "v4"),
     ("digest_writer", "v2"),
-    ("judge", "v1"), ("judge", "v2"), ("judge", "v3"),
-    ("report_writer", "v1"), ("report_writer", "v2"),
+    ("judge", "v1"),
+    ("judge", "v2"),
+    ("judge", "v3"),
+    ("report_writer", "v1"),
+    ("report_writer", "v2"),
+    ("report_writer", "v3"),
 }
 
 
@@ -94,8 +115,16 @@ def _cases():
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
         schema = (data.get("output_schema") or "").split("#")[0].strip()
         for i, ex in enumerate(data.get("few_shot") or [], 1):
-            out.append(pytest.param(path.parent.name, path.stem, schema, i, ex,
-                                    id=f"{path.parent.name}/{path.stem}-예시{i}"))
+            out.append(
+                pytest.param(
+                    path.parent.name,
+                    path.stem,
+                    schema,
+                    i,
+                    ex,
+                    id=f"{path.parent.name}/{path.stem}-예시{i}",
+                )
+            )
     return out
 
 
@@ -130,6 +159,7 @@ def test_few_shot_output_covers_required_schema_fields(agent, version, schema, i
     if missing and (agent, version) in _SUPERSEDED_OUTPUT_DEBT:
         # 기본 버전이면 부채 목록에 있어도 봐주지 않는다 — 실제로 쓰이는 계약이므로.
         from app.llm.prompts import DEFAULT_VERSIONS
+
         assert DEFAULT_VERSIONS.get(agent, "v1") != version, (
             f"{agent}/{version}은 기본 버전인데 부채 목록에 있다 — 부채가 아니라 결함이다"
         )
@@ -177,8 +207,13 @@ def test_digest_few_shot_passes_its_verifier():
     for i, ex in enumerate(spec.few_shot, 1):
         fig = DigestFigures(**json.loads(ex["input"].strip()))
         out = json.loads(ex["output"])
-        doc = DigestDoc(figures=fig, summary=out["summary"], highlights=out["highlights"],
-                        advice=out["advice"], verified=False)
+        doc = DigestDoc(
+            figures=fig,
+            summary=out["summary"],
+            highlights=out["highlights"],
+            advice=out["advice"],
+            verified=False,
+        )
         assert verify_digest_pure(doc, fig), (
             f"digest_writer 예시{i}이 자기 검증기에서 폐기된다 — 모범 예시가 불합격이면 "
             f"모델에게 불합격을 가르치게 된다"
