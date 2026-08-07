@@ -1,6 +1,6 @@
 {
   "version": "writers-v1",
-  "description": "문서 생성 에이전트 3종 시나리오 골든셋 (PROGRESS §6-4). 심사 골든셋(golden_v1.json)과 동일 철학 — 목 모드에서 결정적으로 재현 가능해야 한다. report의 team_id는 eval/fixtures/mock_backend.json의 organizations[id].expense_history를 참조한다(9022=none/빈 이력, 9023=balanced/균형 지출, 9021=default/기본 8건 — T9, 옛 noexpense/balanced 문자열 단서는 폐기). briefing은 각 케이스의 precedents를 실행 전 DB에 시드(멱등 — 팀 단위 삭제 후 재삽입, team_id는 BIGINT라 9031~9035 정수 사용— T9). expect 규칙: *_contain=부분 문자열 포함, *_not_contain=미포함, 그 외 키=동등 비교. verified=false는 건수와 무관하게 하드 게이트 실패. v2 보강: pd-desc-two-groups(키워드 2그룹만 겹치는 조합), rp-standard-categories(저활용 카테고리 개별 명시 확인), bf-scattered(에스컬레이션이 여러 카테고리에 분산되어 회칙 갭 없이도 판정 다수인 경우) 3건 추가 — 총 20건. v3(2026-08-06, LLM-005 전면 개정): pd 케이스를 통합 요청 스키마(team_id·force_escalation_amount·rule_source)로 이행, 정책 제안 기대값(auto_approve_limit·force_escalation_amount) 제거, 카테고리 9종 정정, pd-floor→pd-amount-passthrough 재목적화, pd-skip-empty 추가 — 총 21건. v4(2026-08-07): rp-standard-categories가 기본 이력에 다른 period 이름표만 붙인 중복이라 기간 필터 도입으로 드러났다 — 실제 5월 데이터 팀(9024)으로 옮겼다. rp-period-isolates-month 신설: 같은 팀의 다른 달이 섞이지 않는지 본다. 총 22건. v5(2026-08-07): digest·budget_proposal·dashboard 3종을 편입했다(각 2건, 총 28건). 종전에는 policy_draft·report·briefing 3종만 채점해 라이터 7종 중 절반 이상이 출력 품질 그물 밖에 있었다. digest 케이스는 판례에 `date`를 실어 그 주에 심는다.",
+  "description": "문서 생성 에이전트 3종 시나리오 골든셋 (PROGRESS §6-4). 심사 골든셋(golden_v1.json)과 동일 철학 — 목 모드에서 결정적으로 재현 가능해야 한다. report의 team_id는 eval/fixtures/mock_backend.json의 organizations[id].expense_history를 참조한다(9022=none/빈 이력, 9023=balanced/균형 지출, 9021=default/기본 8건 — T9, 옛 noexpense/balanced 문자열 단서는 폐기). briefing은 각 케이스의 precedents를 실행 전 DB에 시드(멱등 — 팀 단위 삭제 후 재삽입, team_id는 BIGINT라 9031~9035 정수 사용— T9). expect 규칙: *_contain=부분 문자열 포함, *_not_contain=미포함, 그 외 키=동등 비교. verified=false는 건수와 무관하게 하드 게이트 실패. v2 보강: pd-desc-two-groups(키워드 2그룹만 겹치는 조합), rp-standard-categories(저활용 카테고리 개별 명시 확인), bf-scattered(에스컬레이션이 여러 카테고리에 분산되어 회칙 갭 없이도 판정 다수인 경우) 3건 추가 — 총 20건. v3(2026-08-06, LLM-005 전면 개정): pd 케이스를 통합 요청 스키마(team_id·force_escalation_amount·rule_source)로 이행, 정책 제안 기대값(auto_approve_limit·force_escalation_amount) 제거, 카테고리 9종 정정, pd-floor→pd-amount-passthrough 재목적화, pd-skip-empty 추가 — 총 21건. v4(2026-08-07): rp-standard-categories가 기본 이력에 다른 period 이름표만 붙인 중복이라 기간 필터 도입으로 드러났다 — 실제 5월 데이터 팀(9024)으로 옮겼다. rp-period-isolates-month 신설: 같은 팀의 다른 달이 섞이지 않는지 본다. 총 22건. v5(2026-08-07): digest·budget_proposal·dashboard 3종을 편입했다(각 2건, 총 28건). 종전에는 policy_draft·report·briefing 3종만 채점해 라이터 7종 중 절반 이상이 출력 품질 그물 밖에 있었다. digest 케이스는 판례에 `date`를 실어 그 주에 심는다. v6(2026-08-07): rule_amendment 편입으로 라이터 7종 전부가 골든셋에 들어왔다(3건, 총 31건). 군집 탐지는 목 해시 임베딩의 '동일 문자열만 distance 0' 성질에 의존하므로(detect_repeated_overrides [C10]) 한 군집이 될 판례는 category·title·amount를 바이트 단위로 같게 심는다(team_id 9041~9043). 개정안 생성 경로가 pgvector <=> 연산자를 포함해 평가에서 처음 실제 DB를 지난다. 임계 미달 정상 종료는 verified가 null로 남아 하드 게이트에 걸리지 않는 것까지 본다.",
   "policy_draft_cases": [
     {
       "id": "pd-club-base",
@@ -791,6 +791,193 @@
       },
       "expect": {
         "verified": true
+      }
+    }
+  ],
+  "rule_amendment_cases": [
+    {
+      "id": "ra-repeated-override",
+      "scenario": "동일 지출('심야 야식 배달' 38,000원)에 관리자 개입 4회 — override 반려 2·override 승인 1·직접 반려 1이 한 군집으로 묶여 개정안 1건이 나온다. 2회뿐인 '심야 택시'와 AGENT 판례는 개정안을 만들지 않는다",
+      "team_id": 9041,
+      "precedents": [
+        {
+          "category": "비품",
+          "title": "마커펜 구입",
+          "amount": 8000,
+          "decision": "approve",
+          "decided_by": "AGENT",
+          "is_override": false
+        },
+        {
+          "category": "식비",
+          "title": "심야 야식 배달",
+          "amount": 38000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "is_override": true,
+          "reason": "운영 시간 외 지출"
+        },
+        {
+          "category": "식비",
+          "title": "심야 야식 배달",
+          "amount": 38000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "is_override": true,
+          "reason": "운영 시간 외 지출"
+        },
+        {
+          "category": "식비",
+          "title": "심야 야식 배달",
+          "amount": 38000,
+          "decision": "approve",
+          "decided_by": "ADMIN",
+          "is_override": true,
+          "reason": "부득이한 야근 — 예외 승인"
+        },
+        {
+          "category": "식비",
+          "title": "심야 야식 배달",
+          "amount": 38000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "is_override": false,
+          "reason": "회칙 근거 없음"
+        },
+        {
+          "category": "교통",
+          "title": "심야 택시 귀가",
+          "amount": 24000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "is_override": true,
+          "reason": "한도 초과"
+        },
+        {
+          "category": "교통",
+          "title": "심야 택시 귀가",
+          "amount": 24000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "is_override": true,
+          "reason": "한도 초과"
+        }
+      ],
+      "expect": {
+        "verified": true,
+        "reason": null,
+        "cluster_counts": [4],
+        "proposals_count": 1,
+        "amendment_contain": [
+          "심야 야식 배달",
+          "4회"
+        ],
+        "amendment_not_contain": [
+          "심야 택시"
+        ],
+        "rationale_contain": [
+          "관리자가 4회 반복 개입"
+        ]
+      }
+    },
+    {
+      "id": "ra-below-threshold",
+      "scenario": "동일 override가 2회뿐 — 임계(3건) 미달이라 개정안 없이 '반복 판례 없음'으로 정상 종료한다 (에러도, 검증 실패도 아니다)",
+      "team_id": 9042,
+      "precedents": [
+        {
+          "category": "식비",
+          "title": "회식 2차",
+          "amount": 55000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "is_override": true,
+          "reason": "한도 초과"
+        },
+        {
+          "category": "식비",
+          "title": "회식 2차",
+          "amount": 55000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "is_override": true,
+          "reason": "한도 초과"
+        },
+        {
+          "category": "비품",
+          "title": "종이컵 구입",
+          "amount": 5000,
+          "decision": "approve",
+          "decided_by": "AGENT",
+          "is_override": false
+        }
+      ],
+      "expect": {
+        "verified": null,
+        "reason": "반복 판례 없음",
+        "cluster_counts": [],
+        "proposals_count": 0
+      }
+    },
+    {
+      "id": "ra-agent-not-signal",
+      "scenario": "AGENT 반려 3회·ADMIN 일반 승인 3회가 각각 동일 지출이어도 개정 신호가 아니다 — 관리자 개입(override 또는 직접 반려)만 군집 대상이다",
+      "team_id": 9043,
+      "precedents": [
+        {
+          "category": "식비",
+          "title": "야근 식대",
+          "amount": 30000,
+          "decision": "reject",
+          "decided_by": "AGENT",
+          "is_override": false
+        },
+        {
+          "category": "식비",
+          "title": "야근 식대",
+          "amount": 30000,
+          "decision": "reject",
+          "decided_by": "AGENT",
+          "is_override": false
+        },
+        {
+          "category": "식비",
+          "title": "야근 식대",
+          "amount": 30000,
+          "decision": "reject",
+          "decided_by": "AGENT",
+          "is_override": false
+        },
+        {
+          "category": "회의",
+          "title": "정기 모임 다과",
+          "amount": 20000,
+          "decision": "approve",
+          "decided_by": "ADMIN",
+          "is_override": false
+        },
+        {
+          "category": "회의",
+          "title": "정기 모임 다과",
+          "amount": 20000,
+          "decision": "approve",
+          "decided_by": "ADMIN",
+          "is_override": false
+        },
+        {
+          "category": "회의",
+          "title": "정기 모임 다과",
+          "amount": 20000,
+          "decision": "approve",
+          "decided_by": "ADMIN",
+          "is_override": false
+        }
+      ],
+      "expect": {
+        "verified": null,
+        "reason": "반복 판례 없음",
+        "cluster_counts": [],
+        "proposals_count": 0
       }
     }
   ]
