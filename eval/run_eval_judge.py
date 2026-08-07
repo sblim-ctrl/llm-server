@@ -50,7 +50,7 @@ async def main() -> int:
         await clean_golden_teams()
         teams = sorted({c["input"]["organizationId"] for c in cases})
         for t in teams:
-            await indexing_graph.ainvoke({"team_id": t, "doc_type": "rule", "version": 1})
+            await indexing_graph.ainvoke({"team_id": t, "doc_type": "rule"})
 
         judged, fails, score_sum, cost = 0, [], 0.0, 0.0
         for case in cases:

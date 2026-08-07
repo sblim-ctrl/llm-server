@@ -83,8 +83,8 @@ async def main() -> None:
             await conn.execute("DELETE FROM precedents WHERE team_id = %s", (TEAM,))
             await conn.execute("DELETE FROM context_chunks WHERE team_id = %s", (TEAM,))
 
-        # 회칙 인덱싱 (v1) — 회칙이 있는 팀이어야 '해석 애매' 시나리오가 성립
-        await indexing_graph.ainvoke({"team_id": TEAM, "doc_type": "rule", "version": 1})
+        # 회칙 인덱싱 (판번호는 upsert가 자동 발급) — 회칙이 있는 팀이어야 '해석 애매' 시나리오가 성립
+        await indexing_graph.ainvoke({"team_id": TEAM, "doc_type": "rule"})
         print(f"팀 '{TEAM}' 회칙 인덱싱 완료. 4주 시뮬레이션 시작\n")
 
         rows = []

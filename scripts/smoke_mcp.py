@@ -31,9 +31,9 @@ async def main() -> None:
             print("툴 목록:", [t.name for t in tools.tools])
 
             result = await session.call_tool(
-                "search_rules", {"team_id": 9001, "query": "회식비 한도", "version": 2}
+                "search_rules", {"team_id": 9001, "query": "회식비 한도"}
             )
-            print("\nsearch_rules(9001, '회식비 한도', v2) 결과:")
+            print("\nsearch_rules(9001, '회식비 한도') 결과:")
             for block in result.content[:2]:
                 print(" ", getattr(block, "text", block)[:120])
 

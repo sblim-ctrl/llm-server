@@ -88,7 +88,7 @@ async def main() -> int:
         )
         await clean_golden_teams()
         for t in teams:
-            await indexing_graph.ainvoke({"team_id": t, "doc_type": "rule", "version": 1})
+            await indexing_graph.ainvoke({"team_id": t, "doc_type": "rule"})
         versions = {a: load_prompt(a).version for a in ("rule_auditor", "adjudicator")}
         print(f"골든 팀 {len(teams)}개 회칙 실인덱싱 완료 — 프롬프트 {versions}")
 

@@ -185,7 +185,7 @@ async def main() -> int:
         # 가드레일이 rule_ambiguous로 전건 보류시킨다 — 회칙 미등록 팀의 정상 동작이라
         # 자동 승인 경로를 보려면 반드시 먼저 넣어야 한다.
         await clean_team()  # 지난 실행 판례 제거 — 없으면 자기 오염이 생긴다
-        await indexing_graph.ainvoke({"team_id": TEAM, "doc_type": "rule", "version": 1})
+        await indexing_graph.ainvoke({"team_id": TEAM, "doc_type": "rule"})
         print(f"판례 정리 + 회칙 실인덱싱 완료 (team={TEAM})\n")
 
         print(f"실모드 심사 스모크 {len(SCENARIOS)}건 — 실제 LLM 호출\n")

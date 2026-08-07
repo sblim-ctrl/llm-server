@@ -118,7 +118,7 @@ async def main() -> int:
         teams = sorted({c["input"]["organizationId"] for c in cases})
         await clean_golden_teams()
         for t in teams:
-            await indexing_graph.ainvoke({"team_id": t, "doc_type": "rule", "version": 1})
+            await indexing_graph.ainvoke({"team_id": t, "doc_type": "rule"})
         print(f"골든 팀 {len(teams)}개 회칙 실인덱싱 완료 — 실행 시작\n")
 
         rows, correct, false_appr, cost_total = [], 0, [], 0.0

@@ -147,7 +147,7 @@ def run_checks(args: argparse.Namespace, client: httpx.Client) -> None:
     try:
         r = client.get(
             f"/internal/agent/teams/{tid}/policy-document",
-            params={"doc_type": "rule", "version": 1},
+            params={"doc_type": "rule"},
         )
         if r.status_code == 404:
             record(
