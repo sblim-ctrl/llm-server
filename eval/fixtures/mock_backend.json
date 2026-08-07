@@ -1,6 +1,6 @@
 {
   "version": "mock-backend-v1",
-  "description": "MOCK_BACKEND=true 전용 결정적 데이터 (T9). 구 '문자열 ID에 시나리오 인코딩' 규약을 대체한다 — organizationId에 lowbudget/noauto 같은 단서를 넣거나 expenseId를 ?title=&amount=... 쿼리로 확장하던 방식은 폐기됐다. category는 templates/category_catalog.yaml 9종만 사용하고, 빈 문자열은 '분류기를 돌려라'는 신호다(classify_category가 항상 실행되므로 실제 판정에는 영향 없음). fixture에 없는 조직/지출 ID는 app/tools/backend_client.py의 기본값 폴백으로 간다. v4(2026-08-07): 팀별·월별로 숫자가 갈리도록 이력 2종(may_skewed 2026-05 편중형, two_months 2026-05~06)과 팀 3개(9024·9025·9026 — 예산·한도·이력이 서로 다름)를 덧붙였다. 기존 팀·이력은 그대로 두었다(골든셋 68건이 의존).",
+  "description": "MOCK_BACKEND=true 전용 결정적 데이터 (T9). 구 '문자열 ID에 시나리오 인코딩' 규약을 대체한다 — organizationId에 lowbudget/noauto 같은 단서를 넣거나 expenseId를 ?title=&amount=... 쿼리로 확장하던 방식은 폐기됐다. category는 templates/category_catalog.yaml 9종만 사용하고, 빈 문자열은 '분류기를 돌려라'는 신호다(classify_category가 항상 실행되므로 실제 판정에는 영향 없음). fixture에 없는 조직/지출 ID는 app/tools/backend_client.py의 기본값 폴백으로 간다. v4(2026-08-07): 팀별·월별로 숫자가 갈리도록 이력 2종(may_skewed 2026-05 편중형, two_months 2026-05~06)과 팀 3개(9024·9025·9026 — 예산·한도·이력이 서로 다름)를 덧붙였다. 기존 팀·이력은 그대로 두었다(골든셋 68건이 의존). v5(2026-08-07): 팀별 고유 이력으로 분리하고 팀마다 3~5개월치를 채웠다 — 종전에는 14개 팀이 `default` 하나를 공유해 팀·달을 바꿔도 숫자가 같았다. 금액은 팀·달·항목 지수로 만들어 전부 다르고 결정적이다. 골든 케이스가 못박은 (이력, 월)에는 한 줄도 더하지 않았고, 심사 골든셋이 쓰는 팀의 budget·settings도 그대로다.",
   "organizations": {
     "9002": {
       "label": "golden-club-1",
@@ -11,7 +11,7 @@
         "total_budget": 300000,
         "spent": 118000
       },
-      "expense_history": "default"
+      "expense_history": "team_9002"
     },
     "9003": {
       "label": "golden-study-1",
@@ -22,7 +22,7 @@
         "total_budget": 300000,
         "spent": 118000
       },
-      "expense_history": "default"
+      "expense_history": "team_9003"
     },
     "9004": {
       "label": "golden-social-1",
@@ -33,7 +33,7 @@
         "total_budget": 300000,
         "spent": 118000
       },
-      "expense_history": "default"
+      "expense_history": "team_9004"
     },
     "9005": {
       "label": "golden-hobby-1",
@@ -44,7 +44,7 @@
         "total_budget": 300000,
         "spent": 118000
       },
-      "expense_history": "default"
+      "expense_history": "team_9005"
     },
     "9006": {
       "label": "golden-company-1",
@@ -55,7 +55,7 @@
         "total_budget": 300000,
         "spent": 118000
       },
-      "expense_history": "default"
+      "expense_history": "team_9006"
     },
     "9007": {
       "label": "golden-club-lowbudget",
@@ -66,7 +66,7 @@
         "total_budget": 20000,
         "spent": 19000
       },
-      "expense_history": "default"
+      "expense_history": "team_9007"
     },
     "9008": {
       "label": "golden-study-lowbudget",
@@ -77,7 +77,7 @@
         "total_budget": 20000,
         "spent": 19000
       },
-      "expense_history": "default"
+      "expense_history": "team_9008"
     },
     "9009": {
       "label": "golden-social-lowbudget",
@@ -88,7 +88,7 @@
         "total_budget": 20000,
         "spent": 19000
       },
-      "expense_history": "default"
+      "expense_history": "team_9009"
     },
     "9010": {
       "label": "golden-hobby-lowbudget",
@@ -99,7 +99,7 @@
         "total_budget": 20000,
         "spent": 19000
       },
-      "expense_history": "default"
+      "expense_history": "team_9010"
     },
     "9011": {
       "label": "golden-company-lowbudget",
@@ -110,7 +110,7 @@
         "total_budget": 20000,
         "spent": 19000
       },
-      "expense_history": "default"
+      "expense_history": "team_9011"
     },
     "9012": {
       "label": "golden-club-noauto",
@@ -121,7 +121,7 @@
         "total_budget": 300000,
         "spent": 118000
       },
-      "expense_history": "default"
+      "expense_history": "team_9012"
     },
     "9013": {
       "label": "golden-study-noauto",
@@ -132,7 +132,7 @@
         "total_budget": 300000,
         "spent": 118000
       },
-      "expense_history": "default"
+      "expense_history": "team_9013"
     },
     "9014": {
       "label": "golden-company-noauto",
@@ -143,7 +143,7 @@
         "total_budget": 300000,
         "spent": 118000
       },
-      "expense_history": "default"
+      "expense_history": "team_9014"
     },
     "9021": {
       "label": "eval-writers-report-club",
@@ -209,12 +209,51 @@
         "total_budget": 200000,
         "spent": 178000
       },
-      "expense_history": "balanced"
+      "expense_history": "tight_study"
+    },
+    "9001": {
+      "label": "demo-team-9001",
+      "team_type": "동아리/학생회",
+      "auto_approve": true,
+      "auto_approve_limit": 50000,
+      "budget": {
+        "total_budget": 3500000,
+        "spent": 1144000
+      },
+      "expense_history": "team_9001"
     }
   },
   "expense_histories": {
     "none": [],
     "default": [
+      {
+        "title": "외부 특강 수강료",
+        "amount": 70800,
+        "category": "교육",
+        "date": "2026-05-05",
+        "status": "APPROVED"
+      },
+      {
+        "title": "정기 공연 준비",
+        "amount": 114500,
+        "category": "행사_활동",
+        "date": "2026-05-10",
+        "status": "APPROVED"
+      },
+      {
+        "title": "야간 작업 야식",
+        "amount": 65200,
+        "category": "식비",
+        "date": "2026-05-15",
+        "status": "APPROVED"
+      },
+      {
+        "title": "스터디 간식",
+        "amount": 54100,
+        "category": "식비",
+        "date": "2026-05-24",
+        "status": "APPROVED"
+      },
       {
         "title": "정기 회식",
         "amount": 84000,
@@ -270,9 +309,93 @@
         "category": "식비",
         "date": "2026-06-28",
         "status": "APPROVED"
+      },
+      {
+        "title": "대회 원정 교통비",
+        "amount": 58200,
+        "category": "교통",
+        "date": "2026-07-03",
+        "status": "APPROVED"
+      },
+      {
+        "title": "라켓·셔틀콕",
+        "amount": 56400,
+        "category": "비품",
+        "date": "2026-07-07",
+        "status": "APPROVED"
+      },
+      {
+        "title": "외부 강연 이동",
+        "amount": 47100,
+        "category": "교통",
+        "date": "2026-07-12",
+        "status": "APPROVED"
+      },
+      {
+        "title": "간담회 진행비",
+        "amount": 58800,
+        "category": "회의",
+        "date": "2026-07-17",
+        "status": "APPROVED"
+      },
+      {
+        "title": "공용 삼각대",
+        "amount": 67500,
+        "category": "비품",
+        "date": "2026-07-22",
+        "status": "APPROVED"
+      },
+      {
+        "title": "간담회 진행비",
+        "amount": 47700,
+        "category": "회의",
+        "date": "2026-07-26",
+        "status": "APPROVED"
       }
     ],
     "balanced": [
+      {
+        "title": "온라인 강의 수강",
+        "amount": 87800,
+        "category": "교육",
+        "date": "2026-04-03",
+        "status": "APPROVED"
+      },
+      {
+        "title": "야간 작업 야식",
+        "amount": 60000,
+        "category": "식비",
+        "date": "2026-04-07",
+        "status": "APPROVED"
+      },
+      {
+        "title": "전공 서적 구입",
+        "amount": 76700,
+        "category": "교육",
+        "date": "2026-04-12",
+        "status": "APPROVED"
+      },
+      {
+        "title": "홍보 포스터 제작",
+        "amount": 120400,
+        "category": "행사_활동",
+        "date": "2026-04-17",
+        "status": "APPROVED"
+      },
+      {
+        "title": "총회 다과",
+        "amount": 71100,
+        "category": "식비",
+        "date": "2026-04-22",
+        "status": "APPROVED"
+      },
+      {
+        "title": "정기 공연 준비",
+        "amount": 109300,
+        "category": "행사_활동",
+        "date": "2026-04-26",
+        "status": "APPROVED"
+      },
       {
         "title": "분기 회식",
         "amount": 90000,
@@ -299,6 +422,83 @@
         "amount": 60000,
         "category": "회의",
         "date": "2026-06-27",
+        "status": "APPROVED"
+      },
+      {
+        "title": "외부 특강 수강료",
+        "amount": 76200,
+        "category": "교육",
+        "date": "2026-07-05",
+        "status": "APPROVED"
+      },
+      {
+        "title": "정기 공연 준비",
+        "amount": 119900,
+        "category": "행사_활동",
+        "date": "2026-07-10",
+        "status": "APPROVED"
+      },
+      {
+        "title": "신입 환영회 식대",
+        "amount": 70600,
+        "category": "식비",
+        "date": "2026-07-15",
+        "status": "APPROVED"
+      },
+      {
+        "title": "전공 서적 구입",
+        "amount": 87300,
+        "category": "교육",
+        "date": "2026-07-20",
+        "status": "APPROVED"
+      },
+      {
+        "title": "홍보 포스터 제작",
+        "amount": 131000,
+        "category": "행사_활동",
+        "date": "2026-07-25",
+        "status": "APPROVED"
+      },
+      {
+        "title": "MT 펜션",
+        "amount": 91500,
+        "category": "장소_대관",
+        "date": "2026-08-06",
+        "status": "APPROVED"
+      },
+      {
+        "title": "협업 도구 구독",
+        "amount": 59000,
+        "category": "IT_인프라",
+        "date": "2026-08-07",
+        "status": "APPROVED"
+      },
+      {
+        "title": "택배 발송비",
+        "amount": 41200,
+        "category": "기타",
+        "date": "2026-08-11",
+        "status": "APPROVED"
+      },
+      {
+        "title": "클라우드 사용료",
+        "amount": 47900,
+        "category": "IT_인프라",
+        "date": "2026-08-16",
+        "status": "APPROVED"
+      },
+      {
+        "title": "스터디룸 예약",
+        "amount": 102600,
+        "category": "장소_대관",
+        "date": "2026-08-21",
+        "status": "APPROVED"
+      },
+      {
+        "title": "경조사 화환",
+        "amount": 52300,
+        "category": "기타",
+        "date": "2026-08-26",
         "status": "APPROVED"
       }
     ],
@@ -330,9 +530,135 @@
         "category": "비품",
         "date": "2026-05-27",
         "status": "APPROVED"
+      },
+      {
+        "title": "클라우드 사용료",
+        "amount": 34700,
+        "category": "IT_인프라",
+        "date": "2026-06-04",
+        "status": "APPROVED"
+      },
+      {
+        "title": "스터디룸 예약",
+        "amount": 89400,
+        "category": "장소_대관",
+        "date": "2026-06-09",
+        "status": "APPROVED"
+      },
+      {
+        "title": "경조사 화환",
+        "amount": 39100,
+        "category": "기타",
+        "date": "2026-06-14",
+        "status": "APPROVED"
+      },
+      {
+        "title": "협업 도구 구독",
+        "amount": 45800,
+        "category": "IT_인프라",
+        "date": "2026-06-19",
+        "status": "APPROVED"
+      },
+      {
+        "title": "간담회 진행비",
+        "amount": 51000,
+        "category": "회의",
+        "date": "2026-07-05",
+        "status": "APPROVED"
+      },
+      {
+        "title": "공용 삼각대",
+        "amount": 59700,
+        "category": "비품",
+        "date": "2026-07-10",
+        "status": "APPROVED"
+      },
+      {
+        "title": "대회 원정 교통비",
+        "amount": 50400,
+        "category": "교통",
+        "date": "2026-07-15",
+        "status": "APPROVED"
+      },
+      {
+        "title": "간담회 진행비",
+        "amount": 62100,
+        "category": "회의",
+        "date": "2026-07-20",
+        "status": "APPROVED"
+      },
+      {
+        "title": "단체 티셔츠 제작",
+        "amount": 70800,
+        "category": "비품",
+        "date": "2026-07-25",
+        "status": "APPROVED"
       }
     ],
     "two_months": [
+      {
+        "title": "전공 서적 구입",
+        "amount": 71500,
+        "category": "교육",
+        "date": "2026-03-04",
+        "status": "APPROVED"
+      },
+      {
+        "title": "홍보 포스터 제작",
+        "amount": 115200,
+        "category": "행사_활동",
+        "date": "2026-03-09",
+        "status": "APPROVED"
+      },
+      {
+        "title": "총회 다과",
+        "amount": 65900,
+        "category": "식비",
+        "date": "2026-03-14",
+        "status": "APPROVED"
+      },
+      {
+        "title": "온라인 강의 수강",
+        "amount": 82600,
+        "category": "교육",
+        "date": "2026-03-19",
+        "status": "APPROVED"
+      },
+      {
+        "title": "스터디룸 예약",
+        "amount": 86800,
+        "category": "장소_대관",
+        "date": "2026-04-05",
+        "status": "APPROVED"
+      },
+      {
+        "title": "경조사 화환",
+        "amount": 36500,
+        "category": "기타",
+        "date": "2026-04-10",
+        "status": "APPROVED"
+      },
+      {
+        "title": "협업 도구 구독",
+        "amount": 43200,
+        "category": "IT_인프라",
+        "date": "2026-04-15",
+        "status": "APPROVED"
+      },
+      {
+        "title": "체육관 대관",
+        "amount": 97900,
+        "category": "장소_대관",
+        "date": "2026-04-20",
+        "status": "APPROVED"
+      },
+      {
+        "title": "택배 발송비",
+        "amount": 47600,
+        "category": "기타",
+        "date": "2026-04-25",
+        "status": "APPROVED"
+      },
       {
         "title": "정기 회식",
         "amount": 80000,
@@ -366,6 +692,1954 @@
         "amount": 90000,
         "category": "비품",
         "date": "2026-06-20",
+        "status": "APPROVED"
+      }
+    ],
+    "tight_study": [
+      {
+        "title": "홍보 포스터 제작",
+        "amount": 112600,
+        "category": "행사_활동",
+        "date": "2026-04-05",
+        "status": "APPROVED"
+      },
+      {
+        "title": "총회 다과",
+        "amount": 63300,
+        "category": "식비",
+        "date": "2026-04-10",
+        "status": "APPROVED"
+      },
+      {
+        "title": "온라인 강의 수강",
+        "amount": 80000,
+        "category": "교육",
+        "date": "2026-04-15",
+        "status": "APPROVED"
+      },
+      {
+        "title": "축제 부스 운영",
+        "amount": 123700,
+        "category": "행사_활동",
+        "date": "2026-04-20",
+        "status": "APPROVED"
+      },
+      {
+        "title": "정기 회식",
+        "amount": 74400,
+        "category": "식비",
+        "date": "2026-04-25",
+        "status": "APPROVED"
+      },
+      {
+        "title": "대회 원정 교통비",
+        "amount": 45200,
+        "category": "교통",
+        "date": "2026-06-07",
+        "status": "APPROVED"
+      },
+      {
+        "title": "간담회 진행비",
+        "amount": 56900,
+        "category": "회의",
+        "date": "2026-06-12",
+        "status": "APPROVED"
+      },
+      {
+        "title": "단체 티셔츠 제작",
+        "amount": 65600,
+        "category": "비품",
+        "date": "2026-06-17",
+        "status": "APPROVED"
+      },
+      {
+        "title": "전공 서적 구입",
+        "amount": 79500,
+        "category": "교육",
+        "date": "2026-07-08",
+        "status": "APPROVED"
+      },
+      {
+        "title": "홍보 포스터 제작",
+        "amount": 123200,
+        "category": "행사_활동",
+        "date": "2026-07-13",
+        "status": "APPROVED"
+      },
+      {
+        "title": "스터디 간식",
+        "amount": 73900,
+        "category": "식비",
+        "date": "2026-07-18",
+        "status": "APPROVED"
+      },
+      {
+        "title": "온라인 강의 수강",
+        "amount": 90600,
+        "category": "교육",
+        "date": "2026-07-23",
+        "status": "APPROVED"
+      },
+      {
+        "title": "택배 발송비",
+        "amount": 55600,
+        "category": "기타",
+        "date": "2026-08-05",
+        "status": "APPROVED"
+      },
+      {
+        "title": "스터디룸 예약",
+        "amount": 94800,
+        "category": "장소_대관",
+        "date": "2026-08-09",
+        "status": "APPROVED"
+      },
+      {
+        "title": "경조사 화환",
+        "amount": 44500,
+        "category": "기타",
+        "date": "2026-08-14",
+        "status": "APPROVED"
+      },
+      {
+        "title": "협업 도구 구독",
+        "amount": 51200,
+        "category": "IT_인프라",
+        "date": "2026-08-19",
+        "status": "APPROVED"
+      },
+      {
+        "title": "체육관 대관",
+        "amount": 105900,
+        "category": "장소_대관",
+        "date": "2026-08-24",
+        "status": "APPROVED"
+      }
+    ],
+    "team_9001": [
+      {
+        "title": "전공 서적 구입",
+        "amount": 63800,
+        "category": "교육",
+        "date": "2026-03-04",
+        "status": "APPROVED"
+      },
+      {
+        "title": "홍보 포스터 제작",
+        "amount": 107500,
+        "category": "행사_활동",
+        "date": "2026-03-09",
+        "status": "APPROVED"
+      },
+      {
+        "title": "신입 환영회 식대",
+        "amount": 58200,
+        "category": "식비",
+        "date": "2026-03-14",
+        "status": "APPROVED"
+      },
+      {
+        "title": "온라인 강의 수강",
+        "amount": 74900,
+        "category": "교육",
+        "date": "2026-03-19",
+        "status": "APPROVED"
+      },
+      {
+        "title": "스터디룸 예약",
+        "amount": 79100,
+        "category": "장소_대관",
+        "date": "2026-04-05",
+        "status": "APPROVED"
+      },
+      {
+        "title": "경조사 화환",
+        "amount": 28800,
+        "category": "기타",
+        "date": "2026-04-10",
+        "status": "APPROVED"
+      },
+      {
+        "title": "협업 도구 구독",
+        "amount": 35500,
+        "category": "IT_인프라",
+        "date": "2026-04-15",
+        "status": "APPROVED"
+      },
+      {
+        "title": "체육관 대관",
+        "amount": 90200,
+        "category": "장소_대관",
+        "date": "2026-04-20",
+        "status": "APPROVED"
+      },
+      {
+        "title": "택배 발송비",
+        "amount": 39900,
+        "category": "기타",
+        "date": "2026-04-25",
+        "status": "APPROVED"
+      },
+      {
+        "title": "사무용품 보충",
+        "amount": 49400,
+        "category": "비품",
+        "date": "2026-05-06",
+        "status": "APPROVED"
+      },
+      {
+        "title": "간담회 진행비",
+        "amount": 62900,
+        "category": "회의",
+        "date": "2026-05-07",
+        "status": "APPROVED"
+      },
+      {
+        "title": "대회 원정 교통비",
+        "amount": 40100,
+        "category": "교통",
+        "date": "2026-05-11",
+        "status": "APPROVED"
+      },
+      {
+        "title": "간담회 진행비",
+        "amount": 51800,
+        "category": "회의",
+        "date": "2026-05-16",
+        "status": "APPROVED"
+      },
+      {
+        "title": "프린터 토너",
+        "amount": 60500,
+        "category": "비품",
+        "date": "2026-05-21",
+        "status": "APPROVED"
+      },
+      {
+        "title": "지방 세미나 왕복",
+        "amount": 51200,
+        "category": "교통",
+        "date": "2026-05-26",
+        "status": "APPROVED"
+      },
+      {
+        "title": "야간 작업 야식",
+        "amount": 57700,
+        "category": "식비",
+        "date": "2026-06-07",
+        "status": "APPROVED"
+      },
+      {
+        "title": "전공 서적 구입",
+        "amount": 74400,
+        "category": "교육",
+        "date": "2026-06-12",
+        "status": "APPROVED"
+      },
+      {
+        "title": "홍보 포스터 제작",
+        "amount": 118100,
+        "category": "행사_활동",
+        "date": "2026-06-17",
+        "status": "APPROVED"
+      }
+    ],
+    "team_9002": [
+      {
+        "title": "홍보 포스터 제작",
+        "amount": 104900,
+        "category": "행사_활동",
+        "date": "2026-04-05",
+        "status": "APPROVED"
+      },
+      {
+        "title": "신입 환영회 식대",
+        "amount": 55600,
+        "category": "식비",
+        "date": "2026-04-10",
+        "status": "APPROVED"
+      },
+      {
+        "title": "온라인 강의 수강",
+        "amount": 72300,
+        "category": "교육",
+        "date": "2026-04-15",
+        "status": "APPROVED"
+      },
+      {
+        "title": "축제 부스 운영",
+        "amount": 116000,
+        "category": "행사_활동",
+        "date": "2026-04-20",
+        "status": "APPROVED"
+      },
+      {
+        "title": "스터디 간식",
+        "amount": 66700,
+        "category": "식비",
+        "date": "2026-04-25",
+        "status": "APPROVED"
+      },
+      {
+        "title": "경조사 화환",
+        "amount": 26200,
+        "category": "기타",
+        "date": "2026-05-06",
+        "status": "APPROVED"
+      },
+      {
+        "title": "연습실 대관",
+        "amount": 98700,
+        "category": "장소_대관",
+        "date": "2026-05-07",
+        "status": "APPROVED"
+      },
+      {
+        "title": "협업 도구 구독",
+        "amount": 32900,
+        "category": "IT_인프라",
+        "date": "2026-05-11",
+        "status": "APPROVED"
+      },
+      {
+        "title": "체육관 대관",
+        "amount": 87600,
+        "category": "장소_대관",
+        "date": "2026-05-16",
+        "status": "APPROVED"
+      },
+      {
+        "title": "택배 발송비",
+        "amount": 37300,
+        "category": "기타",
+        "date": "2026-05-21",
+        "status": "APPROVED"
+      },
+      {
+        "title": "디자인 툴 라이선스",
+        "amount": 44000,
+        "category": "IT_인프라",
+        "date": "2026-05-26",
+        "status": "APPROVED"
+      },
+      {
+        "title": "대회 원정 교통비",
+        "amount": 37500,
+        "category": "교통",
+        "date": "2026-06-07",
+        "status": "APPROVED"
+      },
+      {
+        "title": "간담회 진행비",
+        "amount": 49200,
+        "category": "회의",
+        "date": "2026-06-12",
+        "status": "APPROVED"
+      },
+      {
+        "title": "프린터 토너",
+        "amount": 57900,
+        "category": "비품",
+        "date": "2026-06-17",
+        "status": "APPROVED"
+      },
+      {
+        "title": "전공 서적 구입",
+        "amount": 71800,
+        "category": "교육",
+        "date": "2026-07-08",
+        "status": "APPROVED"
+      },
+      {
+        "title": "홍보 포스터 제작",
+        "amount": 115500,
+        "category": "행사_활동",
+        "date": "2026-07-13",
+        "status": "APPROVED"
+      },
+      {
+        "title": "총회 다과",
+        "amount": 66200,
+        "category": "식비",
+        "date": "2026-07-18",
+        "status": "APPROVED"
+      },
+      {
+        "title": "온라인 강의 수강",
+        "amount": 82900,
+        "category": "교육",
+        "date": "2026-07-23",
+        "status": "APPROVED"
+      },
+      {
+        "title": "택배 발송비",
+        "amount": 47900,
+        "category": "기타",
+        "date": "2026-08-05",
+        "status": "APPROVED"
+      },
+      {
+        "title": "스터디룸 예약",
+        "amount": 87100,
+        "category": "장소_대관",
+        "date": "2026-08-09",
+        "status": "APPROVED"
+      },
+      {
+        "title": "경조사 화환",
+        "amount": 36800,
+        "category": "기타",
+        "date": "2026-08-14",
+        "status": "APPROVED"
+      },
+      {
+        "title": "협업 도구 구독",
+        "amount": 43500,
+        "category": "IT_인프라",
+        "date": "2026-08-19",
+        "status": "APPROVED"
+      },
+      {
+        "title": "체육관 대관",
+        "amount": 98200,
+        "category": "장소_대관",
+        "date": "2026-08-24",
+        "status": "APPROVED"
+      }
+    ],
+    "team_9003": [
+      {
+        "title": "신입 환영회 식대",
+        "amount": 53000,
+        "category": "식비",
+        "date": "2026-05-06",
+        "status": "APPROVED"
+      },
+      {
+        "title": "교내 대회 참가비",
+        "amount": 124500,
+        "category": "행사_활동",
+        "date": "2026-05-07",
+        "status": "APPROVED"
+      },
+      {
+        "title": "온라인 강의 수강",
+        "amount": 69700,
+        "category": "교육",
+        "date": "2026-05-11",
+        "status": "APPROVED"
+      },
+      {
+        "title": "축제 부스 운영",
+        "amount": 113400,
+        "category": "행사_활동",
+        "date": "2026-05-16",
+        "status": "APPROVED"
+      },
+      {
+        "title": "스터디 간식",
+        "amount": 64100,
+        "category": "식비",
+        "date": "2026-05-21",
+        "status": "APPROVED"
+      },
+      {
+        "title": "자격 시험 응시료",
+        "amount": 80800,
+        "category": "교육",
+        "date": "2026-05-26",
+        "status": "APPROVED"
+      },
+      {
+        "title": "협업 도구 구독",
+        "amount": 30300,
+        "category": "IT_인프라",
+        "date": "2026-06-07",
+        "status": "APPROVED"
+      },
+      {
+        "title": "체육관 대관",
+        "amount": 85000,
+        "category": "장소_대관",
+        "date": "2026-06-12",
+        "status": "APPROVED"
+      },
+      {
+        "title": "택배 발송비",
+        "amount": 34700,
+        "category": "기타",
+        "date": "2026-06-17",
+        "status": "APPROVED"
+      },
+      {
+        "title": "간담회 진행비",
+        "amount": 46600,
+        "category": "회의",
+        "date": "2026-07-08",
+        "status": "APPROVED"
+      },
+      {
+        "title": "프린터 토너",
+        "amount": 55300,
+        "category": "비품",
+        "date": "2026-07-13",
+        "status": "APPROVED"
+      },
+      {
+        "title": "지방 세미나 왕복",
+        "amount": 46000,
+        "category": "교통",
+        "date": "2026-07-18",
+        "status": "APPROVED"
+      },
+      {
+        "title": "간담회 진행비",
+        "amount": 57700,
+        "category": "회의",
+        "date": "2026-07-23",
+        "status": "APPROVED"
+      }
+    ],
+    "team_9004": [
+      {
+        "title": "온라인 강의 수강",
+        "amount": 67100,
+        "category": "교육",
+        "date": "2026-03-07",
+        "status": "APPROVED"
+      },
+      {
+        "title": "축제 부스 운영",
+        "amount": 110800,
+        "category": "행사_활동",
+        "date": "2026-03-12",
+        "status": "APPROVED"
+      },
+      {
+        "title": "스터디 간식",
+        "amount": 61500,
+        "category": "식비",
+        "date": "2026-03-17",
+        "status": "APPROVED"
+      },
+      {
+        "title": "체육관 대관",
+        "amount": 82400,
+        "category": "장소_대관",
+        "date": "2026-04-08",
+        "status": "APPROVED"
+      },
+      {
+        "title": "택배 발송비",
+        "amount": 32100,
+        "category": "기타",
+        "date": "2026-04-13",
+        "status": "APPROVED"
+      },
+      {
+        "title": "디자인 툴 라이선스",
+        "amount": 38800,
+        "category": "IT_인프라",
+        "date": "2026-04-18",
+        "status": "APPROVED"
+      },
+      {
+        "title": "연습실 대관",
+        "amount": 93500,
+        "category": "장소_대관",
+        "date": "2026-04-23",
+        "status": "APPROVED"
+      },
+      {
+        "title": "물품 수령 택시",
+        "amount": 54500,
+        "category": "교통",
+        "date": "2026-05-05",
+        "status": "APPROVED"
+      },
+      {
+        "title": "프린터 토너",
+        "amount": 52700,
+        "category": "비품",
+        "date": "2026-05-09",
+        "status": "APPROVED"
+      },
+      {
+        "title": "지방 세미나 왕복",
+        "amount": 43400,
+        "category": "교통",
+        "date": "2026-05-14",
+        "status": "APPROVED"
+      },
+      {
+        "title": "간담회 진행비",
+        "amount": 55100,
+        "category": "회의",
+        "date": "2026-05-19",
+        "status": "APPROVED"
+      },
+      {
+        "title": "라켓·셔틀콕",
+        "amount": 63800,
+        "category": "비품",
+        "date": "2026-05-24",
+        "status": "APPROVED"
+      },
+      {
+        "title": "자격 시험 응시료",
+        "amount": 88800,
+        "category": "교육",
+        "date": "2026-06-06",
+        "status": "APPROVED"
+      },
+      {
+        "title": "총회 다과",
+        "amount": 61000,
+        "category": "식비",
+        "date": "2026-06-10",
+        "status": "APPROVED"
+      },
+      {
+        "title": "교내 대회 참가비",
+        "amount": 132500,
+        "category": "행사_활동",
+        "date": "2026-06-11",
+        "status": "APPROVED"
+      },
+      {
+        "title": "온라인 강의 수강",
+        "amount": 77700,
+        "category": "교육",
+        "date": "2026-06-15",
+        "status": "APPROVED"
+      },
+      {
+        "title": "축제 부스 운영",
+        "amount": 121400,
+        "category": "행사_활동",
+        "date": "2026-06-20",
+        "status": "APPROVED"
+      },
+      {
+        "title": "정기 회식",
+        "amount": 72100,
+        "category": "식비",
+        "date": "2026-06-25",
+        "status": "APPROVED"
+      }
+    ],
+    "team_9005": [
+      {
+        "title": "축제 부스 운영",
+        "amount": 108200,
+        "category": "행사_활동",
+        "date": "2026-04-08",
+        "status": "APPROVED"
+      },
+      {
+        "title": "스터디 간식",
+        "amount": 58900,
+        "category": "식비",
+        "date": "2026-04-13",
+        "status": "APPROVED"
+      },
+      {
+        "title": "자격 시험 응시료",
+        "amount": 75600,
+        "category": "교육",
+        "date": "2026-04-18",
+        "status": "APPROVED"
+      },
+      {
+        "title": "교내 대회 참가비",
+        "amount": 119300,
+        "category": "행사_활동",
+        "date": "2026-04-23",
+        "status": "APPROVED"
+      },
+      {
+        "title": "도메인 갱신",
+        "amount": 47300,
+        "category": "IT_인프라",
+        "date": "2026-05-05",
+        "status": "APPROVED"
+      },
+      {
+        "title": "택배 발송비",
+        "amount": 29500,
+        "category": "기타",
+        "date": "2026-05-09",
+        "status": "APPROVED"
+      },
+      {
+        "title": "디자인 툴 라이선스",
+        "amount": 36200,
+        "category": "IT_인프라",
+        "date": "2026-05-14",
+        "status": "APPROVED"
+      },
+      {
+        "title": "연습실 대관",
+        "amount": 90900,
+        "category": "장소_대관",
+        "date": "2026-05-19",
+        "status": "APPROVED"
+      },
+      {
+        "title": "경조사 화환",
+        "amount": 40600,
+        "category": "기타",
+        "date": "2026-05-24",
+        "status": "APPROVED"
+      },
+      {
+        "title": "간담회 진행비",
+        "amount": 63600,
+        "category": "회의",
+        "date": "2026-06-06",
+        "status": "APPROVED"
+      },
+      {
+        "title": "지방 세미나 왕복",
+        "amount": 40800,
+        "category": "교통",
+        "date": "2026-06-10",
+        "status": "APPROVED"
+      },
+      {
+        "title": "공용 삼각대",
+        "amount": 72300,
+        "category": "비품",
+        "date": "2026-06-11",
+        "status": "APPROVED"
+      },
+      {
+        "title": "간담회 진행비",
+        "amount": 52500,
+        "category": "회의",
+        "date": "2026-06-15",
+        "status": "APPROVED"
+      },
+      {
+        "title": "라켓·셔틀콕",
+        "amount": 61200,
+        "category": "비품",
+        "date": "2026-06-20",
+        "status": "APPROVED"
+      },
+      {
+        "title": "물품 수령 택시",
+        "amount": 51900,
+        "category": "교통",
+        "date": "2026-06-25",
+        "status": "APPROVED"
+      },
+      {
+        "title": "온라인 강의 수강",
+        "amount": 75100,
+        "category": "교육",
+        "date": "2026-07-11",
+        "status": "APPROVED"
+      },
+      {
+        "title": "축제 부스 운영",
+        "amount": 118800,
+        "category": "행사_활동",
+        "date": "2026-07-16",
+        "status": "APPROVED"
+      },
+      {
+        "title": "정기 회식",
+        "amount": 69500,
+        "category": "식비",
+        "date": "2026-07-21",
+        "status": "APPROVED"
+      },
+      {
+        "title": "연습실 대관",
+        "amount": 101500,
+        "category": "장소_대관",
+        "date": "2026-08-03",
+        "status": "APPROVED"
+      },
+      {
+        "title": "체육관 대관",
+        "amount": 90400,
+        "category": "장소_대관",
+        "date": "2026-08-12",
+        "status": "APPROVED"
+      },
+      {
+        "title": "택배 발송비",
+        "amount": 40100,
+        "category": "기타",
+        "date": "2026-08-17",
+        "status": "APPROVED"
+      },
+      {
+        "title": "디자인 툴 라이선스",
+        "amount": 46800,
+        "category": "IT_인프라",
+        "date": "2026-08-22",
+        "status": "APPROVED"
+      }
+    ],
+    "team_9006": [
+      {
+        "title": "외부 특강 수강료",
+        "amount": 84100,
+        "category": "교육",
+        "date": "2026-05-05",
+        "status": "APPROVED"
+      },
+      {
+        "title": "스터디 간식",
+        "amount": 56300,
+        "category": "식비",
+        "date": "2026-05-09",
+        "status": "APPROVED"
+      },
+      {
+        "title": "자격 시험 응시료",
+        "amount": 73000,
+        "category": "교육",
+        "date": "2026-05-14",
+        "status": "APPROVED"
+      },
+      {
+        "title": "교내 대회 참가비",
+        "amount": 116700,
+        "category": "행사_활동",
+        "date": "2026-05-19",
+        "status": "APPROVED"
+      },
+      {
+        "title": "야간 작업 야식",
+        "amount": 67400,
+        "category": "식비",
+        "date": "2026-05-24",
+        "status": "APPROVED"
+      },
+      {
+        "title": "MT 펜션",
+        "amount": 99400,
+        "category": "장소_대관",
+        "date": "2026-06-06",
+        "status": "APPROVED"
+      },
+      {
+        "title": "디자인 툴 라이선스",
+        "amount": 33600,
+        "category": "IT_인프라",
+        "date": "2026-06-10",
+        "status": "APPROVED"
+      },
+      {
+        "title": "택배 발송비",
+        "amount": 49100,
+        "category": "기타",
+        "date": "2026-06-11",
+        "status": "APPROVED"
+      },
+      {
+        "title": "연습실 대관",
+        "amount": 88300,
+        "category": "장소_대관",
+        "date": "2026-06-15",
+        "status": "APPROVED"
+      },
+      {
+        "title": "경조사 화환",
+        "amount": 38000,
+        "category": "기타",
+        "date": "2026-06-20",
+        "status": "APPROVED"
+      },
+      {
+        "title": "도메인 갱신",
+        "amount": 44700,
+        "category": "IT_인프라",
+        "date": "2026-06-25",
+        "status": "APPROVED"
+      },
+      {
+        "title": "간담회 진행비",
+        "amount": 49900,
+        "category": "회의",
+        "date": "2026-07-11",
+        "status": "APPROVED"
+      },
+      {
+        "title": "라켓·셔틀콕",
+        "amount": 58600,
+        "category": "비품",
+        "date": "2026-07-16",
+        "status": "APPROVED"
+      },
+      {
+        "title": "물품 수령 택시",
+        "amount": 49300,
+        "category": "교통",
+        "date": "2026-07-21",
+        "status": "APPROVED"
+      }
+    ],
+    "team_9007": [
+      {
+        "title": "정기 공연 준비",
+        "amount": 125200,
+        "category": "행사_활동",
+        "date": "2026-03-06",
+        "status": "APPROVED"
+      },
+      {
+        "title": "자격 시험 응시료",
+        "amount": 70400,
+        "category": "교육",
+        "date": "2026-03-10",
+        "status": "APPROVED"
+      },
+      {
+        "title": "총회 다과",
+        "amount": 75900,
+        "category": "식비",
+        "date": "2026-03-11",
+        "status": "APPROVED"
+      },
+      {
+        "title": "교내 대회 참가비",
+        "amount": 114100,
+        "category": "행사_활동",
+        "date": "2026-03-15",
+        "status": "APPROVED"
+      },
+      {
+        "title": "야간 작업 야식",
+        "amount": 64800,
+        "category": "식비",
+        "date": "2026-03-20",
+        "status": "APPROVED"
+      },
+      {
+        "title": "외부 특강 수강료",
+        "amount": 81500,
+        "category": "교육",
+        "date": "2026-03-25",
+        "status": "APPROVED"
+      },
+      {
+        "title": "연습실 대관",
+        "amount": 85700,
+        "category": "장소_대관",
+        "date": "2026-04-11",
+        "status": "APPROVED"
+      },
+      {
+        "title": "경조사 화환",
+        "amount": 35400,
+        "category": "기타",
+        "date": "2026-04-16",
+        "status": "APPROVED"
+      },
+      {
+        "title": "도메인 갱신",
+        "amount": 42100,
+        "category": "IT_인프라",
+        "date": "2026-04-21",
+        "status": "APPROVED"
+      },
+      {
+        "title": "공용 삼각대",
+        "amount": 67100,
+        "category": "비품",
+        "date": "2026-05-03",
+        "status": "APPROVED"
+      },
+      {
+        "title": "라켓·셔틀콕",
+        "amount": 56000,
+        "category": "비품",
+        "date": "2026-05-12",
+        "status": "APPROVED"
+      },
+      {
+        "title": "물품 수령 택시",
+        "amount": 46700,
+        "category": "교통",
+        "date": "2026-05-17",
+        "status": "APPROVED"
+      },
+      {
+        "title": "간담회 진행비",
+        "amount": 58400,
+        "category": "회의",
+        "date": "2026-05-22",
+        "status": "APPROVED"
+      },
+      {
+        "title": "신입 환영회 식대",
+        "amount": 75400,
+        "category": "식비",
+        "date": "2026-06-04",
+        "status": "APPROVED"
+      },
+      {
+        "title": "외부 특강 수강료",
+        "amount": 92100,
+        "category": "교육",
+        "date": "2026-06-09",
+        "status": "APPROVED"
+      },
+      {
+        "title": "정기 회식",
+        "amount": 64300,
+        "category": "식비",
+        "date": "2026-06-13",
+        "status": "APPROVED"
+      },
+      {
+        "title": "자격 시험 응시료",
+        "amount": 81000,
+        "category": "교육",
+        "date": "2026-06-18",
+        "status": "APPROVED"
+      },
+      {
+        "title": "교내 대회 참가비",
+        "amount": 124700,
+        "category": "행사_활동",
+        "date": "2026-06-23",
+        "status": "APPROVED"
+      }
+    ],
+    "team_9008": [
+      {
+        "title": "교내 대회 참가비",
+        "amount": 111500,
+        "category": "행사_활동",
+        "date": "2026-04-11",
+        "status": "APPROVED"
+      },
+      {
+        "title": "야간 작업 야식",
+        "amount": 62200,
+        "category": "식비",
+        "date": "2026-04-16",
+        "status": "APPROVED"
+      },
+      {
+        "title": "외부 특강 수강료",
+        "amount": 78900,
+        "category": "교육",
+        "date": "2026-04-21",
+        "status": "APPROVED"
+      },
+      {
+        "title": "택배 발송비",
+        "amount": 43900,
+        "category": "기타",
+        "date": "2026-05-03",
+        "status": "APPROVED"
+      },
+      {
+        "title": "경조사 화환",
+        "amount": 32800,
+        "category": "기타",
+        "date": "2026-05-12",
+        "status": "APPROVED"
+      },
+      {
+        "title": "도메인 갱신",
+        "amount": 39500,
+        "category": "IT_인프라",
+        "date": "2026-05-17",
+        "status": "APPROVED"
+      },
+      {
+        "title": "MT 펜션",
+        "amount": 94200,
+        "category": "장소_대관",
+        "date": "2026-05-22",
+        "status": "APPROVED"
+      },
+      {
+        "title": "외부 강연 이동",
+        "amount": 55200,
+        "category": "교통",
+        "date": "2026-06-04",
+        "status": "APPROVED"
+      },
+      {
+        "title": "간담회 진행비",
+        "amount": 66900,
+        "category": "회의",
+        "date": "2026-06-09",
+        "status": "APPROVED"
+      },
+      {
+        "title": "물품 수령 택시",
+        "amount": 44100,
+        "category": "교통",
+        "date": "2026-06-13",
+        "status": "APPROVED"
+      },
+      {
+        "title": "간담회 진행비",
+        "amount": 55800,
+        "category": "회의",
+        "date": "2026-06-18",
+        "status": "APPROVED"
+      },
+      {
+        "title": "공용 삼각대",
+        "amount": 64500,
+        "category": "비품",
+        "date": "2026-06-23",
+        "status": "APPROVED"
+      },
+      {
+        "title": "외부 특강 수강료",
+        "amount": 89500,
+        "category": "교육",
+        "date": "2026-07-05",
+        "status": "APPROVED"
+      },
+      {
+        "title": "정기 공연 준비",
+        "amount": 133200,
+        "category": "행사_활동",
+        "date": "2026-07-10",
+        "status": "APPROVED"
+      },
+      {
+        "title": "자격 시험 응시료",
+        "amount": 78400,
+        "category": "교육",
+        "date": "2026-07-14",
+        "status": "APPROVED"
+      },
+      {
+        "title": "스터디 간식",
+        "amount": 83900,
+        "category": "식비",
+        "date": "2026-07-15",
+        "status": "APPROVED"
+      },
+      {
+        "title": "교내 대회 참가비",
+        "amount": 122100,
+        "category": "행사_활동",
+        "date": "2026-07-19",
+        "status": "APPROVED"
+      },
+      {
+        "title": "신입 환영회 식대",
+        "amount": 72800,
+        "category": "식비",
+        "date": "2026-07-24",
+        "status": "APPROVED"
+      },
+      {
+        "title": "연습실 대관",
+        "amount": 93700,
+        "category": "장소_대관",
+        "date": "2026-08-15",
+        "status": "APPROVED"
+      },
+      {
+        "title": "경조사 화환",
+        "amount": 43400,
+        "category": "기타",
+        "date": "2026-08-20",
+        "status": "APPROVED"
+      },
+      {
+        "title": "도메인 갱신",
+        "amount": 50100,
+        "category": "IT_인프라",
+        "date": "2026-08-25",
+        "status": "APPROVED"
+      }
+    ],
+    "team_9009": [
+      {
+        "title": "총회 다과",
+        "amount": 70700,
+        "category": "식비",
+        "date": "2026-05-03",
+        "status": "APPROVED"
+      },
+      {
+        "title": "야간 작업 야식",
+        "amount": 59600,
+        "category": "식비",
+        "date": "2026-05-12",
+        "status": "APPROVED"
+      },
+      {
+        "title": "외부 특강 수강료",
+        "amount": 76300,
+        "category": "교육",
+        "date": "2026-05-17",
+        "status": "APPROVED"
+      },
+      {
+        "title": "정기 공연 준비",
+        "amount": 120000,
+        "category": "행사_활동",
+        "date": "2026-05-22",
+        "status": "APPROVED"
+      },
+      {
+        "title": "클라우드 사용료",
+        "amount": 48000,
+        "category": "IT_인프라",
+        "date": "2026-06-04",
+        "status": "APPROVED"
+      },
+      {
+        "title": "스터디룸 예약",
+        "amount": 102700,
+        "category": "장소_대관",
+        "date": "2026-06-09",
+        "status": "APPROVED"
+      },
+      {
+        "title": "도메인 갱신",
+        "amount": 36900,
+        "category": "IT_인프라",
+        "date": "2026-06-13",
+        "status": "APPROVED"
+      },
+      {
+        "title": "MT 펜션",
+        "amount": 91600,
+        "category": "장소_대관",
+        "date": "2026-06-18",
+        "status": "APPROVED"
+      },
+      {
+        "title": "택배 발송비",
+        "amount": 41300,
+        "category": "기타",
+        "date": "2026-06-23",
+        "status": "APPROVED"
+      },
+      {
+        "title": "간담회 진행비",
+        "amount": 64300,
+        "category": "회의",
+        "date": "2026-07-05",
+        "status": "APPROVED"
+      },
+      {
+        "title": "단체 티셔츠 제작",
+        "amount": 73000,
+        "category": "비품",
+        "date": "2026-07-10",
+        "status": "APPROVED"
+      },
+      {
+        "title": "간담회 진행비",
+        "amount": 53200,
+        "category": "회의",
+        "date": "2026-07-14",
+        "status": "APPROVED"
+      },
+      {
+        "title": "대회 원정 교통비",
+        "amount": 63700,
+        "category": "교통",
+        "date": "2026-07-15",
+        "status": "APPROVED"
+      },
+      {
+        "title": "공용 삼각대",
+        "amount": 61900,
+        "category": "비품",
+        "date": "2026-07-19",
+        "status": "APPROVED"
+      },
+      {
+        "title": "외부 강연 이동",
+        "amount": 52600,
+        "category": "교통",
+        "date": "2026-07-24",
+        "status": "APPROVED"
+      }
+    ],
+    "team_9010": [
+      {
+        "title": "전공 서적 구입",
+        "amount": 66100,
+        "category": "교육",
+        "date": "2026-03-04",
+        "status": "APPROVED"
+      },
+      {
+        "title": "홍보 포스터 제작",
+        "amount": 109800,
+        "category": "행사_활동",
+        "date": "2026-03-09",
+        "status": "APPROVED"
+      },
+      {
+        "title": "외부 특강 수강료",
+        "amount": 55000,
+        "category": "교육",
+        "date": "2026-03-13",
+        "status": "APPROVED"
+      },
+      {
+        "title": "정기 공연 준비",
+        "amount": 98700,
+        "category": "행사_활동",
+        "date": "2026-03-18",
+        "status": "APPROVED"
+      },
+      {
+        "title": "총회 다과",
+        "amount": 49400,
+        "category": "식비",
+        "date": "2026-03-23",
+        "status": "APPROVED"
+      },
+      {
+        "title": "스터디룸 예약",
+        "amount": 81400,
+        "category": "장소_대관",
+        "date": "2026-04-05",
+        "status": "APPROVED"
+      },
+      {
+        "title": "경조사 화환",
+        "amount": 31100,
+        "category": "기타",
+        "date": "2026-04-10",
+        "status": "APPROVED"
+      },
+      {
+        "title": "MT 펜션",
+        "amount": 70300,
+        "category": "장소_대관",
+        "date": "2026-04-14",
+        "status": "APPROVED"
+      },
+      {
+        "title": "협업 도구 구독",
+        "amount": 37800,
+        "category": "IT_인프라",
+        "date": "2026-04-15",
+        "status": "APPROVED"
+      },
+      {
+        "title": "택배 발송비",
+        "amount": 20000,
+        "category": "기타",
+        "date": "2026-04-19",
+        "status": "APPROVED"
+      },
+      {
+        "title": "클라우드 사용료",
+        "amount": 26700,
+        "category": "IT_인프라",
+        "date": "2026-04-24",
+        "status": "APPROVED"
+      },
+      {
+        "title": "공용 삼각대",
+        "amount": 40600,
+        "category": "비품",
+        "date": "2026-05-15",
+        "status": "APPROVED"
+      },
+      {
+        "title": "외부 강연 이동",
+        "amount": 31300,
+        "category": "교통",
+        "date": "2026-05-20",
+        "status": "APPROVED"
+      },
+      {
+        "title": "간담회 진행비",
+        "amount": 43000,
+        "category": "회의",
+        "date": "2026-05-25",
+        "status": "APPROVED"
+      },
+      {
+        "title": "스터디 간식",
+        "amount": 60000,
+        "category": "식비",
+        "date": "2026-06-07",
+        "status": "APPROVED"
+      },
+      {
+        "title": "신입 환영회 식대",
+        "amount": 48900,
+        "category": "식비",
+        "date": "2026-06-16",
+        "status": "APPROVED"
+      },
+      {
+        "title": "외부 특강 수강료",
+        "amount": 65600,
+        "category": "교육",
+        "date": "2026-06-21",
+        "status": "APPROVED"
+      },
+      {
+        "title": "정기 공연 준비",
+        "amount": 109300,
+        "category": "행사_활동",
+        "date": "2026-06-26",
+        "status": "APPROVED"
+      }
+    ],
+    "team_9011": [
+      {
+        "title": "홍보 포스터 제작",
+        "amount": 107200,
+        "category": "행사_활동",
+        "date": "2026-04-05",
+        "status": "APPROVED"
+      },
+      {
+        "title": "정기 회식",
+        "amount": 57900,
+        "category": "식비",
+        "date": "2026-04-10",
+        "status": "APPROVED"
+      },
+      {
+        "title": "정기 공연 준비",
+        "amount": 96100,
+        "category": "행사_활동",
+        "date": "2026-04-14",
+        "status": "APPROVED"
+      },
+      {
+        "title": "온라인 강의 수강",
+        "amount": 74600,
+        "category": "교육",
+        "date": "2026-04-15",
+        "status": "APPROVED"
+      },
+      {
+        "title": "총회 다과",
+        "amount": 46800,
+        "category": "식비",
+        "date": "2026-04-19",
+        "status": "APPROVED"
+      },
+      {
+        "title": "전공 서적 구입",
+        "amount": 63500,
+        "category": "교육",
+        "date": "2026-04-24",
+        "status": "APPROVED"
+      },
+      {
+        "title": "택배 발송비",
+        "amount": 17400,
+        "category": "기타",
+        "date": "2026-05-15",
+        "status": "APPROVED"
+      },
+      {
+        "title": "클라우드 사용료",
+        "amount": 24100,
+        "category": "IT_인프라",
+        "date": "2026-05-20",
+        "status": "APPROVED"
+      },
+      {
+        "title": "스터디룸 예약",
+        "amount": 78800,
+        "category": "장소_대관",
+        "date": "2026-05-25",
+        "status": "APPROVED"
+      },
+      {
+        "title": "대회 원정 교통비",
+        "amount": 39800,
+        "category": "교통",
+        "date": "2026-06-07",
+        "status": "APPROVED"
+      },
+      {
+        "title": "외부 강연 이동",
+        "amount": 28700,
+        "category": "교통",
+        "date": "2026-06-16",
+        "status": "APPROVED"
+      },
+      {
+        "title": "간담회 진행비",
+        "amount": 40400,
+        "category": "회의",
+        "date": "2026-06-21",
+        "status": "APPROVED"
+      },
+      {
+        "title": "단체 티셔츠 제작",
+        "amount": 49100,
+        "category": "비품",
+        "date": "2026-06-26",
+        "status": "APPROVED"
+      },
+      {
+        "title": "스터디 간식",
+        "amount": 57400,
+        "category": "식비",
+        "date": "2026-07-03",
+        "status": "APPROVED"
+      },
+      {
+        "title": "전공 서적 구입",
+        "amount": 74100,
+        "category": "교육",
+        "date": "2026-07-08",
+        "status": "APPROVED"
+      },
+      {
+        "title": "홍보 포스터 제작",
+        "amount": 117800,
+        "category": "행사_활동",
+        "date": "2026-07-13",
+        "status": "APPROVED"
+      },
+      {
+        "title": "외부 특강 수강료",
+        "amount": 63000,
+        "category": "교육",
+        "date": "2026-07-17",
+        "status": "APPROVED"
+      },
+      {
+        "title": "정기 공연 준비",
+        "amount": 106700,
+        "category": "행사_활동",
+        "date": "2026-07-22",
+        "status": "APPROVED"
+      },
+      {
+        "title": "클라우드 사용료",
+        "amount": 34700,
+        "category": "IT_인프라",
+        "date": "2026-08-04",
+        "status": "APPROVED"
+      },
+      {
+        "title": "스터디룸 예약",
+        "amount": 89400,
+        "category": "장소_대관",
+        "date": "2026-08-09",
+        "status": "APPROVED"
+      },
+      {
+        "title": "경조사 화환",
+        "amount": 39100,
+        "category": "기타",
+        "date": "2026-08-14",
+        "status": "APPROVED"
+      },
+      {
+        "title": "MT 펜션",
+        "amount": 78300,
+        "category": "장소_대관",
+        "date": "2026-08-18",
+        "status": "APPROVED"
+      },
+      {
+        "title": "협업 도구 구독",
+        "amount": 45800,
+        "category": "IT_인프라",
+        "date": "2026-08-19",
+        "status": "APPROVED"
+      },
+      {
+        "title": "택배 발송비",
+        "amount": 28000,
+        "category": "기타",
+        "date": "2026-08-23",
+        "status": "APPROVED"
+      }
+    ],
+    "team_9012": [
+      {
+        "title": "총회 다과",
+        "amount": 44200,
+        "category": "식비",
+        "date": "2026-05-15",
+        "status": "APPROVED"
+      },
+      {
+        "title": "전공 서적 구입",
+        "amount": 60900,
+        "category": "교육",
+        "date": "2026-05-20",
+        "status": "APPROVED"
+      },
+      {
+        "title": "홍보 포스터 제작",
+        "amount": 104600,
+        "category": "행사_활동",
+        "date": "2026-05-25",
+        "status": "APPROVED"
+      },
+      {
+        "title": "협업 도구 구독",
+        "amount": 32600,
+        "category": "IT_인프라",
+        "date": "2026-06-07",
+        "status": "APPROVED"
+      },
+      {
+        "title": "클라우드 사용료",
+        "amount": 21500,
+        "category": "IT_인프라",
+        "date": "2026-06-16",
+        "status": "APPROVED"
+      },
+      {
+        "title": "스터디룸 예약",
+        "amount": 76200,
+        "category": "장소_대관",
+        "date": "2026-06-21",
+        "status": "APPROVED"
+      },
+      {
+        "title": "경조사 화환",
+        "amount": 25900,
+        "category": "기타",
+        "date": "2026-06-26",
+        "status": "APPROVED"
+      },
+      {
+        "title": "대회 원정 교통비",
+        "amount": 37200,
+        "category": "교통",
+        "date": "2026-07-03",
+        "status": "APPROVED"
+      },
+      {
+        "title": "간담회 진행비",
+        "amount": 48900,
+        "category": "회의",
+        "date": "2026-07-08",
+        "status": "APPROVED"
+      },
+      {
+        "title": "사무용품 보충",
+        "amount": 57600,
+        "category": "비품",
+        "date": "2026-07-13",
+        "status": "APPROVED"
+      },
+      {
+        "title": "간담회 진행비",
+        "amount": 37800,
+        "category": "회의",
+        "date": "2026-07-17",
+        "status": "APPROVED"
+      },
+      {
+        "title": "단체 티셔츠 제작",
+        "amount": 46500,
+        "category": "비품",
+        "date": "2026-07-22",
+        "status": "APPROVED"
+      }
+    ],
+    "team_9013": [
+      {
+        "title": "온라인 강의 수강",
+        "amount": 69400,
+        "category": "교육",
+        "date": "2026-03-07",
+        "status": "APPROVED"
+      },
+      {
+        "title": "전공 서적 구입",
+        "amount": 58300,
+        "category": "교육",
+        "date": "2026-03-16",
+        "status": "APPROVED"
+      },
+      {
+        "title": "홍보 포스터 제작",
+        "amount": 102000,
+        "category": "행사_활동",
+        "date": "2026-03-21",
+        "status": "APPROVED"
+      },
+      {
+        "title": "정기 회식",
+        "amount": 52700,
+        "category": "식비",
+        "date": "2026-03-26",
+        "status": "APPROVED"
+      },
+      {
+        "title": "협업 도구 구독",
+        "amount": 30000,
+        "category": "IT_인프라",
+        "date": "2026-04-03",
+        "status": "APPROVED"
+      },
+      {
+        "title": "체육관 대관",
+        "amount": 84700,
+        "category": "장소_대관",
+        "date": "2026-04-08",
+        "status": "APPROVED"
+      },
+      {
+        "title": "택배 발송비",
+        "amount": 34400,
+        "category": "기타",
+        "date": "2026-04-13",
+        "status": "APPROVED"
+      },
+      {
+        "title": "스터디룸 예약",
+        "amount": 73600,
+        "category": "장소_대관",
+        "date": "2026-04-17",
+        "status": "APPROVED"
+      },
+      {
+        "title": "경조사 화환",
+        "amount": 23300,
+        "category": "기타",
+        "date": "2026-04-22",
+        "status": "APPROVED"
+      },
+      {
+        "title": "간담회 진행비",
+        "amount": 46300,
+        "category": "회의",
+        "date": "2026-05-04",
+        "status": "APPROVED"
+      },
+      {
+        "title": "사무용품 보충",
+        "amount": 55000,
+        "category": "비품",
+        "date": "2026-05-09",
+        "status": "APPROVED"
+      },
+      {
+        "title": "지방 세미나 왕복",
+        "amount": 45700,
+        "category": "교통",
+        "date": "2026-05-14",
+        "status": "APPROVED"
+      },
+      {
+        "title": "단체 티셔츠 제작",
+        "amount": 43900,
+        "category": "비품",
+        "date": "2026-05-18",
+        "status": "APPROVED"
+      },
+      {
+        "title": "간담회 진행비",
+        "amount": 57400,
+        "category": "회의",
+        "date": "2026-05-19",
+        "status": "APPROVED"
+      },
+      {
+        "title": "대회 원정 교통비",
+        "amount": 34600,
+        "category": "교통",
+        "date": "2026-05-23",
+        "status": "APPROVED"
+      },
+      {
+        "title": "홍보 포스터 제작",
+        "amount": 112600,
+        "category": "행사_활동",
+        "date": "2026-06-05",
+        "status": "APPROVED"
+      },
+      {
+        "title": "스터디 간식",
+        "amount": 52200,
+        "category": "식비",
+        "date": "2026-06-19",
+        "status": "APPROVED"
+      },
+      {
+        "title": "전공 서적 구입",
+        "amount": 68900,
+        "category": "교육",
+        "date": "2026-06-24",
+        "status": "APPROVED"
+      }
+    ],
+    "team_9014": [
+      {
+        "title": "온라인 강의 수강",
+        "amount": 66800,
+        "category": "교육",
+        "date": "2026-04-03",
+        "status": "APPROVED"
+      },
+      {
+        "title": "축제 부스 운영",
+        "amount": 110500,
+        "category": "행사_활동",
+        "date": "2026-04-08",
+        "status": "APPROVED"
+      },
+      {
+        "title": "신입 환영회 식대",
+        "amount": 61200,
+        "category": "식비",
+        "date": "2026-04-13",
+        "status": "APPROVED"
+      },
+      {
+        "title": "홍보 포스터 제작",
+        "amount": 99400,
+        "category": "행사_활동",
+        "date": "2026-04-17",
+        "status": "APPROVED"
+      },
+      {
+        "title": "정기 회식",
+        "amount": 50100,
+        "category": "식비",
+        "date": "2026-04-22",
+        "status": "APPROVED"
+      },
+      {
+        "title": "체육관 대관",
+        "amount": 82100,
+        "category": "장소_대관",
+        "date": "2026-05-04",
+        "status": "APPROVED"
+      },
+      {
+        "title": "택배 발송비",
+        "amount": 31800,
+        "category": "기타",
+        "date": "2026-05-09",
+        "status": "APPROVED"
+      },
+      {
+        "title": "디자인 툴 라이선스",
+        "amount": 38500,
+        "category": "IT_인프라",
+        "date": "2026-05-14",
+        "status": "APPROVED"
+      },
+      {
+        "title": "경조사 화환",
+        "amount": 20700,
+        "category": "기타",
+        "date": "2026-05-18",
+        "status": "APPROVED"
+      },
+      {
+        "title": "연습실 대관",
+        "amount": 93200,
+        "category": "장소_대관",
+        "date": "2026-05-19",
+        "status": "APPROVED"
+      },
+      {
+        "title": "협업 도구 구독",
+        "amount": 27400,
+        "category": "IT_인프라",
+        "date": "2026-05-23",
+        "status": "APPROVED"
+      },
+      {
+        "title": "사무용품 보충",
+        "amount": 52400,
+        "category": "비품",
+        "date": "2026-06-05",
+        "status": "APPROVED"
+      },
+      {
+        "title": "대회 원정 교통비",
+        "amount": 32000,
+        "category": "교통",
+        "date": "2026-06-19",
+        "status": "APPROVED"
+      },
+      {
+        "title": "간담회 진행비",
+        "amount": 43700,
+        "category": "회의",
+        "date": "2026-06-24",
+        "status": "APPROVED"
+      },
+      {
+        "title": "야간 작업 야식",
+        "amount": 60700,
+        "category": "식비",
+        "date": "2026-07-06",
+        "status": "APPROVED"
+      },
+      {
+        "title": "온라인 강의 수강",
+        "amount": 77400,
+        "category": "교육",
+        "date": "2026-07-11",
+        "status": "APPROVED"
+      },
+      {
+        "title": "전공 서적 구입",
+        "amount": 66300,
+        "category": "교육",
+        "date": "2026-07-20",
+        "status": "APPROVED"
+      },
+      {
+        "title": "홍보 포스터 제작",
+        "amount": 110000,
+        "category": "행사_활동",
+        "date": "2026-07-25",
+        "status": "APPROVED"
+      },
+      {
+        "title": "협업 도구 구독",
+        "amount": 38000,
+        "category": "IT_인프라",
+        "date": "2026-08-07",
+        "status": "APPROVED"
+      },
+      {
+        "title": "체육관 대관",
+        "amount": 92700,
+        "category": "장소_대관",
+        "date": "2026-08-12",
+        "status": "APPROVED"
+      },
+      {
+        "title": "택배 발송비",
+        "amount": 42400,
+        "category": "기타",
+        "date": "2026-08-17",
+        "status": "APPROVED"
+      },
+      {
+        "title": "스터디룸 예약",
+        "amount": 81600,
+        "category": "장소_대관",
+        "date": "2026-08-21",
+        "status": "APPROVED"
+      },
+      {
+        "title": "경조사 화환",
+        "amount": 31300,
+        "category": "기타",
+        "date": "2026-08-26",
         "status": "APPROVED"
       }
     ]
