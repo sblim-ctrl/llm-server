@@ -16,9 +16,19 @@ from typing import Any
 
 from app.db.pool import get_pool
 from app.graphs.writers.briefing import briefing_graph
+from app.graphs.writers.budget_planner import budget_planner_graph
+from app.graphs.writers.dashboard import dashboard_graph
+from app.graphs.writers.digest import digest_graph
 from app.graphs.writers.policy_draft import policy_draft_graph
 from app.graphs.writers.report import report_graph
-from app.schemas.writers import BriefingRequest, PolicyDraftRequest, ReportRequest
+from app.schemas.dashboard import DashboardSummaryRequest
+from app.schemas.proposals import ProposalBudgetRequest
+from app.schemas.writers import (
+    BriefingRequest,
+    DigestRequest,
+    PolicyDraftRequest,
+    ReportRequest,
+)
 from app.tools.precedent_store import save_precedent
 
 ACCURACY_THRESHOLD = 0.90  # eval_support와 동일 기준
@@ -88,6 +98,9 @@ async def _seed_briefing_precedents(team_id: int, precedents: list[dict[str, Any
             p["decided_by"],
             reason=p.get("reason"),
             is_override=p.get("is_override", False),
+            # digest 케이스는 판례가 **그 주에** 있어야 주간 집계에 잡힌다.
+            # briefing은 기간을 안 보므로 이 키가 없어도 된다.
+            created_at=p.get("date"),
         )
 
 
@@ -108,10 +121,66 @@ async def _run_briefing_case(case: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+async def _run_digest_case(case: dict[str, Any]) -> dict[str, Any]:
+    """주간 브리핑 — 판례를 그 주에 심고 집계·문장을 함께 본다.
+
+    2026-08-07까지 골든셋에 없던 종이다. 그래서 판례(=승인·반려·에스컬레이션 건수)와
+    지출(=주간 지출)의 시간축이 어긋나 어떤 주를 골라도 한쪽이 0으로 나오던 것이
+    평가에 한 번도 잡히지 않았다.
+    """
+    await _seed_briefing_precedents(case["team_id"], case.get("precedents", []))
+    state = await digest_graph.ainvoke({"request": DigestRequest.model_validate(case["input"])})
+    doc = state["digest"]
+    f = doc.figures
+    return {
+        "verified": doc.verified,
+        "auto_approved": f.auto_approved,
+        "auto_rejected": f.auto_rejected,
+        "escalated": f.escalated,
+        "weekly_spent": f.weekly_spent,
+        "projected_period_end_spent": f.forecast.projected_period_end_spent,
+        "highlights_count": len(doc.highlights),
+        "summary_text": doc.summary,
+        "highlights_text": "\n".join(doc.highlights),
+        "advice_text": doc.advice or "",
+    }
+
+
+async def _run_budget_proposal_case(case: dict[str, Any]) -> dict[str, Any]:
+    """예산 제안 3블록 — T4(LLM-016)로 계약이 바뀐 뒤 골든셋에 편입되지 않았던 종."""
+    req = ProposalBudgetRequest.model_validate(case["input"])
+    state = await budget_planner_graph.ainvoke({"request": req})
+    payload = state["payload"]
+    figures = payload["figures"]
+    return {
+        "verified": state.get("verified"),
+        "usage_ratio_pct": round(figures["usage_ratio"] * 100),
+        "remaining": figures["remaining"],
+        "category_analysis_text": payload["category_analysis"],
+        "budget_status_analysis_text": payload["budget_status_analysis"],
+        "recommendation_text": payload["recommendation"],
+    }
+
+
+async def _run_dashboard_case(case: dict[str, Any]) -> dict[str, Any]:
+    """대시보드 AI 요약 — 검증 실패 시 집계로 조립한 안전한 문장으로 교체된다."""
+    req = DashboardSummaryRequest.model_validate(case["input"])
+    state = await dashboard_graph.ainvoke({"request": req})
+    doc = state["doc"]
+    return {"verified": doc.verified, "message_text": doc.message}
+
+
+# 2026-08-07: 종전에는 3종(policy_draft·report·briefing)만 돌았다. 나머지 4종은
+# 단위 테스트만 있고 **출력 품질을 채점하는 그물이 없었다** — `GET /v1/eval/writers`가
+# "라이터 품질"로 보고하는 수치가 절반도 안 보던 셈이다. 3종을 편입한다.
+# (rule_amendment는 군집 탐지 시드가 별도라 다음 차례.)
 _RUNNERS = [
     ("policy_draft", "policy_draft_cases", _run_policy_draft_case),
     ("report", "report_cases", _run_report_case),
     ("briefing", "briefing_cases", _run_briefing_case),
+    ("digest", "digest_cases", _run_digest_case),
+    ("budget_proposal", "budget_proposal_cases", _run_budget_proposal_case),
+    ("dashboard", "dashboard_cases", _run_dashboard_case),
 ]
 
 

@@ -362,10 +362,13 @@
   <section class="panel" id="panel-digest">
     <div class="card">
       <h2>AI 총무 주간 브리핑 (DigestWriter)</h2>
-      <div class="desc">POST /v1/digests(잡) → 폴링. 주간 자동 처리 현황·예산 소진 전망·이상 징후를 브리핑합니다. 기본 기준일은 목 데이터가 있는 주(2026-06-22 ~ 06-28)입니다.</div>
+      <div class="desc">POST /v1/digests(잡) → 폴링. 주간 자동 처리 현황·예산 소진 전망·이상 징후를 브리핑합니다.
+        <b>승인·반려·에스컬레이션·주간 지출은 그 주(월~일)만</b> 세고,
+        <b>기간 말 예상은 그 달 누적 지출</b>로 계산합니다 — 축이 달라서 주간 지출이 0원인 주에도 예상값은 0이 아닙니다.
+        데모 데이터가 있는 팀은 <code>9001</code>(4주 시뮬레이션)·<code>9025</code>이고, 기준일은 2026-06 안에서 고르세요.</div>
       <div class="row">
-        <div class="field"><label>팀 ID</label><input id="dg-team" type="number" value="9002"></div>
-        <div class="field"><label>기준일 week_of (속한 월~일이 대상 주)</label><input id="dg-week" type="date" value="2026-06-26"></div>
+        <div class="field"><label>팀 ID</label><input id="dg-team" type="number" value="9001"></div>
+        <div class="field"><label>기준일 week_of (속한 월~일이 대상 주)</label><input id="dg-week" type="date" value="2026-06-15"></div>
       </div>
       <button class="btn" id="dg-submit">브리핑 생성</button>
       <div class="status-line" id="dg-status"></div>

@@ -1,6 +1,6 @@
 {
   "version": "writers-v1",
-  "description": "문서 생성 에이전트 3종 시나리오 골든셋 (PROGRESS §6-4). 심사 골든셋(golden_v1.json)과 동일 철학 — 목 모드에서 결정적으로 재현 가능해야 한다. report의 team_id는 eval/fixtures/mock_backend.json의 organizations[id].expense_history를 참조한다(9022=none/빈 이력, 9023=balanced/균형 지출, 9021=default/기본 8건 — T9, 옛 noexpense/balanced 문자열 단서는 폐기). briefing은 각 케이스의 precedents를 실행 전 DB에 시드(멱등 — 팀 단위 삭제 후 재삽입, team_id는 BIGINT라 9031~9035 정수 사용— T9). expect 규칙: *_contain=부분 문자열 포함, *_not_contain=미포함, 그 외 키=동등 비교. verified=false는 건수와 무관하게 하드 게이트 실패. v2 보강: pd-desc-two-groups(키워드 2그룹만 겹치는 조합), rp-standard-categories(저활용 카테고리 개별 명시 확인), bf-scattered(에스컬레이션이 여러 카테고리에 분산되어 회칙 갭 없이도 판정 다수인 경우) 3건 추가 — 총 20건. v3(2026-08-06, LLM-005 전면 개정): pd 케이스를 통합 요청 스키마(team_id·force_escalation_amount·rule_source)로 이행, 정책 제안 기대값(auto_approve_limit·force_escalation_amount) 제거, 카테고리 9종 정정, pd-floor→pd-amount-passthrough 재목적화, pd-skip-empty 추가 — 총 21건. v4(2026-08-07): rp-standard-categories가 기본 이력에 다른 period 이름표만 붙인 중복이라 기간 필터 도입으로 드러났다 — 실제 5월 데이터 팀(9024)으로 옮겼다. rp-period-isolates-month 신설: 같은 팀의 다른 달이 섞이지 않는지 본다. 총 22건.",
+  "description": "문서 생성 에이전트 3종 시나리오 골든셋 (PROGRESS §6-4). 심사 골든셋(golden_v1.json)과 동일 철학 — 목 모드에서 결정적으로 재현 가능해야 한다. report의 team_id는 eval/fixtures/mock_backend.json의 organizations[id].expense_history를 참조한다(9022=none/빈 이력, 9023=balanced/균형 지출, 9021=default/기본 8건 — T9, 옛 noexpense/balanced 문자열 단서는 폐기). briefing은 각 케이스의 precedents를 실행 전 DB에 시드(멱등 — 팀 단위 삭제 후 재삽입, team_id는 BIGINT라 9031~9035 정수 사용— T9). expect 규칙: *_contain=부분 문자열 포함, *_not_contain=미포함, 그 외 키=동등 비교. verified=false는 건수와 무관하게 하드 게이트 실패. v2 보강: pd-desc-two-groups(키워드 2그룹만 겹치는 조합), rp-standard-categories(저활용 카테고리 개별 명시 확인), bf-scattered(에스컬레이션이 여러 카테고리에 분산되어 회칙 갭 없이도 판정 다수인 경우) 3건 추가 — 총 20건. v3(2026-08-06, LLM-005 전면 개정): pd 케이스를 통합 요청 스키마(team_id·force_escalation_amount·rule_source)로 이행, 정책 제안 기대값(auto_approve_limit·force_escalation_amount) 제거, 카테고리 9종 정정, pd-floor→pd-amount-passthrough 재목적화, pd-skip-empty 추가 — 총 21건. v4(2026-08-07): rp-standard-categories가 기본 이력에 다른 period 이름표만 붙인 중복이라 기간 필터 도입으로 드러났다 — 실제 5월 데이터 팀(9024)으로 옮겼다. rp-period-isolates-month 신설: 같은 팀의 다른 달이 섞이지 않는지 본다. 총 22건. v5(2026-08-07): digest·budget_proposal·dashboard 3종을 편입했다(각 2건, 총 28건). 종전에는 policy_draft·report·briefing 3종만 채점해 라이터 7종 중 절반 이상이 출력 품질 그물 밖에 있었다. digest 케이스는 판례에 `date`를 실어 그 주에 심는다.",
   "policy_draft_cases": [
     {
       "id": "pd-club-base",
@@ -634,6 +634,163 @@
         "notes_contain": [
           "특이 패턴"
         ]
+      }
+    }
+  ],
+  "digest_cases": [
+    {
+      "id": "dg-week-with-activity",
+      "scenario": "판례 5건이 그 주에 있는 팀(9025) — 자동 승인 2·반려 1·에스컬레이션 1이 각각 집계되고, 같은 주 지출(단체 티셔츠 90,000원)이 주간 지출로 잡힌다. ADMIN 결정은 자동 처리 건수에 들어가지 않는다",
+      "team_id": 9025,
+      "precedents": [
+        {
+          "category": "행사_활동",
+          "title": "대회 참가비",
+          "amount": 120000,
+          "decision": "approve",
+          "decided_by": "AGENT",
+          "date": "2026-06-15"
+        },
+        {
+          "category": "비품",
+          "title": "단체 티셔츠 제작",
+          "amount": 90000,
+          "decision": "approve",
+          "decided_by": "AGENT",
+          "date": "2026-06-16"
+        },
+        {
+          "category": "장소_대관",
+          "title": "체육관 대관",
+          "amount": 60000,
+          "decision": "escalate",
+          "decided_by": "AGENT",
+          "date": "2026-06-17"
+        },
+        {
+          "category": "식비",
+          "title": "뒤풀이",
+          "amount": 40000,
+          "decision": "reject",
+          "decided_by": "AGENT",
+          "date": "2026-06-18"
+        },
+        {
+          "category": "행사_활동",
+          "title": "추가 참가비",
+          "amount": 50000,
+          "decision": "approve",
+          "decided_by": "ADMIN",
+          "date": "2026-06-19"
+        }
+      ],
+      "input": {
+        "team_id": 9025,
+        "week_of": "2026-06-15"
+      },
+      "expect": {
+        "verified": true,
+        "auto_approved": 2,
+        "auto_rejected": 1,
+        "escalated": 1,
+        "weekly_spent": 90000,
+        "highlights_count": 3,
+        "summary_contain": [
+          "자동 승인 2건",
+          "반려 1건",
+          "90,000원"
+        ],
+        "advice_contain": [
+          "유지"
+        ]
+      }
+    },
+    {
+      "id": "dg-quiet-week",
+      "scenario": "판례도 지출도 없는 주 — 0건이어도 검증을 통과하고 '특이사항 없음'으로 안내한다. 종전에는 판례가 늘 실행 시각에 쌓여 이 상태와 구분되지 않았다",
+      "team_id": 9026,
+      "precedents": [],
+      "input": {
+        "team_id": 9026,
+        "week_of": "2026-05-11"
+      },
+      "expect": {
+        "verified": true,
+        "auto_approved": 0,
+        "auto_rejected": 0,
+        "escalated": 0,
+        "weekly_spent": 0
+      }
+    }
+  ],
+  "budget_proposal_cases": [
+    {
+      "id": "bp-skewed-category",
+      "scenario": "5월 편중형 팀(9024, 예산 50만·사용 37.2만) — 식비 67% 편중과 저활용 카테고리가 카테고리 분석에 드러나고, 예산 현황에 사용률 74%·잔액 128,000원이 정확히 실린다",
+      "input": {
+        "team_id": 9024,
+        "period": "2026-05"
+      },
+      "expect": {
+        "verified": true,
+        "usage_ratio_pct": 74,
+        "remaining": 128000,
+        "category_analysis_contain": [
+          "식비",
+          "67%"
+        ],
+        "budget_status_analysis_contain": [
+          "74%",
+          "128,000원"
+        ]
+      }
+    },
+    {
+      "id": "bp-tight-budget",
+      "scenario": "예산이 빠듯한 팀(9026, 20만 중 17.8만 사용) — 사용률 89%·잔액 22,000원이 그대로 문장에 나오고, 그 달 승인 지출이 없으면 카테고리 분석은 그 사실을 밝힌다",
+      "input": {
+        "team_id": 9026,
+        "period": "2026-05"
+      },
+      "expect": {
+        "verified": true,
+        "usage_ratio_pct": 89,
+        "remaining": 22000,
+        "budget_status_analysis_contain": [
+          "89%",
+          "22,000원"
+        ],
+        "category_analysis_contain": [
+          "아직 승인된 지출이 없어"
+        ]
+      }
+    }
+  ],
+  "dashboard_cases": [
+    {
+      "id": "db-two-months-june",
+      "scenario": "두 달치 이력 팀(9025)의 6월 요약 — 5월 지출(정기 회식·연습실 대관)이 섞이지 않는다. 기간 필터가 없던 시절엔 전월 건이 그대로 합산됐다",
+      "input": {
+        "team_id": 9025,
+        "period": "2026-06"
+      },
+      "expect": {
+        "verified": true,
+        "message_not_contain": [
+          "정기 회식",
+          "연습실"
+        ]
+      }
+    },
+    {
+      "id": "db-tight-budget",
+      "scenario": "예산이 빠듯한 팀(9026)의 5월 요약 — 잔액이 적다는 사실이 문장에 드러난다",
+      "input": {
+        "team_id": 9026,
+        "period": "2026-05"
+      },
+      "expect": {
+        "verified": true
       }
     }
   ]
