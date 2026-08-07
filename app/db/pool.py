@@ -198,25 +198,38 @@ async def claim_next_job() -> dict[str, Any] | None:
             ).fetchone()
 
 
-async def reclaim_stale_jobs(timeout_sec: int) -> list[str]:
-    """고아 잡 회수 (B-7) — 워커 크래시로 running에 갇힌 잡을 재큐잉 (visibility timeout).
+async def reclaim_stale_jobs(timeout_sec: int) -> list[dict[str, Any]]:
+    """고아 잡 회수 (B-7) — 워커 크래시로 running에 갇힌 잡을 재큐잉하거나 dead 처리.
 
     updated_at은 claim·재큐 시점에 갱신되므로, timeout보다 오래 방치된 running은
-    워커가 죽은 것으로 간주한다. 알려진 허용 동작: attempts==max에서 크래시한 잡은
-    회수 후 1회 더 실행된 뒤 dead — 무한 루프 아님. 정상 실행이 timeout을 넘기면
-    이중 실행 가능성이 있으나 단일 워커·p95 15s 전제에서 오탐 없음.
+    워커가 죽은 것으로 간주한다. attempts >= max_attempts인 잡은 여기서 바로 dead로
+    전환한다 — 파이썬 예외로 실패하는 잡은 worker.py의 handle_job() except 블록이
+    attempts==max에서 dead 처리하지만, 워커 프로세스가 OOM kill·SIGKILL 등 예외를
+    거치지 않고 죽으면 그 except 블록에 영영 도달하지 못한다. 예전에는 이런 잡이
+    회수될 때마다 무조건 'queued'로 돌아가 ORDER BY created_at 때문에 항상 맨 먼저
+    다시 집혔다 — 다시 죽고, 다시 맨 앞에서 집히는 무한 루프(poison pill)가 되어
+    뒤의 모든 잡을 굶겼다. 이제 이 함수 자체가 attempts 상한을 판정하므로 하드
+    크래시 케이스도 여기서 끊긴다.
+
+    정상 실행이 timeout을 넘기면 이중 실행 가능성이 있으나 단일 워커·p95 15s
+    전제에서 오탐 없음.
     """
     async with get_pool().connection() as conn:
         rows = await (
             await conn.execute(
-                """UPDATE jobs SET status = 'queued', updated_at = now()
+                """UPDATE jobs
+               SET status = CASE WHEN attempts >= max_attempts THEN 'dead' ELSE 'queued' END,
+                   result = CASE WHEN attempts >= max_attempts
+                       THEN '{"error":"WorkerCrash","message":"처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."}'::jsonb
+                       ELSE result END,
+                   updated_at = now()
                WHERE status = 'running'
                  AND updated_at < now() - make_interval(secs => %s)
-               RETURNING id""",
+               RETURNING id, status, type, external_job_id, expense_id, team_id""",
                 (timeout_sec,),
             )
         ).fetchall()
-    return [str(r["id"]) for r in rows]
+    return rows
 
 
 async def finish_job(

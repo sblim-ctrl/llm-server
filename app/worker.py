@@ -170,7 +170,16 @@ async def run_proposal_rule_amendment_job(
         {"request": req},
         config=langsmith_config("proposal_rule_amendment", str(job["id"]), req.team_id),
     )
-    return {"proposals": final.get("proposal_ids") or [], "reason": final.get("reason")}, final
+    return {
+        "proposals": final.get("proposal_ids") or [],
+        "reason": final.get("reason"),
+        # verify_amendment가 검증 실패를 세팅해도 save는 {"proposal_ids": []}만
+        # 조용히 반환한다 — jobs.result만 보는 호출자가 "군집 없음"(정상)과
+        # "군집은 있었는데 LLM 초안이 검증 실패"(실패, 종전엔 여기서 삼켜짐)를
+        # 구분하도록 결과에 그대로 노출한다.
+        "verified": final.get("verified"),
+        "verify_error": final.get("verify_error"),
+    }, final
 
 
 # 잡 타입 → 핸들러 레지스트리 (C6 계약, A-2) — 7종 전부 등록.
@@ -201,6 +210,42 @@ def _meta_totals(final_state: dict[str, Any] | None) -> tuple[float, int, int]:
         sum(m.tokens_in for m in metas),
         sum(m.tokens_out for m in metas),
     )
+
+
+async def _send_review_failsafe(job: dict[str, Any]) -> None:
+    """review 잡이 dead로 전환됐을 때 ESCALATED fail-safe 콜백 발송 (§8).
+
+    합집합 (7/20 팀 합의 ②):
+    · review 잡 한정 (B-7 — 비-review 잡의 지출 에스컬레이션 오발송 방지)
+    · 정식 CallbackPayload camelCase + 백엔드 발급 jobId echo (A-5 —
+      snake_case·내부 id면 expenses.ai_job_id 대조에서 무시된다)
+
+    handle_job()의 재시도 소진 경로와 poll_loop()의 reclaim_stale_jobs 하드 크래시
+    경로 양쪽에서 재사용한다 — job dict는 job_id(또는 id)·external_job_id·
+    expense_id·team_id를 가진다고 가정.
+    """
+    job_id = str(job.get("job_id") or job.get("id"))
+    expense_id = job.get("expense_id")
+    if not expense_id:
+        # expense_id 없이 CallbackPayload를 만들면 app/schemas/ids.py의 strict
+        # BigIntId(conint(strict=True, gt=0)) 때문에 ValidationError가 난다 —
+        # 콜백을 건너뛰고 조용히 삼키지 않도록 critical로 남긴다.
+        logger.critical(
+            "job %s review 잡이 dead로 전환됐지만 expense_id가 없어 fail-safe 콜백을 건너뜁니다",
+            job_id,
+        )
+        return
+    fail_safe = CallbackPayload(
+        job_id=job.get("external_job_id") or job_id,
+        expense_id=expense_id,
+        team_id=job["team_id"],
+        verdict="escalate",
+        reasons=Reasons(
+            requester="심사 지연으로 관리자 확인이 필요합니다.",
+            admin="AI 분석 실패 (재시도 소진) — fail-safe 에스컬레이션",
+        ),
+    )
+    await send_callback(fail_safe.model_dump(mode="json", by_alias=True))
 
 
 async def handle_job(job: dict[str, Any]) -> None:
@@ -254,22 +299,9 @@ async def handle_job(job: dict[str, Any]) -> None:
                 "dead",
                 result={"error": type(exc).__name__, "message": message},
             )
-            # fail-safe: 재시도 소진 → ESCALATED 콜백 (§8) — 합집합 (7/20 팀 합의 ②):
-            # · review 잡 한정 (B-7 — 비-review 잡의 지출 에스컬레이션 오발송 방지)
-            # · 정식 CallbackPayload camelCase + 백엔드 발급 jobId echo (A-5 —
-            #   snake_case·내부 id면 expenses.ai_job_id 대조에서 무시된다)
+            # fail-safe: 재시도 소진 → ESCALATED 콜백 (§8, 헬퍼 계약은 _send_review_failsafe 참고)
             if job["type"] == "review":
-                fail_safe = CallbackPayload(
-                    job_id=job.get("external_job_id") or job_id,
-                    expense_id=job.get("expense_id") or "",
-                    team_id=job["team_id"],
-                    verdict="escalate",
-                    reasons=Reasons(
-                        requester="심사 지연으로 관리자 확인이 필요합니다.",
-                        admin="AI 분석 실패 (재시도 소진) — fail-safe 에스컬레이션",
-                    ),
-                )
-                await send_callback(fail_safe.model_dump(mode="json", by_alias=True))
+                await _send_review_failsafe(job)
         else:
             # 재큐잉 — claim_next_job의 attempts 증가와 함께 재시도
             async with get_pool().connection() as conn:
@@ -286,10 +318,20 @@ async def poll_loop() -> None:
     interval = settings.worker_poll_interval_sec
     logger.info("worker started (poll every %.1fs)", interval)
     while not _shutdown.is_set():
-        # B-7 고아 잡 회수 — 크래시로 running에 갇힌 잡을 visibility timeout 후 재큐잉
+        # B-7 고아 잡 회수 — 크래시로 running에 갇힌 잡을 visibility timeout 후
+        # 재큐잉하거나(attempts 소진 시) dead 처리. dead+review는 여기서도
+        # handle_job()의 except 블록과 동일하게 fail-safe 콜백을 보내야 한다 —
+        # 하드 크래시(OOM kill 등)는 그 except 블록을 거치지 않기 때문.
         reclaimed = await reclaim_stale_jobs(settings.worker_visibility_timeout_sec)
         if reclaimed:
-            logger.warning("고아 잡 %d건 재큐잉: %s", len(reclaimed), reclaimed)
+            logger.warning(
+                "고아 잡 %d건 회수: %s",
+                len(reclaimed),
+                [(r["id"], r["status"]) for r in reclaimed],
+            )
+            for row in reclaimed:
+                if row.get("status") == "dead" and row.get("type") == "review":
+                    await _send_review_failsafe(row)
         job = await claim_next_job()
         if job is None:
             try:
@@ -297,7 +339,13 @@ async def poll_loop() -> None:
             except TimeoutError:
                 pass
             continue
-        await handle_job(job)
+        try:
+            await handle_job(job)
+        except Exception:
+            # handle_job 자체가 (finish_job 오류 등으로) 예외를 던지면 poll_loop
+            # 전체가 죽어 main()까지 전파되고 워커 프로세스가 죽는다 — 잡 하나의
+            # 실패가 큐 전체를 멈추지 않도록 여기서 막고 다음 사이클로 넘어간다.
+            logger.critical("handle_job 자체가 실패 — 잡 %s, 루프는 계속", job["id"], exc_info=True)
     logger.info("worker stopped")
 
 

@@ -2,6 +2,8 @@
 
 reclaim SQL 자체·kill -9 복구는 수동 시나리오(실 DB)로 검증 — 여기서는
 배선(호출 여부·인자)과 분기 로직만 검증한다.
+하드 크래시 시나리오: 워커를 kill -9로 3회 강제종료 → 최종적으로 dead 전환 +
+escalate 콜백 1회 발송 확인 — 이것도 수동 시나리오(실 DB)로 검증한다.
 """
 
 from types import SimpleNamespace
@@ -315,3 +317,117 @@ async def test_proposal_budget_handler_is_registered_and_honours_the_contract(mo
     assert final is not None and "budget_planner" in final["llm_meta"], (
         "final_state에 llm_meta가 없으면 B-7 비용 계측이 조용히 0으로 죽는다"
     )
+
+
+# ── poison pill 회수 (fix/worker-poison-pill) ───────────────────────────────
+
+
+async def test_poll_loop_sends_failsafe_only_for_dead_review_jobs(monkeypatch):
+    """reclaim_stale_jobs가 돌려준 회수 잡 중 dead+review에만 fail-safe 콜백을 보내는지."""
+    import app.db.pool as pool
+
+    reclaimed_rows = [
+        _job("review", id="dead-review-1", status="dead"),
+        _job("report", id="dead-report-1", status="dead"),  # dead지만 review 아님 → 미발송
+        {"id": "requeued-1", "status": "queued", "type": "review"},  # dead 아님 → 미발송
+    ]
+
+    async def claim_and_stop():
+        worker._shutdown.set()
+        return None
+
+    fs = Recorder()
+    monkeypatch.setattr(worker, "_send_review_failsafe", fs)
+    monkeypatch.setattr(pool, "reclaim_stale_jobs", Recorder(ret=reclaimed_rows))
+    monkeypatch.setattr(pool, "claim_next_job", claim_and_stop)
+    try:
+        await worker.poll_loop()
+    finally:
+        worker._shutdown.clear()
+
+    assert len(fs.calls) == 1
+    assert fs.calls[0][0][0]["id"] == "dead-review-1"
+
+
+async def test_send_review_failsafe_skips_missing_expense_id(monkeypatch):
+    """expense_id가 없으면(None·0·키 누락) ValidationError 없이 스킵하고 critical만 남기는지."""
+    cb = Recorder(ret=True)
+    monkeypatch.setattr(worker, "send_callback", cb)
+    critical_calls = []
+    monkeypatch.setattr(worker.logger, "critical", lambda *a, **k: critical_calls.append((a, k)))
+
+    jobs = [
+        _job("review", expense_id=None),
+        _job("review", expense_id=0),
+        {"id": "x", "team_id": 11, "type": "review"},  # expense_id 키 자체가 없음
+    ]
+    for job in jobs:
+        await worker._send_review_failsafe(job)
+
+    assert cb.calls == []
+    assert len(critical_calls) == len(jobs)
+
+
+async def test_send_review_failsafe_sends_callback_when_expense_id_present(monkeypatch):
+    """expense_id가 있으면 정상적으로 escalate 콜백을 보내는지(회귀 확인용 정상 경로)."""
+    cb = Recorder(ret=True)
+    monkeypatch.setattr(worker, "send_callback", cb)
+
+    await worker._send_review_failsafe(_job("review"))
+
+    assert len(cb.calls) == 1
+    assert cb.calls[0][0][0]["verdict"] == "escalate"
+    assert "expenseId" in cb.calls[0][0][0]
+
+
+async def test_poll_loop_survives_handle_job_exception(monkeypatch):
+    """handle_job 자체가 예외를 던져도 poll_loop가 죽지 않고 다음 사이클로 넘어가는지."""
+    import app.db.pool as pool
+
+    calls = {"n": 0}
+
+    async def boom_handle_job(job):
+        calls["n"] += 1
+        raise RuntimeError("handle_job 내부 오류")
+
+    async def claim_once_then_stop():
+        if calls["n"] == 0:
+            return _job("review")
+        worker._shutdown.set()
+        return None
+
+    monkeypatch.setattr(pool, "reclaim_stale_jobs", Recorder(ret=[]))
+    monkeypatch.setattr(pool, "claim_next_job", claim_once_then_stop)
+    monkeypatch.setattr(worker, "handle_job", boom_handle_job)
+    try:
+        await worker.poll_loop()  # 예외가 전파되면 이 await에서 테스트가 실패한다
+    finally:
+        worker._shutdown.clear()
+
+    assert calls["n"] == 1
+
+
+async def test_proposal_rule_amendment_result_carries_verified_and_verify_error(monkeypatch):
+    """save가 검증 실패를 {"proposal_ids": []}로 삼켜도 jobs.result에는
+    verified/verify_error가 그래프 최종 상태 그대로 남는지."""
+
+    async def fake_ainvoke(state, config=None):
+        return {
+            "proposal_ids": [],
+            "reason": None,
+            "verified": False,
+            "verify_error": "치환되지 않은 placeholder 존재",
+        }
+
+    monkeypatch.setattr(worker, "rule_amendment_graph", SimpleNamespace(ainvoke=fake_ainvoke))
+    result, final = await worker.run_proposal_rule_amendment_job(
+        _job("proposal_rule_amendment", payload={"team_id": 11})
+    )
+
+    assert result == {
+        "proposals": [],
+        "reason": None,
+        "verified": False,
+        "verify_error": "치환되지 않은 placeholder 존재",
+    }
+    assert final["verify_error"] == "치환되지 않은 placeholder 존재"
