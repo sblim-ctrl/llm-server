@@ -22,7 +22,15 @@ jobs:
   merge-gate:
     name: pytest + run_eval + run_eval_writers
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # timeout-minutes는 스텝 실행 시간이 아니라 **러너를 기다린 시간까지 포함**해서 센다.
+    # 15분으로 두었다가 2026-08-07에 main 포함 4건이 정확히 15분에서 잘렸는데, 잘린 잡의
+    # steps 배열이 전부 비어 있었다 — 체크아웃도 못 한 채 대기하다 죽은 것이다:
+    #   gh api repos/<owner>/<repo>/actions/runs/<id>/jobs \
+    #     --jq '.jobs[] | "\(.conclusion) 스텝 \(.steps|length)개"'
+    # 같은 날 통과한 실행의 스텝 합은 42초였고 로컬 실측도 pytest 6초 + run_eval 9초 +
+    # writers 3초다. 스위트가 무거워서가 아니라 러너가 안 나와서 잘렸으므로 대기 여유를 준다.
+    # **다시 줄이려면 먼저 위 명령으로 스텝이 실제로 돌았는지 확인할 것.**
+    timeout-minutes: 30
 
     services:
       llm-postgres:
