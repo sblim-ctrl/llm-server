@@ -104,3 +104,84 @@ def test_precedent_lines_expose_decided_by_and_override():
 
 def test_precedent_lines_empty_marker():
     assert _precedent_lines([]) == "(없음)"
+
+
+# ── E4: 가드레일 판정이 LLM 판정보다 위다 (2026-08-04 검토 회신) ──────────
+#
+# `route_after_guardrail`은 `escalate`만 걸러 내고 `reject_candidate`(예산 부족)는
+# adjudicate로 보낸다. 여기서 gate_result를 대조하지 않으면, 잔액이 없다는 결정적
+# 판정이 난 건에 실모드 LLM이 approve를 내는 순간 그대로 콜백까지 나간다.
+#
+# **목 모드는 `_mock_result`가 게이트를 존중해 reject를 내므로 골든셋으로는 원리적으로
+# 검출되지 않는다** — 그래서 여기가 유일한 그물이다. LLM 응답을 직접 주입해 확인한다.
+
+import logging  # noqa: E402
+from unittest.mock import AsyncMock, patch  # noqa: E402
+
+import pytest  # noqa: E402
+
+from app.graphs.review.nodes.adjudicate import AdjudicationResult, adjudicate  # noqa: E402
+from app.schemas.common import (  # noqa: E402
+    ExpenseClaim,
+    GateResult,
+    LLMCallMeta,
+    PolicyParams,
+)
+
+
+def _state(gate_decision: str, rules: list[str] | None = None) -> dict:
+    # claim은 `_mock_result(state)`가 읽는다 — chat_structured를 목으로 바꿔도
+    # mock_response 인자가 먼저 평가되므로 상태에 있어야 한다.
+    return {
+        "claim": ExpenseClaim(title="테스트 지출", amount=30_000, date="2026-08-01"),
+        "opinions": _opinions(),
+        "policy_params": PolicyParams(confidence_threshold=0.8),
+        "gate_result": GateResult(decision=gate_decision, triggered_rules=rules or []),
+        "team_members": [],
+    }
+
+
+def _llm(verdict: str, confidence: float = 0.95):
+    """adjudicator가 이 판정을 냈다고 가정한다 (실모드 응답 주입)."""
+    result = AdjudicationResult(
+        verdict=verdict, confidence=confidence,
+        reason_requester="요청자용 사유", reason_admin="관리자용 사유",
+    )
+    meta = LLMCallMeta(model="test", prompt_version="adjudicator/test")
+    return patch(
+        "app.graphs.review.nodes.adjudicate.chat_structured",
+        AsyncMock(return_value=(result, meta)),
+    )
+
+
+async def test_llm_cannot_flip_reject_candidate_to_approve(caplog):
+    """예산 부족으로 반려 후보가 된 건은 LLM이 승인해도 escalate로 강등된다.
+
+    §8 "어떤 실패도 자동 승인으로 이어지지 않는다"가 확률이 아니라 보장이 되는 자리.
+    """
+    with _llm("approve"), caplog.at_level(logging.WARNING):
+        out = await adjudicate(_state("reject_candidate", ["budget_insufficient"]))
+    assert out["verdict"] == "escalate"
+    assert "강등" in caplog.text, "조용히 뒤집으면 안 된다 — 사람이 볼 로그가 남아야 한다"
+
+
+async def test_reject_candidate_confirmed_as_reject_is_untouched():
+    """LLM이 게이트와 같은 방향(reject)을 내면 그대로 둔다 — 정상 경로."""
+    with _llm("reject"):
+        out = await adjudicate(_state("reject_candidate", ["budget_insufficient"]))
+    assert out["verdict"] == "reject"
+
+
+async def test_proceed_path_can_still_approve():
+    """가드레일이 통과시킨 건은 종전대로 승인된다 — 강등이 과잉 적용되면 안 된다."""
+    with _llm("approve"):
+        out = await adjudicate(_state("proceed"))
+    assert out["verdict"] == "approve"
+
+
+@pytest.mark.parametrize("gate_decision", ["proceed", "reject_candidate"])
+async def test_low_confidence_still_escalates(gate_decision):
+    """확신도 미달은 게이트 판정과 무관하게 escalate (기존 계약 유지)."""
+    with _llm("approve", confidence=0.5):
+        out = await adjudicate(_state(gate_decision))
+    assert out["verdict"] == "escalate"
