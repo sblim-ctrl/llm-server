@@ -16,7 +16,7 @@ from fastapi import APIRouter
 from app.db.pool import get_context_status, insert_job
 from app.schemas.analyze import AnalyzeAccepted, ContextRefreshRequest
 from app.schemas.context import ContextStatus
-from app.schemas.ids import BigIntId
+from app.schemas.ids import BigIntQuery
 
 router = APIRouter(prefix="/v1", tags=["context"])
 
@@ -37,7 +37,7 @@ async def refresh_context(req: ContextRefreshRequest) -> AnalyzeAccepted:
 
 
 @router.get("/context/status", response_model=ContextStatus, summary="팀 회칙 인덱싱 상태 조회")
-async def read_context_status(team_id: BigIntId) -> ContextStatus:
+async def read_context_status(team_id: BigIntQuery) -> ContextStatus:
     """이 팀 회칙이 실제로 심사에 반영될 수 있는 상태인지 알려준다.
 
     `indexed=false`면 회칙 기준 심사가 되지 않는다. 그 경우 심사는 모임 유형별 기본

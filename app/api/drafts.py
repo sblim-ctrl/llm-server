@@ -24,6 +24,7 @@
 from fastapi import APIRouter, HTTPException
 
 from app.graphs.writers.policy_draft import policy_draft_graph
+from app.schemas.ids import BigIntQuery
 from app.schemas.writers import (
     PolicyDraft,
     PolicyDraftRequest,
@@ -108,7 +109,7 @@ async def create_policy_proposal(req: PolicyProposalRequest) -> PolicyProposal:
     response_model=PolicyProposal | None,
     summary="저장된 회칙 초안 조회 (없으면 null)",
 )
-async def read_policy_proposal(team_id: int) -> PolicyProposal | None:
+async def read_policy_proposal(team_id: BigIntQuery) -> PolicyProposal | None:
     """아직 결정되지 않은 회칙 초안을 돌려준다. 없으면 `null`이다.
 
     회의록의 "생성된 메시지가 있으면 반환, 없으면 없다고 반환"이 이 동작이다.

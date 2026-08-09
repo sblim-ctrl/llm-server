@@ -1650,6 +1650,8 @@
             "name": "team_id",
             "required": true,
             "schema": {
+              "description": "양의 백엔드 BIGINT 기본키",
+              "format": "int64",
               "title": "Team Id",
               "type": "integer"
             }

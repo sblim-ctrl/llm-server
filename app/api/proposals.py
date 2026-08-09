@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 from app.api.drafts import RULE_DRAFT
 from app.db.pool import insert_job
 from app.schemas.analyze import AnalyzeAccepted
-from app.schemas.ids import BigIntId
+from app.schemas.ids import BigIntQuery
 from app.schemas.proposals import (
     ProposalBudgetRequest,
     ProposalOut,
@@ -49,7 +49,7 @@ async def create_rule_amendment_job(req: RuleAmendmentRequest) -> AnalyzeAccepte
     summary="제안 목록 조회 (LLM-015, type 미지정 시 마법사 회칙 초안 rule_draft 제외)",
 )
 async def read_proposals(
-    team_id: BigIntId,
+    team_id: BigIntQuery,
     type: str | None = None,
     status: str | None = None,
 ) -> list[ProposalOut]:
