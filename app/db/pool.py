@@ -93,9 +93,15 @@ async def setup_checkpointer_locked(checkpointer: Any) -> None:
         try:
             await checkpointer.setup()
         finally:
-            await conn.execute(
-                "SELECT pg_advisory_unlock(hashtext(%s), 0)",
-                (CHECKPOINTER_SETUP_LOCK,))
+            try:
+                await conn.execute(
+                    "SELECT pg_advisory_unlock(hashtext(%s), 0)",
+                    (CHECKPOINTER_SETUP_LOCK,))
+            except Exception:
+                # 연결이 죽어 unlock이 실패해도 세션 종료가 잠금을 함께 푼다 —
+                # 여기서 예외를 흘리면 setup()의 원인 예외를 가린다
+                logger.warning("checkpointer setup 잠금 해제 실패 — 연결 종료로 대체",
+                               exc_info=True)
 
 
 # ── jobs 헬퍼 ─────────────────────────────────────────────

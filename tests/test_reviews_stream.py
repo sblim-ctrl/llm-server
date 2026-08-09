@@ -27,8 +27,9 @@ class _FakeCursor:
 class _FakeLockConn:
     """advisory lock 연결 대역 — try_lock 결과를 정해 두고 실행 SQL을 기록한다."""
 
-    def __init__(self, grant: bool):
+    def __init__(self, grant: bool, unlock_fails: bool = False):
         self.grant = grant
+        self.unlock_fails = unlock_fails
         self.executed: list[str] = []
         self.closed = False
 
@@ -36,6 +37,8 @@ class _FakeLockConn:
         self.executed.append(sql)
         if "pg_try_advisory_lock" in sql:
             return _FakeCursor((self.grant,))
+        if "pg_advisory_unlock" in sql and self.unlock_fails:
+            raise ConnectionError("연결 유실 재현")
         return _FakeCursor((True,))
 
     async def close(self):
@@ -118,6 +121,25 @@ async def test_resume_success_runs_graph_once_and_releases_lock(monkeypatch):
     assert "event: result" in body  # 재개가 끝까지 갔다
     assert graph.resumed == 1
     assert conn.unlocked and conn.closed  # 스트림이 끝나야 풀린다
+
+
+async def test_resume_unlock_failure_does_not_break_response(monkeypatch):
+    """연결이 죽어 unlock이 실패해도 응답·스트림 정리는 멀쩡하다.
+
+    해제 예외가 밖으로 흐르면 종결 재확인 409가 500이 되거나 제너레이터 정리가
+    오류로 끝난다 — 연결 종료가 세션 잠금을 함께 푸므로 삼키는 것이 계약.
+    """
+    conn = _FakeLockConn(grant=True, unlock_fails=True)
+    _patch_lock_conn(monkeypatch, conn)
+    graph = _FakeGraph(next_=("escalate",), values={"team_id": 9002})
+    monkeypatch.setattr(reviews_stream, "hitl_graph", graph)
+
+    resp = await reviews_stream.resume_review(
+        "job-5", DecisionRequest(decision="approve"))
+    body = "".join([chunk async for chunk in resp.body_iterator])  # 예외 없이 완주
+
+    assert "event: result" in body
+    assert conn.closed  # unlock은 실패했지만 연결은 닫혔다 → 세션 잠금 해제
 
 
 async def test_resume_stream_failure_still_releases_lock(monkeypatch):

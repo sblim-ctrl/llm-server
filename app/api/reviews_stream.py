@@ -26,6 +26,7 @@ POST /v1/reviews/{job_id}/decision 으로 승인/반려를 보내면 **같은 �
 SSE 이벤트: start(노드 목록) → node(완료 노드·소요ms·심사관 소견)*
             → paused(관리자 결정 대기) | result(판정·신뢰도·사유) | error
 """
+import contextlib
 import json
 import logging
 import uuid
@@ -181,13 +182,22 @@ RESUME_LOCK_NS = "hitl_resume"
 
 
 async def _release_resume_lock(conn, job_id: str) -> None:
-    """재개 잠금 해제 — unlock이 실패해도 연결을 닫으면 세션 잠금은 함께 풀린다."""
+    """재개 잠금 해제 — 어떤 예외도 밖으로 흘리지 않는다.
+
+    연결이 닫히면 세션 잠금은 함께 풀리므로 unlock 실패는 치명적이지 않다.
+    여기서 예외를 흘리면 409 응답이 500으로 바뀌거나(종결 재확인 경로) 스트림
+    제너레이터 정리가 오류로 끝난다(gen finally 경로).
+    """
     try:
         await conn.execute(
             "SELECT pg_advisory_unlock(hashtext(%s), hashtext(%s))",
             (RESUME_LOCK_NS, job_id))
+    except Exception:
+        logger.warning("HITL 재개 잠금 해제 실패 — 연결 종료로 대체: %s",
+                       job_id, exc_info=True)
     finally:
-        await conn.close()
+        with contextlib.suppress(Exception):
+            await conn.close()
 
 
 @router.post("/v1/reviews/{job_id}/decision")
@@ -209,7 +219,8 @@ async def resume_review(job_id: str, req: DecisionRequest):
             "SELECT pg_try_advisory_lock(hashtext(%s), hashtext(%s))",
             (RESUME_LOCK_NS, job_id))).fetchone())[0]
         if not got:  # 같은 잡을 다른 요청이 재개하는 중 — 기다리지 않고 거절
-            await lock_conn.close()
+            with contextlib.suppress(Exception):
+                await lock_conn.close()
             return JSONResponse(status_code=409, content={
                 "detail": f"'{job_id}'는 이미 다른 요청이 재개 중입니다 — "
                           "잠시 후 심사 상태를 확인하세요"})
@@ -221,7 +232,8 @@ async def resume_review(job_id: str, req: DecisionRequest):
                 "detail": f"'{job_id}'는 관리자 결정 대기 상태가 아닙니다 "
                           "(이미 종결됐거나 알 수 없는 잡)"})
     except Exception:
-        await lock_conn.close()
+        with contextlib.suppress(Exception):  # close 실패가 원인 예외를 가리지 않게
+            await lock_conn.close()
         raise
 
     async def gen():

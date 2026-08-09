@@ -36,6 +36,8 @@ class _FakeConn:
         self.log.append("close")
         return False
 
+    unlock_fails = False
+
     async def execute(self, sql, params=None):
         if "pg_try_advisory_lock" in sql:
             g = self._grants.pop(0) if self._grants else False
@@ -43,6 +45,8 @@ class _FakeConn:
             return _FakeCursor((g,))
         if "pg_advisory_unlock" in sql:
             self.log.append("unlock")
+            if self.unlock_fails:
+                raise ConnectionError("연결 유실 재현")
         return _FakeCursor((True,))
 
 
@@ -97,6 +101,20 @@ async def test_setup_failure_still_unlocks(monkeypatch):
 
     with pytest.raises(RuntimeError, match="마이그레이션 실패"):
         await pool.setup_checkpointer_locked(_FakeCheckpointer(log, fail=True))
+
+    assert log == ["try:True", "setup", "unlock", "close"]
+
+
+async def test_setup_success_survives_unlock_failure(monkeypatch):
+    """unlock이 실패해도(연결 유실) setup 성공이 예외로 바뀌지 않는다 —
+    연결 종료가 세션 잠금을 함께 푼다."""
+    log: list[str] = []
+    _patch(monkeypatch, log, grants=[True])
+    _FakeConn.unlock_fails = True
+    try:
+        await pool.setup_checkpointer_locked(_FakeCheckpointer(log))
+    finally:
+        _FakeConn.unlock_fails = False
 
     assert log == ["try:True", "setup", "unlock", "close"]
 
