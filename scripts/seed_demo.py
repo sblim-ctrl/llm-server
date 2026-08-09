@@ -119,9 +119,11 @@ async def main() -> None:
         rows = []
         for week, plan in WEEK_PLAN.items():
             results = [await submit(week, i) for i in plan]
-            # 심사 그래프의 `persist_precedent`는 실행 시각으로 저장한다(실서비스에선 그게
-            # 맞다). 시드에서는 그 주에 있었던 일로 보여야 하므로, 이번 주차에 새로 생긴
-            # 행만 골라 날짜를 옮긴다 — 이게 없으면 브리핑의 '에스컬레이션 N건'이 늘 0이다.
+            # 심사 그래프의 `persist_precedent`는 **모든 판정**(approve/reject/escalate)을
+            # 실행 시각으로 저장한다(실서비스에선 그게 맞다). 시드에서는 그 주에 있었던
+            # 일로 보여야 하므로, 이번 주차에 새로 생긴 행만 골라 날짜를 옮긴다 —
+            # 브리핑의 자동 승인·반려·에스컬레이션 건수가 전부 이 행들에서 나온다.
+            # 여기서 save_precedent를 또 부르면 이중 계상이다(2026-08-09에 실제로 2배였다).
             await _restamp_new_precedents(_week_date(week))
             escalated = [r for r in results if r["verdict"] == "escalate"]
             rate = len(escalated) / len(results)
@@ -140,19 +142,6 @@ async def main() -> None:
                     reason="정상적인 모임 활동 지출로 확인 — 승인",
                     created_at=_week_date(week),   # 그 주에 결정된 것으로 기록
                 )
-            # 자동 처리된 건도 판례로 남긴다 — 주간 브리핑의 '자동 승인 N건'이 여기서 나온다.
-            # 종전에는 에스컬레이션만 저장해 브리핑의 승인·반려 칸이 늘 0이었다.
-            for r in results:
-                if r["verdict"] in ("approve", "reject"):
-                    await save_precedent(
-                        team_id=TEAM,
-                        summary=summarize_claim(r["claim"]),
-                        decision=r["verdict"],
-                        decided_by="AGENT",
-                        reason="가드레일·심사관 통과 — AI 자동 처리",
-                        created_at=_week_date(week),
-                    )
-
         # B-6 시드 확장 (append-only — 기존 시드는 A-4 anomalies 테스트·골든셋이 의존, C10)
         # 동일 청구 반복 → summarize_claim이 날짜를 제외하므로 바이트 동일 요약
         # → 목 해시 임베딩 distance 0 → detect_repeated_overrides 군집 성립 (임계 3 충족)
