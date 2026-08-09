@@ -75,6 +75,7 @@ def test_nine_categories_pass_through_unchanged():
         ("선물/기념비", "기타"),
         ("행사", "행사_활동"),  # 백엔드 구 ENUM
         ("디자인", "기타"),  # 백엔드 구 ENUM
+        ("행사활동", "행사_활동"),  # 언더바 누락 방어 (2026-08-09 백엔드 마이그레이션 공지)
     ],
 )
 def test_legacy_categories_map_to_nine(legacy, expected):
