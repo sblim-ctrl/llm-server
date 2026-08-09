@@ -33,7 +33,15 @@ async def save_precedent(
     rule_version: int | None = None,
     model_version: str = "mock",
     prompt_version: str = "review/v1",
+    created_at: str | None = None,
 ) -> str:
+    """판례 1건 저장. `created_at`은 **시드 전용**이다.
+
+    심사 경로는 항상 None으로 두어 DB 기본값 `now()`를 쓴다. 데모 시드
+    (`scripts/seed_demo.py`)만 값을 준다 — 주간 브리핑이 판례를 `created_at`의 주로
+    묶기 때문에, 시드가 전부 실행 시각에 쌓이면 fixture 지출(2026-06)과 시간축이
+    어긋나 어떤 주를 골라도 한쪽이 0으로 나온다 (2026-08-07 실측).
+    """
     members = await get_team_members(team_id)
     summary = mask_names(summary, members)
     reason = mask_names(reason, members) if reason else None
@@ -43,11 +51,13 @@ async def save_precedent(
         row = await (await conn.execute(
             """INSERT INTO precedents
                (team_id, expense_summary, decision, decided_by, reason, is_override,
-                confidence, rule_version, model_version, prompt_version, embedding)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::vector)
+                confidence, rule_version, model_version, prompt_version, embedding,
+                created_at)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::vector,
+                       COALESCE(%s::timestamptz, now()))
                RETURNING id""",
             (team_id, summary, decision, decided_by, reason, is_override,
              confidence, rule_version, model_version, prompt_version,
-             to_vector_literal(embedding)),
+             to_vector_literal(embedding), created_at),
         )).fetchone()
     return str(row["id"])

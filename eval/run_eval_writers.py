@@ -1,10 +1,10 @@
-"""라이터 골든셋 회귀 평가 CLI — 문서 생성 3종 (PolicyDrafter/ReportWriter/BriefingWriter).
+"""라이터 골든셋 회귀 평가 CLI — 라이터 7종 전부 (2026-08-07 v6부터).
 
 실행: uv run python eval/run_eval_writers.py [golden_path]
 
 평가 로직은 app/eval_writers.py에 있다 (대시보드 GET /v1/eval/writers와 공유) —
-이 파일은 CLI 출력·exit code 처리만 담당. BriefingWriter 케이스가 판례를 DB에
-시드하므로 llm-postgres가 떠 있어야 한다 (docker compose up -d llm-postgres).
+이 파일은 CLI 출력·exit code 처리만 담당. briefing·digest·rule_amendment 케이스가
+판례를 DB에 시드하므로 llm-postgres가 떠 있어야 한다 (docker compose up -d llm-postgres).
 """
 import asyncio
 import sys

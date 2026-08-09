@@ -53,13 +53,42 @@ WEEK_PLAN = {
 }
 
 
+# 데모 기준 달 — fixture 지출 이력(`eval/fixtures/mock_backend.json`)과 **같은 달**이어야
+# 한다. 주간 브리핑은 판례를 `created_at`의 주로, 주간 지출을 지출 날짜의 주로 묶으므로
+# 둘이 다른 달이면 어떤 주를 골라도 한쪽이 0이 된다 — 2026-08-07에 실제로 그랬다
+# (판례는 실행 시각인 8월, 지출은 fixture의 6월, 시드 청구는 7월로 셋이 갈려 있었다).
+DEMO_MONTH = "2026-06"
+
+
+def _week_date(week: int) -> str:
+    """주차 → 그 주의 대표 날짜 (1주차 07일 … 4주차 28일)."""
+    return f"{DEMO_MONTH}-{week * 7:02d}"
+
+
+async def _restamp_new_precedents(day: str) -> int:
+    """이번 실행에서 새로 생긴 판례(=오늘 날짜)를 데모 주차 날짜로 옮긴다.
+
+    `save_precedent(created_at=...)`로 직접 넣는 것과 달리, 심사 그래프가 내부에서
+    저장하는 판례는 시각을 지정할 수 없어 사후에 옮긴다. 조건을 `created_at::date =
+    CURRENT_DATE`로 좁혀 **이전 주차에 이미 옮겨 둔 행은 건드리지 않는다.**
+    """
+    async with get_pool().connection() as conn:
+        rows = await (await conn.execute(
+            """UPDATE precedents SET created_at = %s::timestamptz
+               WHERE team_id = %s AND created_at::date = CURRENT_DATE
+               RETURNING id""",
+            (day, TEAM),
+        )).fetchall()
+    return len(rows)
+
+
 async def submit(week: int, idx: int) -> dict:
     title, amount, category, desc = CLAIMS[idx]
     claim = ExpenseClaim(
         title=title,
         amount=amount,
         category=category,
-        date=f"2026-07-{week * 7:02d}",
+        date=_week_date(week),
         description=desc,
     )
     state = await review_graph.ainvoke(
@@ -90,6 +119,12 @@ async def main() -> None:
         rows = []
         for week, plan in WEEK_PLAN.items():
             results = [await submit(week, i) for i in plan]
+            # 심사 그래프의 `persist_precedent`는 **모든 판정**(approve/reject/escalate)을
+            # 실행 시각으로 저장한다(실서비스에선 그게 맞다). 시드에서는 그 주에 있었던
+            # 일로 보여야 하므로, 이번 주차에 새로 생긴 행만 골라 날짜를 옮긴다 —
+            # 브리핑의 자동 승인·반려·에스컬레이션 건수가 전부 이 행들에서 나온다.
+            # 여기서 save_precedent를 또 부르면 이중 계상이다(2026-08-09에 실제로 2배였다).
+            await _restamp_new_precedents(_week_date(week))
             escalated = [r for r in results if r["verdict"] == "escalate"]
             rate = len(escalated) / len(results)
             rows.append(
@@ -105,8 +140,8 @@ async def main() -> None:
                     decision="approve",
                     decided_by="ADMIN",
                     reason="정상적인 모임 활동 지출로 확인 — 승인",
+                    created_at=_week_date(week),   # 그 주에 결정된 것으로 기록
                 )
-
         # B-6 시드 확장 (append-only — 기존 시드는 A-4 anomalies 테스트·골든셋이 의존, C10)
         # 동일 청구 반복 → summarize_claim이 날짜를 제외하므로 바이트 동일 요약
         # → 목 해시 임베딩 distance 0 → detect_repeated_overrides 군집 성립 (임계 3 충족)
@@ -114,7 +149,7 @@ async def main() -> None:
             title="정기 회식",
             amount=35_000,
             category="식비",
-            date="2026-07-05",
+            date=f"{DEMO_MONTH}-05",
             description="회식비 3.5만원 — 한도 초과분 재량 승인",
         )
         for _ in range(3):
@@ -125,6 +160,7 @@ async def main() -> None:
                 decided_by="ADMIN",
                 is_override=True,
                 reason="관리자 재량으로 한도 초과 승인",
+                created_at=f"{DEMO_MONTH}-05",
             )
         print("\nB-6 시드: 동일 패턴 ADMIN override 판례 3건 추가 (회칙 개정 제안 데모용)")
 
