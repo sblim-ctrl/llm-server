@@ -98,3 +98,99 @@ def test_f1_is_zero_when_both_zero():
     esc = per_class_prf(results)["escalate"]
     assert esc["precision"] == 0.0 and esc["recall"] == 0.0
     assert esc["f1"] == 0.0
+
+
+# ── 분류 채점 (T9) ────────────────────────────────────────
+#
+# 판정 지표와 달리 **게이트가 아니라서** 여기가 틀려도 CI가 빨개지지 않는다.
+# 그래서 채점 자체가 망가지면 조용히 틀린 숫자가 나온다 — 그물을 여기 놓는다
+# (2026-08-07 뮤테이션 검증: 이 그물이 없을 때 결함 6종이 전부 통과했다).
+
+from app.eval_metrics import category_metrics, score_category  # noqa: E402
+
+
+def _c(cid, expected, actual):
+    """분류 채점 대상 결과 한 줄."""
+    return {
+        "id": cid,
+        "expected_category": expected,
+        "actual_category": actual,
+        "category_ok": score_category(actual, expected),
+    }
+
+
+def test_score_category_distinguishes_hit_from_miss():
+    """맞음과 틀림이 갈려야 한다 — 항상 True로 짜면 정확도가 영원히 100%가 된다."""
+    assert score_category("식비", "식비") is True
+    assert score_category("교통", "식비") is False
+
+
+def test_case_without_expected_is_not_scored():
+    """정답을 안 매긴 케이스는 채점 대상이 아니다(None) — 오답으로 깎지 않는다."""
+    assert score_category("식비", None) is None
+    assert score_category("식비", "") is None
+
+
+def test_missing_classification_counts_as_miss():
+    """기대값이 있는데 아무 카테고리도 못 냈으면 오답이다 (claim이 없는 경로)."""
+    assert score_category(None, "식비") is False
+
+
+def test_accuracy_denominator_excludes_unscored_cases():
+    """분모는 **기대값이 있는 케이스만**이다.
+
+    전체 건수를 분모로 쓰면 정답을 안 매긴 케이스가 정확도를 조용히 끌어내린다.
+    """
+    results = [
+        _c("a", "식비", "식비"),
+        _c("b", "교통", "교육"),      # 오답
+        _c("c", None, "비품"),        # 채점 제외
+    ]
+    m = category_metrics(results)
+    assert m["category_total"] == 2, "채점 제외 케이스가 분모에 들어갔다"
+    assert m["category_correct"] == 1
+    assert m["category_accuracy"] == 0.5
+
+
+def test_misses_name_what_went_wrong():
+    """오분류는 개수만이 아니라 무엇이 무엇으로 틀렸는지까지 나와야 한다.
+
+    숫자만 있으면 정확도가 떨어졌을 때 어디를 볼지 알 수 없다.
+    """
+    results = [_c("a", "식비", "식비"), _c("b", "교통", "교육")]
+    misses = category_metrics(results)["category_misses"]
+    assert misses == [{"id": "b", "expected": "교통", "actual": "교육"}]
+
+
+def test_accuracy_is_none_when_nothing_is_scorable():
+    """채점할 게 하나도 없으면 0%가 아니라 '측정 불가'다 (0으로 나누지 않는다)."""
+    m = category_metrics([_c("a", None, "식비")])
+    assert m["category_total"] == 0
+    assert m["category_accuracy"] is None
+    assert m["category_misses"] == []
+
+
+def test_csv_carries_the_category_columns():
+    """결과 CSV에 분류 채점 3열이 실려야 한다 — 헤더와 행의 열 수가 어긋나면 안 된다.
+
+    CSV는 사람이 오분류를 훑는 통로다(가이드 제출물). 열이 하나 빠지면 이후 열이
+    통째로 밀려 다른 값으로 읽힌다.
+    """
+    import csv as _csv
+
+    from app.eval_support import export_results_csv
+
+    row = {
+        "id": "case-1", "scenario": "", "expected": "approve", "actual": "approve",
+        "correct": True, "false_approve": False, "gate": [], "expected_gate": [],
+        "trajectory_ok": None, "expected_category": "식비", "actual_category": "교통",
+        "category_ok": False,
+    }
+    path = export_results_csv([row])
+    with path.open(encoding="utf-8-sig") as f:
+        header, data = list(_csv.reader(f))[:2]
+    assert len(header) == len(data), "헤더와 행의 열 수가 다르다"
+    at = {k: v for k, v in zip(header, data, strict=True)}
+    assert at["expected_category"] == "식비"
+    assert at["actual_category"] == "교통"
+    assert at["category_ok"] == "False"

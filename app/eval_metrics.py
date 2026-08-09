@@ -71,3 +71,42 @@ def verdict_metrics(results: list[dict[str, Any]]) -> dict[str, Any]:
         "escalation_recall": esc["recall"],
         "escalation_precision": esc["precision"],
     }
+
+
+def score_category(actual: str | None, expected: str | None) -> bool | None:
+    """분류 채점 한 건 — 사람이 매긴 정답 대비 AI가 확정한 카테고리.
+
+    기대값이 없는 케이스는 **채점 대상이 아니다(None)**. False로 두면 정답을 안 매긴
+    케이스가 오답으로 깎여 분모·분자가 같이 틀어진다.
+
+    `actual`이 None인 것(claim이 없는 경로)은 오답으로 센다 — 기대값이 있는데 아무
+    카테고리도 못 냈다는 뜻이라 맞혔다고 볼 수 없다.
+    """
+    if not expected:
+        return None
+    return actual == expected
+
+
+def category_metrics(results: list[dict[str, Any]]) -> dict[str, Any]:
+    """분류 정확도 — 기대값이 있는 케이스만 분모에 넣는다.
+
+    **판정과 독립된 관측 지표이고 하드 게이트가 아니다.** 목 모드 분류는 실LLM을 안
+    부르고 키워드 규칙으로 답하므로 이 숫자는 "키워드 규칙의 정확도"이지 실서비스 품질이
+    아니다. 게이트로 만들면 실모드에서만 나올 개선을 목 숫자로 막게 된다 — 임계값은
+    실모드 측정(`eval/run_eval_real.py`) 후에 정한다.
+
+    오분류를 세기만 하지 않고 `category_misses`로 **무엇이 무엇으로 틀렸는지**까지
+    돌려준다. 숫자만 있으면 떨어졌을 때 어디를 볼지 알 수 없다.
+    """
+    cases = [r for r in results if r.get("category_ok") is not None]
+    correct = sum(1 for r in cases if r["category_ok"])
+    return {
+        "category_total": len(cases),
+        "category_correct": correct,
+        "category_accuracy": (correct / len(cases)) if cases else None,
+        "category_misses": [
+            {"id": r["id"], "expected": r["expected_category"], "actual": r["actual_category"]}
+            for r in cases
+            if not r["category_ok"]
+        ],
+    }
