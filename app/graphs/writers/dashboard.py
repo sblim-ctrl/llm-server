@@ -69,7 +69,8 @@ def aggregate_dashboard_pure(
     last_month = [e for e in approved if _in_period(e.get("date"), prev)]
 
     total_budget = int(budget.get("total_budget", 0))
-    spent = sum(int(e.get("amount", 0)) for e in this_month)
+    backend_spent = int(budget.get("spent", 0))  # 백엔드 누적 — remaining/usage_ratio 기준
+    spent = sum(int(e.get("amount", 0)) for e in this_month)  # 이번 달만 — 카테고리 비중용
 
     pending = [e for e in expenses
                if str(e.get("status", "")).upper() in PENDING_STATUSES
@@ -104,8 +105,8 @@ def aggregate_dashboard_pure(
         period=period,
         total_budget=total_budget,
         spent=spent,
-        remaining=total_budget - spent,
-        usage_ratio=(spent / total_budget) if total_budget else 0.0,
+        remaining=total_budget - backend_spent,
+        usage_ratio=(backend_spent / total_budget) if total_budget else 0.0,
         pending_count=len(pending),
         pending_amount=sum(int(e.get("amount", 0)) for e in pending),
         categories=trends,
@@ -136,9 +137,9 @@ def _mock_message(f: DashboardFigures) -> DashboardSummary:
     if not f.categories:
         return DashboardSummary(message=(
             f"{f.period}에는 아직 승인된 지출이 없어요. "
-            f"총예산 {f.total_budget:,}원이 그대로 남아 있습니다."))
+            f"지금까지 예산의 {f.usage_ratio:.0%}를 사용했고, 남은 예산은 {f.remaining:,}원입니다."))
 
-    parts = [f"이번 달 지출은 {f.spent:,}원으로 예산의 {f.usage_ratio:.0%}를 썼어요."]
+    parts = [f"이번 달 지출은 {f.spent:,}원이에요."]
     if f.top_category:
         parts.append(f"{f.top_category.category}가 {f.top_category.spent:,}원으로"
                      f" 가장 큰 비중이에요.")
@@ -147,7 +148,7 @@ def _mock_message(f: DashboardFigures) -> DashboardSummary:
                      f" {f.fastest_growing.change_ratio:.0%} 늘었습니다.")
     if f.pending_count:
         parts.append(f"승인 대기가 {f.pending_count}건({f.pending_amount:,}원) 있어요.")
-    parts.append(f"남은 예산은 {f.remaining:,}원입니다.")
+    parts.append(f"지금까지 예산의 {f.usage_ratio:.0%}를 사용했고, 남은 예산은 {f.remaining:,}원입니다.")
     return DashboardSummary(message=" ".join(parts))
 
 
