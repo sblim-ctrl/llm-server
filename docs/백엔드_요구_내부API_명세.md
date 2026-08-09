@@ -22,7 +22,7 @@ API로 되물어 가져온다. 따라서 아래 API가 없으면 심사가 시�
 현재는 전부 `MOCK_BACKEND=true` 목 구현으로 동작 중이며, 실제 경로가 확정되면
 `backend_client.py`의 URL을 한 줄씩 교체하면 된다. 로직 변경은 없다.
 
-인증은 전 요청에 Agent 전용 토큰(현재 `Authorization: Bearer {service_token}`)을 싣는다.
+인증은 전 요청에 Agent 전용 토큰(현재 `Authorization: Bearer {backend_service_token}`)을 싣는다.
 토큰 값은 배포 시(8/7) 보안 채널로 전달한다.
 
 ---

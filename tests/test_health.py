@@ -70,17 +70,26 @@ def test_real_mode_default_token_not_ready():
     assert ok is False and status == "default_service_token"
 
 
+def test_real_mode_default_backend_token_not_ready():
+    """실모드에 개발용 기본 아웃바운드 토큰이 남아 있으면 백엔드가 우리를 인증할 수 없다."""
+    with patch.object(health, "get_settings", return_value=_settings(
+            mock_llm=False, openai_api_key="sk-x", service_token="real-token",
+            backend_service_token=health.DEFAULT_BACKEND_SERVICE_TOKEN, mock_backend=False)):
+        ok, status = health.check_config_ready()
+    assert ok is False and status == "default_backend_service_token"
+
+
 def test_real_mode_mock_backend_not_ready():
     """실모드 LLM이 목 백엔드 데이터로 진짜 판정을 내리는 상태를 막는다."""
     with patch.object(health, "get_settings", return_value=_settings(
-            mock_llm=False, openai_api_key="sk-x",
-            service_token="real-token", mock_backend=True)):
+            mock_llm=False, openai_api_key="sk-x", service_token="real-token",
+            backend_service_token="real-backend-token", mock_backend=True)):
         ok, status = health.check_config_ready()
     assert ok is False and status == "mock_backend_in_real_mode"
 
 
 def test_real_mode_properly_configured_is_ready():
     with patch.object(health, "get_settings", return_value=_settings(
-            mock_llm=False, openai_api_key="sk-x",
-            service_token="real-token", mock_backend=False)):
+            mock_llm=False, openai_api_key="sk-x", service_token="real-token",
+            backend_service_token="real-backend-token", mock_backend=False)):
         assert health.check_config_ready() == (True, "ok")
