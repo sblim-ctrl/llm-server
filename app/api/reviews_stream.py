@@ -13,9 +13,12 @@ POST /v1/reviews/{job_id}/decision 으로 승인/반려를 보내면 **같은 �
 재개**돼 콜백·판례 저장(decided_by='ADMIN')까지 이어간다 — 관리자 결정이 판례로
 학습되는 루프(REQ-042)의 사람 축.
 
-체크포인터는 MemorySaver(프로세스 메모리) — 데모 특성상 서버 재시작 시 진행 중
-스레드는 소멸한다(정식 경로의 Postgres 체크포인터와 별개). 그래프 부수 효과
-(콜백·판례 저장)는 워커 경로와 동일하게 일어난다(목 백엔드에선 무해).
+체크포인터는 워커와 같은 Postgres(AsyncPostgresSaver) — lifespan(main.py)이 수명을
+관리하고 기동 시 init_hitl_graph()로 주입한다. 종전 MemorySaver(프로세스 메모리)는
+`--workers 2`에서 멈춤과 재개가 서로 다른 프로세스에 떨어지면 409가 났고, 서버
+재시작 시 대기 중 심사가 소멸했다 — Postgres 전환으로 둘 다 해소(2026-08-07 팀장
+합의). 그래프 부수 효과(콜백·판례 저장)는 워커 경로와 동일하게 일어난다(목
+백엔드에선 무해).
 
 인증: AuthMiddleware 그대로 적용 — 클라이언트는 EventSource 대신 fetch 스트리밍
 읽기를 써서 Authorization 헤더를 싣는다 (미들웨어 면제 경로 추가 없음).
@@ -23,6 +26,7 @@ POST /v1/reviews/{job_id}/decision 으로 승인/반려를 보내면 **같은 �
 SSE 이벤트: start(노드 목록) → node(완료 노드·소요ms·심사관 소견)*
             → paused(관리자 결정 대기) | result(판정·신뢰도·사유) | error
 """
+import contextlib
 import json
 import logging
 import uuid
@@ -31,10 +35,11 @@ from typing import Literal
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse, StreamingResponse
-from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import Command
+from psycopg import AsyncConnection
 from pydantic import BaseModel
 
+from app.config import get_settings
 from app.graphs.review.graph import build_review_graph
 from app.observability import langsmith_config
 from app.schemas.analyze import AnalyzeRequest
@@ -43,8 +48,16 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # HITL 데모 전용 그래프 — interrupt 재개에 체크포인터가 필수라 별도 컴파일.
-# (워커의 review_graph와 노드는 동일, 체크포인터만 MemorySaver)
-hitl_graph = build_review_graph(checkpointer=MemorySaver())
+# (워커의 review_graph와 노드는 동일, 체크포인터 인스턴스만 별도)
+# lifespan(main.py)이 AsyncPostgresSaver를 열어 init_hitl_graph()로 채운다 —
+# 체크포인터 연결의 수명이 앱과 같아야 해서 import 시점에 만들 수 없다.
+hitl_graph = None
+
+
+def init_hitl_graph(checkpointer) -> None:
+    """기동 시 1회 — 워커와 같은 Postgres 체크포인터로 HITL 그래프를 컴파일."""
+    global hitl_graph
+    hitl_graph = build_review_graph(checkpointer=checkpointer)
 
 # 그래프 노드 → 화면 표시명 (심사 그래프 13노드, graph.py 배선 순서 기준 —
 # 나열 순서가 화면 단계 목록 순서다. 배선과 어긋나면 test_reviews_stream의
@@ -163,21 +176,72 @@ async def stream_review(req: AnalyzeRequest) -> StreamingResponse:
                              headers={"Cache-Control": "no-cache"})
 
 
+# HITL 재개 advisory lock 네임스페이스 — (hashtext(NS), hashtext(job_id)) 쌍.
+# pool.py의 setup 잠금(hashtext('checkpointer_setup'), 0)과 축이 달라 안 겹친다.
+RESUME_LOCK_NS = "hitl_resume"
+
+
+async def _release_resume_lock(conn, job_id: str) -> None:
+    """재개 잠금 해제 — 어떤 예외도 밖으로 흘리지 않는다.
+
+    연결이 닫히면 세션 잠금은 함께 풀리므로 unlock 실패는 치명적이지 않다.
+    여기서 예외를 흘리면 409 응답이 500으로 바뀌거나(종결 재확인 경로) 스트림
+    제너레이터 정리가 오류로 끝난다(gen finally 경로).
+    """
+    try:
+        await conn.execute(
+            "SELECT pg_advisory_unlock(hashtext(%s), hashtext(%s))",
+            (RESUME_LOCK_NS, job_id))
+    except Exception:
+        logger.warning("HITL 재개 잠금 해제 실패 — 연결 종료로 대체: %s",
+                       job_id, exc_info=True)
+    finally:
+        with contextlib.suppress(Exception):
+            await conn.close()
+
+
 @router.post("/v1/reviews/{job_id}/decision")
 async def resume_review(job_id: str, req: DecisionRequest):
-    """관리자 결정으로 멈춘 심사를 재개 — 콜백·판례 저장(ADMIN)까지 SSE 중계."""
+    """관리자 결정으로 멈춘 심사를 재개 — 콜백·판례 저장(ADMIN)까지 SSE 중계.
+
+    확인("대기 중인가")과 실행(그래프 재개) 사이를 job_id 단위 advisory lock으로
+    잠근다(2026-08-09 리뷰). 잠금이 없으면 같은 잡에 승인이 동시에 오는 경우
+    (버튼 두 번·클라이언트 재시도) 둘 다 확인을 통과해 콜백·판례 저장이 2번
+    일어난다 — 재현: 동시 2발 모두 200, ADMIN 판례 2행. MemorySaver 시절엔 다른
+    프로세스가 스레드 상태를 못 봐 우연히 409로 막혀 있던 동작이다. 세션 수준
+    잠금이라 재개 중 프로세스가 죽어도 연결이 닫히며 함께 풀린다.
+    """
     config = {"configurable": {"thread_id": job_id}}
-    snap = await hitl_graph.aget_state(config)
-    if not snap.next:  # 대기 중인 interrupt가 없음 — 모르는 잡이거나 이미 종결
-        return JSONResponse(status_code=409, content={
-            "detail": f"'{job_id}'는 관리자 결정 대기 상태가 아닙니다 "
-                      "(이미 종결됐거나 서버 재시작으로 소멸)"})
+    lock_conn = await AsyncConnection.connect(
+        get_settings().database_url, autocommit=True)
+    try:
+        got = (await (await lock_conn.execute(
+            "SELECT pg_try_advisory_lock(hashtext(%s), hashtext(%s))",
+            (RESUME_LOCK_NS, job_id))).fetchone())[0]
+        if not got:  # 같은 잡을 다른 요청이 재개하는 중 — 기다리지 않고 거절
+            with contextlib.suppress(Exception):
+                await lock_conn.close()
+            return JSONResponse(status_code=409, content={
+                "detail": f"'{job_id}'는 이미 다른 요청이 재개 중입니다 — "
+                          "잠시 후 심사 상태를 확인하세요"})
+        # 잠금 안에서 상태 확인 — 직전 재개가 방금 종결한 잡도 여기서 걸린다
+        snap = await hitl_graph.aget_state(config)
+        if not snap.next:  # 대기 중인 interrupt가 없음 — 모르는 잡이거나 이미 종결
+            await _release_resume_lock(lock_conn, job_id)
+            return JSONResponse(status_code=409, content={
+                "detail": f"'{job_id}'는 관리자 결정 대기 상태가 아닙니다 "
+                          "(이미 종결됐거나 알 수 없는 잡)"})
+    except Exception:
+        with contextlib.suppress(Exception):  # close 실패가 원인 예외를 가리지 않게
+            await lock_conn.close()
+        raise
 
     async def gen():
-        team_id = snap.values.get("team_id") or "unknown"
-        cfg = langsmith_config("review-resume", job_id, team_id, thread_id=job_id)
-        started = perf_counter()
         try:
+            team_id = snap.values.get("team_id") or "unknown"
+            cfg = langsmith_config("review-resume", job_id, team_id,
+                                   thread_id=job_id)
+            started = perf_counter()
             stream = hitl_graph.astream(
                 Command(resume={"decision": req.decision, "reason": req.reason}),
                 config=cfg, stream_mode="updates")
@@ -186,6 +250,8 @@ async def resume_review(job_id: str, req: DecisionRequest):
         except Exception:
             logger.exception("review resume failed")
             yield _sse("error", {"detail": "재개 실패 — 서버 로그 확인"})
+        finally:
+            await _release_resume_lock(lock_conn, job_id)
 
     return StreamingResponse(gen(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache"})

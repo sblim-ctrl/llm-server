@@ -2072,7 +2072,7 @@
     },
     "/v1/reviews/{job_id}/decision": {
       "post": {
-        "description": "관리자 결정으로 멈춘 심사를 재개 — 콜백·판례 저장(ADMIN)까지 SSE 중계.",
+        "description": "관리자 결정으로 멈춘 심사를 재개 — 콜백·판례 저장(ADMIN)까지 SSE 중계.\n\n확인(\"대기 중인가\")과 실행(그래프 재개) 사이를 job_id 단위 advisory lock으로\n잠근다(2026-08-09 리뷰). 잠금이 없으면 같은 잡에 승인이 동시에 오는 경우\n(버튼 두 번·클라이언트 재시도) 둘 다 확인을 통과해 콜백·판례 저장이 2번\n일어난다 — 재현: 동시 2발 모두 200, ADMIN 판례 2행. MemorySaver 시절엔 다른\n프로세스가 스레드 상태를 못 봐 우연히 409로 막혀 있던 동작이다. 세션 수준\n잠금이라 재개 중 프로세스가 죽어도 연결이 닫히며 함께 풀린다.",
         "operationId": "resume_review_v1_reviews__job_id__decision_post",
         "parameters": [
           {
