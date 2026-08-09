@@ -12,10 +12,16 @@
 
 ## 왜 별도 DB를 쓰나
 
-개발 DB(`budgetops_llm`)는 옛 문자열 ID 정리가 끝나 BIGINT 스키마가 정상 적용된다.
-그럼에도 별도 DB(`budgetops_smoke`)를 쓰는 이유는 "BIGINT 스키마가 빈 DB에 처음부터
-제대로 적용되는가"를 확인하기 위해서다 — 운영 DB가 바로 그 상태라 배포 전에 한 번은
-봐야 하는 것이다. 개발 DB의 다른 작업 데이터는 건드리지 않는다.
+별도 DB(`budgetops_smoke`)를 쓰는 이유는 두 가지다.
+
+1. "BIGINT 스키마가 빈 DB에 처음부터 제대로 적용되는가"를 확인한다 — 운영 DB가 바로
+   그 상태라 배포 전에 한 번은 봐야 한다.
+2. **개발 DB는 이 스크립트를 못 돌릴 수 있다.** 로컬 `budgetops_llm`에는 T9 이전
+   데모 데이터(구 문자열 team_id)가 남아 있을 수 있고, 그러면 `apply_schema`의
+   BIGINT 전환 가드가 RAISE해서 시작조차 못 한다. 각자 로컬 DB라 사람마다 다르다
+   (2026-08-07 A 로컬 실측: `jobs` 100행이 비숫자 team_id).
+
+개발 DB의 다른 작업 데이터는 건드리지 않는다.
 
     docker compose exec llm-postgres psql -U budgetops -d postgres \
       -c "CREATE DATABASE budgetops_smoke;"
@@ -185,7 +191,7 @@ async def main() -> int:
         # 가드레일이 rule_ambiguous로 전건 보류시킨다 — 회칙 미등록 팀의 정상 동작이라
         # 자동 승인 경로를 보려면 반드시 먼저 넣어야 한다.
         await clean_team()  # 지난 실행 판례 제거 — 없으면 자기 오염이 생긴다
-        await indexing_graph.ainvoke({"team_id": TEAM, "doc_type": "rule", "version": 1})
+        await indexing_graph.ainvoke({"team_id": TEAM, "doc_type": "rule"})
         print(f"판례 정리 + 회칙 실인덱싱 완료 (team={TEAM})\n")
 
         print(f"실모드 심사 스모크 {len(SCENARIOS)}건 — 실제 LLM 호출\n")
@@ -238,11 +244,12 @@ async def main() -> int:
                 f"확신={conf_s} ${cost:.4f}" + (f"  gate={rules}" if rules else "")
             )
             if not ok:
-                # 왜 갈렸는지 바로 보이게 — 분류기 의견과 심사관 소견을 함께 찍는다
-                if final.get("ai_suggested_category"):
-                    print(
-                        f"       분류기 의견: {claim.category} → {final['ai_suggested_category']}"
-                    )
+                # 왜 갈렸는지 바로 보이게 — 분류 결과와 심사관 소견을 함께 찍는다.
+                # 분류 출처는 state에서 `claim.category`가 덮여 나오는 것으로 본다
+                # (T7로 ai_suggested_category 필드가 사라졌다 — state.py:53).
+                final_claim = final.get("claim")
+                if final_claim and final_claim.category != claim.category:
+                    print(f"       분류 변경: {claim.category} → {final_claim.category}")
                 for name, op in (final.get("opinions") or {}).items():
                     print(f"       [{name}] {op.verdict}: {op.summary[:90]}")
             rows.append((label, expected, actual, conf, cost))

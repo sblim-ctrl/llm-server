@@ -7,8 +7,10 @@
 쓰기 툴(approve/reject_expense)은 절대 노출하지 않는다 —
 그래프의 가드레일을 우회한 상태 변경 차단 (§5.2).
 """
+
 from mcp.server.fastmcp import FastMCP
 
+from app.db.pool import get_context_status
 from app.tools.backend_client import get_budget_status as _get_budget_status
 from app.tools.backend_client import get_expense_history as _get_expense_history
 from app.tools.search_precedents import search_precedents as _search_precedents
@@ -24,8 +26,11 @@ mcp.settings.streamable_http_path = "/"
 
 
 @mcp.tool()
-async def search_rules(team_id: int, query: str, version: int) -> list[dict]:
-    """팀 회칙 조항을 유사도 검색한다 (pgvector, 버전 고정). RuleAuditor와 동일 구현."""
+async def search_rules(team_id: int, query: str, version: int | None = None) -> list[dict]:
+    """팀 회칙 조항을 유사도 검색한다 (pgvector). version 생략 시 현재 활성 판을 쓴다."""
+    if version is None:
+        status = await get_context_status(team_id)
+        version = status["version"]
     return await _search_rules(team_id, query, version)
 
 

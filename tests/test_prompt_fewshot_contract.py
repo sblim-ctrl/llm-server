@@ -60,6 +60,10 @@ _MULTILINE_INPUT_DEBT = {
     ("briefing_writer", "v1"), ("briefing_writer", "v2"),
     ("budget_planner", "v1"), ("budget_planner", "v2"),
     ("dashboard_writer", "v1"), ("dashboard_writer", "v2"),
+    # v4 = v2 + 인젝션 방어 한 줄 — 여러 줄 입력을 **의도적으로 보존**한다. v2의 과장
+    # 차단 실측(2026-08-04)이 여러 줄 입력 상태에서 재현된 것이라, 형식 정리는 v3
+    # 계보(재측정 라운드)의 몫이다 (DEFAULT_VERSIONS의 dashboard_writer 주석 참조).
+    ("dashboard_writer", "v4"),
     ("digest_writer", "v2"),
     ("judge", "v1"), ("judge", "v2"), ("judge", "v3"),
     ("report_writer", "v1"), ("report_writer", "v2"),

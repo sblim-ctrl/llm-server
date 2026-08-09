@@ -110,14 +110,23 @@ def stub_rag() -> None:
     verdict="pass"다. 운영에서 플래그 끄는 걸 잊으면 회칙 심사관이 조용히 통과로
     빠진다 — 설계서 §8("어떤 실패도 자동 승인으로 이어지지 않는다")과 정면 충돌이다.
     스크립트 안에 가두면 그 위험이 없다.
+
+    load_context도 같은 이유로 스텁이 필요하다 — 회칙 활성 판번호(rule_version)를
+    자체 DB(get_context_status)로 조회하는데, 무DB 모드에선 이 조회도 예외를 내고
+    load_context는 그 예외를 그대로 재전파한다(fail-closed). 스텁 없이는 그래프
+    호출 자체가 죽어 시나리오에 도달하지 못한다.
     """
-    from app.graphs.review.nodes import precedent_auditor, rule_auditor
+    from app.graphs.review.nodes import load_context, precedent_auditor, rule_auditor
 
     async def _no_results(*_args, **_kwargs) -> list[dict]:
         return []
 
+    async def _no_context_status(*_args, **_kwargs) -> dict:
+        return {"chunk_count": 0, "version": None, "indexed_at": None}
+
     rule_auditor.search_rules = _no_results
     precedent_auditor.search_precedents = _no_results
+    load_context.get_context_status = _no_context_status
 
 
 async def run_scenarios() -> int:

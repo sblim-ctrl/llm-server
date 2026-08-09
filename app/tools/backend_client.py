@@ -291,7 +291,10 @@ async def get_expense_detail(organization_id: int, expense_id: int) -> dict[str,
             return {
                 "title": expense["title"],
                 "amount": expense["amount"],
-                "category": expense["category"],
+                # fixture의 expenses에는 category가 없다 — 심사 전 지출은 카테고리가
+                # 정해지지 않은 것이 백엔드 계약이고(BE-001 등록 시 null), 사람이 매긴
+                # 정답은 골든셋의 expected_category로 옮겼다(2026-08-06). 아래 폴백과 같은 값.
+                "category": expense.get("category", ""),
                 "date": expense["date"],
                 "description": expense["description"],
             }
@@ -430,10 +433,10 @@ class PolicyDocumentSource:
     filename: str | None = None
 
 
-async def get_policy_document(team_id: int, doc_type: str, version: int) -> PolicyDocumentSource:
+async def get_policy_document(team_id: int, doc_type: str) -> PolicyDocumentSource:
     """회칙·카테고리 원본 조회 — 인덱싱 파이프라인 1단계 (REQ-041, §4.4-a).
 
-    /v1/context/refresh 이벤트에는 원문이 없고 team_id·변경유형·버전만 오므로,
+    /v1/context/refresh 이벤트에는 원문이 없고 team_id·변경유형만 오므로,
     실제 내용은 이 함수로 백엔드에 되물어야 한다.
 
     반환은 텍스트일 수도 파일 바이트일 수도 있다(`PolicyDocumentSource`). 파일이면
@@ -461,15 +464,13 @@ async def get_policy_document(team_id: int, doc_type: str, version: int) -> Poli
                     "제9조 (교통·이동) 모임 활동 목적의 교통비는 인정한다.\n\n"
                     "제10조 (교육·수강) 모임 주제와 관련된 교육·강연·수강료는 인정한다.\n\n"
                     "제11조 (숙박·여행) 모임 공식 일정의 숙박·여행 경비는 인정한다.\n\n"
-                    f"(mock rule text, team={team_id}, version={version})"
+                    f"(mock rule text, team={team_id})"
                 )
             )
-        return PolicyDocumentSource(
-            text=f"(mock {doc_type} text, team={team_id}, version={version})"
-        )
+        return PolicyDocumentSource(text=f"(mock {doc_type} text, team={team_id})")
     r = await _client().get(
         f"/internal/agent/teams/{team_id}/policy-document",
-        params={"doc_type": doc_type, "version": version},
+        params={"doc_type": doc_type},
     )
     r.raise_for_status()
     # 응답이 JSON이면 텍스트 회칙, 아니면 파일 원본이다 (BE-005 확장 — T2).

@@ -47,6 +47,44 @@ def _camel(snake: str) -> str:
     return head + "".join(p.title() for p in rest)
 
 
+def _euro(word: str) -> str:
+    """'로/으로' 조사 선택 — 배포 당일 사람이 읽는 문구다.
+
+    받침이 없거나 받침이 `ㄹ`이면 '로', 나머지는 '으로'다. `ㄹ` 예외를 빼면 '물로'를
+    '물으로'라고 쓴다. 지금 9종에는 ㄹ 받침이 없어 닿지 않지만 카탈로그는 바뀌는
+    파일이라 규칙 쪽을 맞춰 둔다.
+    """
+    if not word:
+        return "로"
+    last = word[-1]
+    if "가" <= last <= "힣":
+        jongseong = (ord(last) - 0xAC00) % 28
+        return "로" if jongseong in (0, 8) else "으로"   # 8 = ㄹ
+    return "로"
+
+
+def describe_category(value: Any) -> tuple[str, str]:
+    """받은 category 값을 성격별로 분류한다 — (등급, 설명).
+
+    `check_keys`는 키 **존재**만 본다. 그래서 백엔드가 `"category": "도서"`(구 어휘)를
+    보내도 그냥 통과했고, **T7의 전제("9종만 온다")를 배포 전 점검이 검증해 주지
+    못했다** — 위반이 런타임 WARNING 로그에만 남는데 배포 당일 아무도 안 보는 자리다.
+    여기서 값까지 본다.
+
+    등급: ok(계약대로 빈 값) · info(9종 안) · warn(9종 밖 — 사람이 봐야 함)
+    """
+    from app.tools.backend_client import normalize_expense_category
+    from app.tools.category_catalog import all_categories
+
+    if value is None or not str(value).strip():
+        return "ok", "빈 값 — 계약대로"
+    name = str(value).strip()
+    if name in all_categories():
+        return "info", f"9종 안({name})"
+    folded = normalize_expense_category(name)
+    return "warn", f"9종 밖({name}) — 읽기 경계에서 '{folded}'{_euro(folded)} 접힌다"
+
+
 def check_keys(
     data: dict[str, Any], keys: list[str], optional: list[str] | None = None
 ) -> tuple[bool, str]:
@@ -82,6 +120,21 @@ def run_checks(args: argparse.Namespace, client: httpx.Client) -> None:
         if ok and not isinstance(d.get("amount"), int):
             ok, note = False, f"amount가 int가 아님: {type(d.get('amount')).__name__}"
         record("CRITICAL", "지출 상세 GET /organizations/{org}/expenses/{id}", ok, note)
+
+        # 1-b. 지출 상세의 category — **빈 값이 정상**이다.
+        #
+        # BE-001 계약상 등록 시 null이고, 값이 채워져 오면 T7의 classify_category가
+        # AI 분류로 덮는다. 즉 화면이 아직 카테고리를 보내고 있어도 심사는 멀쩡히
+        # 도는데, 그 사실이 배포 당일 어디에도 안 드러난다 — 여기서 드러낸다.
+        grade, desc = describe_category(d.get("category"))
+        if grade == "warn":
+            record("DEGRADED", "지출 상세의 category 계약", False,
+                   f"{desc}. 화면이 아직 구 카테고리를 보내는지 확인 필요")
+        elif grade == "info":
+            record("DEGRADED", "지출 상세의 category 계약", True,
+                   f"{desc} — 재심사 에코로 보인다(첫 심사 콜백이 채운 값). AI 분류가 다시 확정한다")
+        else:
+            record("DEGRADED", "지출 상세의 category 계약", True, desc)
     except Exception as e:  # noqa: BLE001 — 계약 검증 도구는 전 오류를 보고로 수렴
         record("CRITICAL", "지출 상세 GET /organizations/{org}/expenses/{id}", False, repr(e))
 
@@ -117,6 +170,25 @@ def run_checks(args: argparse.Namespace, client: httpx.Client) -> None:
         elif d:
             ok, note = check_keys(d[0], ["title", "amount", "date", "status"], ["category"])
             record("DEGRADED", "이력 GET /teams/{id}/expenses", ok, note)
+
+            # 4-b. 이력의 category — 여기는 **값이 있는 것이 정상**이다(이미 승인된
+            # 과거 지출). 상세와 달리 구 값이 섞여 오는 것도 허용된다 — 명세로
+            # 백엔드에 "구 값이 섞여 와도 됩니다, 저희가 접습니다"라고 약속했다.
+            # 다만 몇 건이 접히는지는 보여준다: 전부 접히면 마이그레이션 전이라는
+            # 뜻이고, 카테고리별 집계가 그만큼 뭉뚱그려진다.
+            rows = [r for r in d if isinstance(r, dict)]
+            # 객체가 아닌 행은 셀 수가 없어 빼지만, **뺐다는 사실을 적는다.** 조용히
+            # 빼면 "2건 중 이상 없음"처럼 보여서 형태가 깨진 것 자체가 묻힌다.
+            malformed = len(d) - len(rows)
+            graded = [describe_category(r.get("category")) for r in rows]
+            outside = [desc for g, desc in graded if g == "warn"]
+            blank = sum(1 for g, _ in graded if g == "ok")
+            note = f"{len(rows)}건 중 9종 밖 {len(outside)}건 · 빈 값 {blank}건"
+            if malformed:
+                note += f" · 형태가 아닌 행 {malformed}건(집계 제외)"
+            if outside:
+                note += f" (예: {outside[0]})"
+            record("DEGRADED", "이력 category 값 분포", not outside and not malformed, note)
         else:
             record("DEGRADED", "이력 GET /teams/{id}/expenses", True, "빈 목록 (형태 검사 생략)")
     except Exception as e:  # noqa: BLE001
@@ -147,7 +219,7 @@ def run_checks(args: argparse.Namespace, client: httpx.Client) -> None:
     try:
         r = client.get(
             f"/internal/agent/teams/{tid}/policy-document",
-            params={"doc_type": "rule", "version": 1},
+            params={"doc_type": "rule"},
         )
         if r.status_code == 404:
             record(

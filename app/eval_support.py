@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from app.eval_metrics import verdict_metrics
+from app.eval_metrics import category_metrics, score_category, verdict_metrics
 from app.graphs.review.graph import review_graph
 from app.schemas.analyze import AnalyzeRequest
 
@@ -46,6 +46,15 @@ async def run_case(case: dict[str, Any]) -> dict[str, Any]:
         all(rule in gate for rule in expected_gate) if expected_gate is not None else None
     )
 
+    # 분류 채점 — 사람이 매긴 정답(expected_category) 대비 AI가 확정한 카테고리.
+    # T7 이후 카테고리는 AI가 유일하게 정하므로(들어온 값은 덮인다) 골든셋의 category를
+    # 입력이 아니라 기대값으로 옮겼고(2026-08-06), 여기서 그것과 대조한다.
+    # **판정 정확도와는 독립된 지표다** — 오분류가 판정을 바꾸지는 않지만 카테고리별
+    # 예산 집계·통계를 조용히 오염시키므로 따로 본다.
+    claim = final_state.get("claim")
+    actual_category = claim.category if claim else None
+    expected_category = case.get("expected_category")
+
     return {
         "id": case["id"],
         "scenario": case.get("scenario", ""),
@@ -56,6 +65,9 @@ async def run_case(case: dict[str, Any]) -> dict[str, Any]:
         "gate": gate,
         "expected_gate": expected_gate or [],
         "trajectory_ok": trajectory_ok,
+        "expected_category": expected_category,
+        "actual_category": actual_category,
+        "category_ok": score_category(actual_category, expected_category),
     }
 
 
@@ -72,6 +84,19 @@ async def run_golden_set(golden_path: Path | None = None) -> dict[str, Any]:
     traj_cases = [r for r in results if r["trajectory_ok"] is not None]
     traj_correct = sum(1 for r in traj_cases if r["trajectory_ok"])
 
+    # 분류 정확도는 `category_metrics`(순수 함수)가 센다 — 게이트가 아닌 이유는 그쪽
+    # docstring에 있다.
+    #
+    # **남은 오분류 9건은 부분 문자열 매칭의 구조적 한계다** (2026-08-06 전수 판정).
+    # 어휘를 더 넣어 고칠 수 있는 것은 이미 고쳤고(동아리방·티셔츠·강습), 아래는 카탈로그
+    # 순서를 바꾸거나 키워드를 빼야 하는데 둘 다 더 큰 오탐을 만든다:
+    #   · 수식어가 본체를 가로챈다 — "워크숍 숙박비"→회의, "지방 출장 숙박비"→교통,
+    #     "정기모임 여행 경비"→회의 ('워크숍'·'출장'·'정기모임'을 빼면 진짜 그 지출을 놓친다)
+    #   · 앞선 카테고리가 이긴다 — "행사용 물품"→행사_활동(비품이 아래), "온라인 강의
+    #     구독"→IT_인프라(교육이 아래) (순서를 바꾸면 다른 축이 깨진다)
+    #   · 상호·장소 낱말이 끌어간다 — "보드게임 카페"→식비 ('카페'를 빼면 진짜 카페 지출을 놓친다)
+    #   · 어휘 자체가 모호하다 — "부서 소모임 비용"→기타 (사람도 제목만으론 애매)
+    # 전부 **문맥을 읽는 실모드 LLM이 맞히는 영역**이다. 키워드는 폴백이라는 점을 기억할 것.
     summary = {
         "version": golden["version"],
         "total": len(results),
@@ -83,6 +108,8 @@ async def run_golden_set(golden_path: Path | None = None) -> dict[str, Any]:
         "trajectory_total": len(traj_cases),
         "trajectory_correct": traj_correct,
         "trajectory_accuracy": (traj_correct / len(traj_cases)) if traj_cases else None,
+        # 분류 정확도 (관측 지표 — passed에 반영하지 않는다)
+        **category_metrics(results),
         # §4 Sprint 2 — 판정 분포·에스컬레이션 P/R·자동 처리율 (순수 함수 계산)
         "metrics": verdict_metrics(results),
         "passed": not false_approves and accuracy >= ACCURACY_THRESHOLD,
@@ -109,6 +136,9 @@ def export_results_csv(results: list[dict[str, Any]]) -> Path:
                 "expected_gate",
                 "actual_gate",
                 "trajectory_ok",
+                "expected_category",
+                "actual_category",
+                "category_ok",
             ]
         )
         for r in results:
@@ -123,6 +153,9 @@ def export_results_csv(results: list[dict[str, Any]]) -> Path:
                     "|".join(r["expected_gate"]),
                     "|".join(r["gate"]),
                     "" if r["trajectory_ok"] is None else r["trajectory_ok"],
+                    r["expected_category"] or "",
+                    r["actual_category"] or "",
+                    "" if r["category_ok"] is None else r["category_ok"],
                 ]
             )
     return path

@@ -51,6 +51,7 @@ async def apply_schema() -> None:
 
 # ── jobs 헬퍼 ─────────────────────────────────────────────
 
+
 async def insert_job(
     team_id: int,
     job_type: str,
@@ -84,8 +85,14 @@ async def insert_job(
                              AND expense_id IS NOT NULL
                        DO NOTHING
                        RETURNING id""",
-                        (expense_id, team_id, job_type, json.dumps(payload),
-                         max_attempts, external_job_id),
+                        (
+                            expense_id,
+                            team_id,
+                            job_type,
+                            json.dumps(payload),
+                            max_attempts,
+                            external_job_id,
+                        ),
                     )
                 ).fetchone()
                 if row is not None:
@@ -99,8 +106,10 @@ async def insert_job(
                     )
                 ).fetchone()
                 if existing is not None:
-                    if (external_job_id is not None
-                            and existing["external_job_id"] != external_job_id):
+                    if (
+                        external_job_id is not None
+                        and existing["external_job_id"] != external_job_id
+                    ):
                         # 컬럼은 무조건 최신화(백엔드가 새 jobId로 폴링 조회하므로),
                         # payload의 job_id는 큐 대기 중일 때만 — 워커가 초기 상태를
                         # payload에서 만들기 때문 (이미 실행 중이면 체크포인트가 진실)
@@ -120,8 +129,7 @@ async def insert_job(
                 """INSERT INTO jobs (expense_id, team_id, type, payload,
                                      max_attempts, external_job_id)
                VALUES (%s, %s, %s, %s, %s, %s) RETURNING id""",
-                (expense_id, team_id, job_type, json.dumps(payload),
-                 max_attempts, external_job_id),
+                (expense_id, team_id, job_type, json.dumps(payload), max_attempts, external_job_id),
             )
         ).fetchone()
     return str(row["id"])
@@ -146,6 +154,10 @@ async def get_context_status(team_id: int) -> dict[str, Any]:
 
     인덱싱 이력이 없으면 chunk_count 0에 나머지는 None으로 돌려준다(예외 아님).
     회칙이 없는 것은 정상 상태이며, 그 팀은 유형별 기본 정책으로 심사된다.
+
+    이 함수의 반환값 중 version은 GET /v1/context/status 응답에는 실리지 않는다
+    (2026-08-07 결정 — 백엔드는 회칙 버전을 안 쓴다). load_context가 심사 시작
+    시점의 회칙 판번호를 rule_version에 고정하는 용도로만 이 함수를 재사용한다.
     """
     async with get_pool().connection() as conn:
         row = await (

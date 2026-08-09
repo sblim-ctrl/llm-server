@@ -7,19 +7,27 @@ expense_id로 백엔드에 되물어 ExpenseClaim을 구성한다. 단, 초기 �
 실패 정책 (§8 '어떤 실패도 자동 승인으로 이어지지 않는다'):
 - 지출 상세 조회 실패 → 심사 불가이므로 예외를 그대로 던진다 — 워커 재시도,
   소진 시 fail-safe ESCALATED 콜백.
+- 회칙 활성 판번호 조회 실패 → 지출 상세와 동일하게 예외를 그대로 던진다.
+  fail-open으로 None을 넣으면 회칙이 있는 팀이 조용히 '회칙 없는 팀'
+  기본 정책 모드로 빠져 반려가 불가능해진다(2026-08-04 E3와 같은 실패 형태) —
+  이 조회는 백엔드가 아니라 우리 자신의 DB라 실패는 곧 인프라 장애이고,
+  다른 노드(search_rules 등)도 어차피 같은 풀에서 실패하므로 여기서
+  일찍 끊는 편이 안전하다.
 - team_settings 조회 실패 → auto_approve=False로 진행 (자동판정 권한이 확인되지
   않으면 판정하지 않는다 — 무조건 ESCALATED).
 - 모임 유형·멤버 명단 실패 → 기본값으로 진행 (분류·마스킹 보조 정보일 뿐).
 
-성능: 4개 조회는 상호 독립이라 asyncio.gather로 동시 실행 (심사 크리티컬 패스의
-백엔드 왕복 4회 → 1회 분량). return_exceptions=True로 받아 위 실패 정책을 조회별로
-그대로 적용한다 — 병렬화가 fail-safe 의미론을 바꾸지 않는다.
+성능: 지출 상세를 제외한 조회는 상호 독립이라 asyncio.gather로 동시 실행
+(심사 크리티컬 패스의 백엔드 왕복 3회 + 로컬 DB 조회 1회 → 1회 분량).
+return_exceptions=True로 받아 위 실패 정책을 조회별로 그대로 적용한다 —
+병렬화가 fail-safe 의미론을 바꾸지 않는다.
 """
 
 import asyncio
 import logging
 import time
 
+from app.db.pool import get_context_status
 from app.graphs.review.state import ReviewState
 from app.schemas.common import ExpenseClaim, PolicyParams
 from app.tools.backend_client import (
@@ -36,19 +44,24 @@ DEFAULT_TEAM_TYPE = "동아리/학생회"
 
 
 async def load_context(state: ReviewState) -> dict:
-    updates: dict = {"started_at": time.time(), "rule_version": 1}
+    updates: dict = {"started_at": time.time()}
     team_id = state["team_id"]
     need_claim = state.get("claim") is None
 
-    coros = [get_team_settings(team_id), get_team_profile(team_id), get_team_members(team_id)]
+    coros = [
+        get_team_settings(team_id),
+        get_team_profile(team_id),
+        get_team_members(team_id),
+        get_context_status(team_id),
+    ]
     if need_claim:
         coros.append(get_expense_detail(team_id, state["expense_id"]))
     results = await asyncio.gather(*coros, return_exceptions=True)
-    settings_r, profile_r, members_r = results[:3]
+    settings_r, profile_r, members_r, context_r = results[:4]
 
     # 1. 지출 상세 pull — 조회 실패는 심사 불가 (예외 전파 → 재시도/fail-safe)
     if need_claim:
-        detail = results[3]
+        detail = results[4]
         if isinstance(detail, BaseException):
             raise detail
         updates["claim"] = ExpenseClaim(
@@ -59,7 +72,13 @@ async def load_context(state: ReviewState) -> dict:
             description=detail.get("description") or "",
         )
 
-    # 2. team_settings — auto_approve 게이트 재료. 실패 시 False (fail-safe)
+    # 2. 회칙 활성 판번호 — search_rules가 심사 내내 고정해 쓸 값 (§4.4 판정 일관성).
+    # 실패는 지출 상세와 동일하게 예외를 그대로 던진다(위 docstring 실패 정책 참고).
+    if isinstance(context_r, BaseException):
+        raise context_r
+    updates["rule_version"] = context_r["version"]
+
+    # 3. team_settings — auto_approve 게이트 재료. 실패 시 False (fail-safe)
     if isinstance(settings_r, BaseException):
         logger.error(
             "get_team_settings failed — auto_approve=False로 fail-safe 진행", exc_info=settings_r
@@ -71,14 +90,14 @@ async def load_context(state: ReviewState) -> dict:
         # 시절 한쪽만 고쳐져 화면과 심사가 갈린 적이 있다(2026-07-31).
         updates["policy_params"] = map_team_settings(settings_r)
 
-    # 3. 모임 유형 — classify_category의 카테고리 카탈로그 선택용 (fail-open)
+    # 4. 모임 유형 — classify_category의 카테고리 카탈로그 선택용 (fail-open)
     if isinstance(profile_r, BaseException):
         logger.error("get_team_profile failed — 기본 유형으로 진행", exc_info=profile_r)
         updates["team_type"] = DEFAULT_TEAM_TYPE
     else:
         updates["team_type"] = profile_r.get("team_type") or DEFAULT_TEAM_TYPE
 
-    # 4. PII 마스킹용 멤버 명단 (B2, §4.3) — 실패해도 반드시 [] (심사를 막지 않음)
+    # 5. PII 마스킹용 멤버 명단 (B2, §4.3) — 실패해도 반드시 [] (심사를 막지 않음)
     if isinstance(members_r, BaseException):
         logger.error("get_team_members failed — 마스킹 없이 진행", exc_info=members_r)
         updates["team_members"] = []

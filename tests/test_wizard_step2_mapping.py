@@ -41,6 +41,10 @@ async def _policy_from(settings: dict | Exception) -> PolicyParams:
             AsyncMock(return_value={"team_type": "스터디"}),
         ),
         patch("app.graphs.review.nodes.load_context.get_team_members", AsyncMock(return_value=[])),
+        patch(
+            "app.graphs.review.nodes.load_context.get_context_status",
+            AsyncMock(return_value={"chunk_count": 0, "version": None, "indexed_at": None}),
+        ),
     ):
         updates = await load_context(
             {

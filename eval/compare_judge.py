@@ -83,7 +83,7 @@ async def collect_samples(cases) -> tuple[list[dict], float]:
     await clean_golden_teams()
     teams = sorted({c["input"]["organizationId"] for c in cases})
     for t in teams:
-        await indexing_graph.ainvoke({"team_id": t, "doc_type": "rule", "version": 1})
+        await indexing_graph.ainvoke({"team_id": t, "doc_type": "rule"})
     print(f"팀 {len(teams)}개 실인덱싱 — 심사 실행(사유 수집)…")
 
     samples, cost = [], 0.0

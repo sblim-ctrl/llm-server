@@ -180,16 +180,11 @@
             "format": "int64",
             "title": "Team Id",
             "type": "integer"
-          },
-          "version": {
-            "title": "Version",
-            "type": "integer"
           }
         },
         "required": [
           "team_id",
-          "change_type",
-          "version"
+          "change_type"
         ],
         "title": "ContextRefreshRequest",
         "type": "object"
@@ -220,24 +215,12 @@
             "format": "int64",
             "title": "Team Id",
             "type": "integer"
-          },
-          "version": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Version"
           }
         },
         "required": [
           "team_id",
           "indexed",
           "chunk_count",
-          "version",
           "indexed_at"
         ],
         "title": "ContextStatus",
@@ -1667,6 +1650,8 @@
             "name": "team_id",
             "required": true,
             "schema": {
+              "description": "양의 백엔드 BIGINT 기본키",
+              "format": "int64",
               "title": "Team Id",
               "type": "integer"
             }

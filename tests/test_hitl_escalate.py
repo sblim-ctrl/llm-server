@@ -76,3 +76,44 @@ async def test_precedent_decided_by_admin(monkeypatch):
     captured.clear()
     await pp_mod.persist_precedent(_state(verdict="escalate"))
     assert captured["decided_by"] == "AGENT"
+
+
+# ── 관리자에게 보이는 가드레일 문구 (2026-08-07) ──────────────────────────
+#
+# 종전에는 `가드레일: over_auto_approve_limit, rule_ambiguous`처럼 영문 식별자가
+# 그대로 관리자 화면에 나갔다. 규칙 식별자는 골든셋 `expected_gate_includes`와
+# Trajectory 채점이 쓰므로 못 바꾼다 — 보여주는 자리에서만 옮긴다.
+
+from app.graphs.review.nodes.escalate import describe_rules  # noqa: E402
+
+
+def test_rules_are_shown_in_korean():
+    """관리자 화면에 영문 식별자가 그대로 나가지 않는다."""
+    out = describe_rules(["budget_insufficient", "rule_ambiguous"])
+    assert out == "예산 잔액 부족, 회칙 해석이 애매함"
+    assert "_" not in out
+
+
+def test_same_amount_rule_is_not_repeated():
+    """한도·기준액은 2026-08-05 화면 개편 이후 같은 금액이라 한 줄로 접는다."""
+    assert describe_rules(
+        ["over_auto_approve_limit", "over_force_escalation_amount"]
+    ) == "관리자 승인이 필요한 금액"
+
+
+def test_auditor_scoped_rules_name_the_auditor():
+    """`missing_opinion:rule`처럼 대상이 붙는 규칙도 읽히게 옮긴다."""
+    assert describe_rules(["missing_opinion:rule"]) == "심사관 소견 누락(회칙)"
+    assert describe_rules(["auditor_failed:budget"]) == "심사관 실행 실패(예산)"
+
+
+def test_unknown_rule_is_kept_as_is():
+    """모르는 규칙을 숨기면 새로 생긴 규칙이 조용히 사라진다 — 식별자를 그대로 남긴다."""
+    assert describe_rules(["some_new_rule"]) == "some_new_rule"
+
+
+def test_order_is_preserved():
+    """규칙이 걸린 순서가 곧 심사 단계 순서라 보존한다."""
+    assert describe_rules(["auto_approve_disabled", "budget_insufficient"]) == (
+        "AI 자동 판정이 꺼져 있음, 예산 잔액 부족"
+    )

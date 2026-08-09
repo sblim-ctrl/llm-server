@@ -16,6 +16,11 @@ from app.schemas.common import ExpenseClaim
 from app.tools.backend_client import get_budget_status, get_expense_detail, get_team_settings
 from app.tools.policy_params import effective_auto_approve_limit
 
+# load_context가 gather로 같이 부르는 get_context_status는 이 파일에 실 DB 풀이
+# 없어 그대로 두면 예외가 난다(§8 fail-closed 재전파) — rule_version과 무관한
+# 테스트는 이 값으로 통일해 무DB 상태를 흉내낸다.
+_STUB_CONTEXT_STATUS = {"chunk_count": 0, "version": None, "indexed_at": None}
+
 
 def test_analyze_request_accepts_camel_case():
     req = AnalyzeRequest.model_validate(
@@ -65,11 +70,16 @@ def test_analyze_request_rejects_old_push_contract():
 
 
 async def test_expense_detail_mock_fixture_lookup():
-    """fixture(9002/90001 = club-approve-001)의 값을 그대로 돌려준다."""
+    """fixture(9002/90001 = club-approve-001)의 값을 그대로 돌려준다.
+
+    category는 **빈 값이 정상**이다 — 심사 전 지출에는 카테고리가 없다는 백엔드 계약
+    (BE-001 등록 시 null)과 같은 모양이고, T7 이후 classify_category가 채운다.
+    사람이 매긴 정답은 골든셋의 expected_category로 옮겼다 (2026-08-06).
+    """
     detail = await get_expense_detail(9002, 90001)
     assert detail["title"] == "동아리 스터디 교재"
     assert detail["amount"] == 32000
-    assert detail["category"] == "교육"
+    assert detail["category"] == "", "심사 전 지출은 카테고리가 비어 있어야 한다"
     assert detail["description"] == "알고리즘 스터디 교재 2권"
 
 
@@ -86,7 +96,11 @@ async def test_team_settings_mock_fixture_lookup():
 
 async def test_load_context_pulls_claim():
     state = {"team_id": 9002, "expense_id": 90001}
-    updates = await load_context(state)
+    with patch(
+        "app.graphs.review.nodes.load_context.get_context_status",
+        return_value=_STUB_CONTEXT_STATUS,
+    ):
+        updates = await load_context(state)
     claim = updates["claim"]
     assert claim.title == "동아리 스터디 교재" and claim.amount == 32000
     assert updates["policy_params"].auto_approve is True
@@ -95,18 +109,48 @@ async def test_load_context_pulls_claim():
 async def test_load_context_skips_pull_when_claim_given():
     """직접 그래프 호출(smoke·seed_demo·단위테스트) — 주입된 claim을 덮지 않는다."""
     given = ExpenseClaim(title="직접 주입", amount=1000, date="2026-07-01")
-    updates = await load_context({"team_id": 9002, "expense_id": 999999, "claim": given})
+    with patch(
+        "app.graphs.review.nodes.load_context.get_context_status",
+        return_value=_STUB_CONTEXT_STATUS,
+    ):
+        updates = await load_context({"team_id": 9002, "expense_id": 999999, "claim": given})
     assert "claim" not in updates
 
 
 async def test_load_context_fail_safe_on_settings_error():
     """team_settings 조회 실패 → auto_approve=False (자동판정 권한 미확인이면 판정 금지)."""
-    with patch(
-        "app.graphs.review.nodes.load_context.get_team_settings",
-        side_effect=RuntimeError("backend down"),
+    with (
+        patch(
+            "app.graphs.review.nodes.load_context.get_team_settings",
+            side_effect=RuntimeError("backend down"),
+        ),
+        patch(
+            "app.graphs.review.nodes.load_context.get_context_status",
+            return_value=_STUB_CONTEXT_STATUS,
+        ),
     ):
         updates = await load_context({"team_id": "org-1", "expense_id": "exp-1"})
     assert updates["policy_params"].auto_approve is False
+
+
+async def test_load_context_propagates_active_rule_version():
+    """get_context_status가 돌려준 활성 판번호가 그대로 state["rule_version"]에 실린다.
+
+    rule_auditor(_retrieve_with_correction)가 심사 내내 고정해 쓰는 값이라 —
+    조회 결과가 실제로 여기까지 전달되는지 이 노드 경계에서 잠근다.
+    """
+    claim = ExpenseClaim(title="교재", amount=32_000, category="도서", date="2026-07-01")
+    with (
+        patch("app.graphs.review.nodes.load_context.get_team_settings", return_value={}),
+        patch("app.graphs.review.nodes.load_context.get_team_profile", return_value={}),
+        patch("app.graphs.review.nodes.load_context.get_team_members", return_value=[]),
+        patch(
+            "app.graphs.review.nodes.load_context.get_context_status",
+            return_value={"chunk_count": 5, "version": 3, "indexed_at": "2026-08-01T00:00:00"},
+        ),
+    ):
+        updates = await load_context({"team_id": "org-1", "expense_id": "exp-1", "claim": claim})
+    assert updates["rule_version"] == 3
 
 
 # ── team_settings·budget 응답 필드 계약 (풀스택 DB 스키마 2026-07-27) ──
@@ -117,13 +161,19 @@ async def test_escalation_threshold_is_amount_not_confidence():
 
     θ(confidence_threshold)는 백엔드가 모르는 LLM 내부 파라미터라 기본값을 유지한다.
     """
-    with patch(
-        "app.graphs.review.nodes.load_context.get_team_settings",
-        return_value={
-            "auto_approve": True,
-            "auto_approve_limit": 50_000,
-            "escalation_threshold": 300_000,
-        },
+    with (
+        patch(
+            "app.graphs.review.nodes.load_context.get_team_settings",
+            return_value={
+                "auto_approve": True,
+                "auto_approve_limit": 50_000,
+                "escalation_threshold": 300_000,
+            },
+        ),
+        patch(
+            "app.graphs.review.nodes.load_context.get_context_status",
+            return_value=_STUB_CONTEXT_STATUS,
+        ),
     ):
         updates = await load_context({"team_id": "org-1", "expense_id": "exp-1"})
     policy = updates["policy_params"]
@@ -133,13 +183,19 @@ async def test_escalation_threshold_is_amount_not_confidence():
 
 async def test_auto_approve_limit_null_means_no_auto_approval():
     """auto_approve_limit은 NULL 허용(자동승인 미사용 팀) — 예외 없이 0으로 처리."""
-    with patch(
-        "app.graphs.review.nodes.load_context.get_team_settings",
-        return_value={
-            "auto_approve": False,
-            "auto_approve_limit": None,
-            "escalation_threshold": 300_000,
-        },
+    with (
+        patch(
+            "app.graphs.review.nodes.load_context.get_team_settings",
+            return_value={
+                "auto_approve": False,
+                "auto_approve_limit": None,
+                "escalation_threshold": 300_000,
+            },
+        ),
+        patch(
+            "app.graphs.review.nodes.load_context.get_context_status",
+            return_value=_STUB_CONTEXT_STATUS,
+        ),
     ):
         updates = await load_context({"team_id": "org-1", "expense_id": "exp-1"})
     assert updates["policy_params"].auto_approve_limit == 0
@@ -183,9 +239,15 @@ async def test_escalation_threshold_absent_follows_admin_limit():
     쓰면 min(한도, 200,000)이 되어 **관리자가 50만을 설정해도 20만부터 관리자 확인**이
     된다 — 2026-07-31 사고("관리자가 30만을 골라도 심사는 20만으로 동작")와 같은 유형이다.
     """
-    with patch(
-        "app.graphs.review.nodes.load_context.get_team_settings",
-        return_value={"auto_approve": True, "auto_approve_limit": 500_000},
+    with (
+        patch(
+            "app.graphs.review.nodes.load_context.get_team_settings",
+            return_value={"auto_approve": True, "auto_approve_limit": 500_000},
+        ),
+        patch(
+            "app.graphs.review.nodes.load_context.get_context_status",
+            return_value=_STUB_CONTEXT_STATUS,
+        ),
     ):
         updates = await load_context({"team_id": "org-1", "expense_id": "exp-1"})
     policy = updates["policy_params"]

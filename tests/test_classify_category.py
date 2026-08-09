@@ -76,6 +76,19 @@ def test_meeting_keyword_does_not_steal_supplies():
     assert classify_by_keywords("월례 회의실 대관료") == "회의"      # 구체 낱말은 유지
 
 
+def test_equipment_rental_is_supplies_not_venue():
+    """'빔프로젝터 대여료'는 비품이다 — 장소_대관에 '대여료'를 넣었다가 되돌린 자리.
+
+    장소_대관이 비품보다 위라, 장소가 아닌 낱말('대여료')을 넣으면 장비 대여를 전부
+    가로챈다. 골든셋에 장비 대여 케이스가 없어 **전수 재채점으로는 안 보였던** 결함이라
+    (2026-08-07 자체 검증) 여기서 그물을 놓는다. 장소 이름은 그대로 장소_대관이다.
+    """
+    assert classify_by_keywords("빔프로젝터 대여료") == "비품"
+    assert classify_by_keywords("음향장비 대여료") == "비품"
+    assert classify_by_keywords("동아리방 대여료") == "장소_대관"
+    assert classify_by_keywords("동아리방 월 대여료") == "장소_대관"
+
+
 def test_personal_gifts_are_other_not_activity():
     """선물·경조사는 기타다 — 모임 활동이 아니라 개인 대상 지출이라서.
 
