@@ -16,6 +16,55 @@ from app.graphs.review.state import ReviewState
 from app.schemas.common import Reasons
 
 
+# 가드레일 규칙 → 관리자 화면 문구.
+#
+# **규칙 식별자 자체는 바꾸지 않는다.** 골든셋의 `expected_gate_includes`(21건)와
+# Trajectory 채점이 이 이름으로 매칭하므로 바꾸면 평가 계약이 깨진다. 사람이 읽는
+# 자리에서만 옮긴다.
+#
+# `over_auto_approve_limit`과 `over_force_escalation_amount`가 **같은 문구**인 것은
+# 의도다. 2026-08-05 마법사 2단계 화면 개편으로 금액 칸이 하나가 되면서 두 값은 같은
+# 금액이 됐다(`policy_params.effective_auto_approve_limit`의 min은 컬럼 삭제 전 저장된
+# 값이 남은 팀을 위한 안전망일 뿐이다). 둘이 함께 걸려도 관리자에게는 한 줄이어야
+# 하므로 아래에서 같은 문구를 접는다.
+_RULE_LABELS = {
+    "auto_approve_disabled": "AI 자동 판정이 꺼져 있음",
+    "receipt_unreadable": "영수증 판독 실패",
+    "receipt_mismatch": "영수증과 청구 내용 불일치",
+    "rule_violation": "회칙 위반",
+    "rule_ambiguous": "회칙 해석이 애매함",
+    "precedent_suspicion": "유사 판례에 의심 신호",
+    "budget_insufficient": "예산 잔액 부족",
+    "over_auto_approve_limit": "관리자 승인이 필요한 금액",
+    "over_force_escalation_amount": "관리자 승인이 필요한 금액",
+}
+_RULE_PREFIX_LABELS = {
+    "missing_opinion": "심사관 소견 누락",
+    "auditor_failed": "심사관 실행 실패",
+}
+_AUDITOR_LABELS = {"rule": "회칙", "budget": "예산", "precedent": "판례", "evidence": "증빙"}
+
+
+def describe_rules(rules: list[str]) -> str:
+    """가드레일 규칙 목록 → 관리자가 읽는 한 줄 (순수 함수).
+
+    종전에는 `", ".join(triggered_rules)`라 관리자 화면에
+    `가드레일: over_auto_approve_limit, rule_ambiguous`처럼 영문 식별자가 그대로
+    나갔고, 같은 금액을 가리키는 규칙 둘이 함께 걸리면 같은 말이 두 번 적혔다.
+    """
+    out: list[str] = []
+    for rule in rules:
+        prefix, _, arg = rule.partition(":")
+        if arg and prefix in _RULE_PREFIX_LABELS:
+            label = f"{_RULE_PREFIX_LABELS[prefix]}({_AUDITOR_LABELS.get(arg, arg)})"
+        else:
+            # 모르는 규칙은 식별자를 그대로 남긴다 — 숨기면 새 규칙이 조용히 사라진다
+            label = _RULE_LABELS.get(rule, rule)
+        if label not in out:
+            out.append(label)
+    return ", ".join(out)
+
+
 def _escalation_detail(state: ReviewState) -> str:
     gate = state.get("gate_result")
     mismatch = state.get("mismatch", [])
@@ -23,7 +72,7 @@ def _escalation_detail(state: ReviewState) -> str:
         return "영수증-청구 불일치: " + ", ".join(
             f"{m.field}(청구 {m.claimed} / 영수증 {m.receipt})" for m in mismatch)
     if gate is not None and gate.triggered_rules:
-        return "가드레일: " + ", ".join(gate.triggered_rules)
+        return "가드레일: " + describe_rules(gate.triggered_rules)
     return "판정 신뢰도 미달 또는 심사 실패"
 
 

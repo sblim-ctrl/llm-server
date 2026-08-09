@@ -95,6 +95,27 @@ async def adjudicate(state: ReviewState) -> dict:
     if verdict not in ("approve", "reject", "escalate"):  # LLM 출력 방어
         verdict = "escalate"
 
+    # 가드레일이 반려 후보로 내린 건은 LLM이 승인으로 뒤집을 수 없다 (E4, 2026-08-04 검토).
+    #
+    # `route_after_guardrail`은 `escalate`만 걸러 내고 `reject_candidate`(예산 부족)는
+    # 여기로 보낸다. 그런데 위 두 줄은 `gate_result`를 보지 않으므로, 잔액이 없다는
+    # 결정적 판정이 나온 건에 LLM이 approve를 내면 그대로 execute_decision→콜백까지
+    # 전파된다 — §8 "어떤 실패도 자동 승인으로 이어지지 않는다"와 정면으로 어긋난다.
+    #
+    # 반려로 굳히지 않고 escalate로 강등하는 이유: 게이트와 LLM이 갈렸다는 것 자체가
+    # 사람이 봐야 할 신호다. 한쪽을 임의로 채택하지 않는다.
+    # 목 모드는 `_mock_result`가 게이트를 존중해 reject를 내므로 이 분기에 닿지 않는다
+    # — 즉 골든셋으로는 원리적으로 검출되지 않아 여기 단위 테스트가 유일한 그물이다.
+    gate = state.get("gate_result")
+    if gate is not None and gate.decision == "reject_candidate" and verdict == "approve":
+        logger.warning(
+            "가드레일 반려 후보를 LLM이 승인으로 뒤집으려 함 — escalate로 강등 "
+            "(rules=%s, confidence=%.2f)",
+            gate.triggered_rules,
+            result.confidence,
+        )
+        verdict = "escalate"
+
     return {
         "verdict": verdict,
         "confidence": result.confidence,
