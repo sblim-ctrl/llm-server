@@ -9,7 +9,7 @@ import pytest
 from app.graphs.review.nodes import escalate as esc_mod
 from app.graphs.review.nodes import persist_precedent as pp_mod
 from app.graphs.review.nodes.callback import build_callback_payload
-from app.schemas.common import ExpenseClaim
+from app.schemas.common import ExpenseClaim, GateResult, Mismatch, Reasons
 
 
 def _state(**extra) -> dict:
@@ -117,3 +117,66 @@ def test_order_is_preserved():
     assert describe_rules(["auto_approve_disabled", "budget_insufficient"]) == (
         "AI 자동 판정이 꺼져 있음, 예산 잔액 부족"
     )
+
+
+# ── 요청자용 문구 3종화 + adjudicate LLM 사유 보존 (2026-08-10) ──────────
+#
+# 종전에는 mismatch/gate/저신뢰 세 트리거를 구분하지 않고 요청자에게 항상 같은
+# 문구를 보냈고, 저신뢰 경로에서는 adjudicate가 만든 LLM 사유(state["reasons"])를
+# escalate()가 무조건 새 Reasons로 덮어써 사라졌다.
+
+from app.graphs.review.nodes.escalate import _requester_message  # noqa: E402
+
+
+def test_requester_message_differs_by_trigger():
+    """mismatch/gate/기본 세 트리거에서 서로 다른 요청자용 문구를 반환한다."""
+    mismatch_msg = _requester_message(
+        _state(mismatch=[Mismatch(field="amount", claimed="1000", receipt="2000")])
+    )
+    gate_msg = _requester_message(
+        _state(gate_result=GateResult(decision="escalate", triggered_rules=["rule_ambiguous"]))
+    )
+    default_msg = _requester_message(_state())
+
+    assert len({mismatch_msg, gate_msg, default_msg}) == 3
+
+
+async def test_low_confidence_preserves_llm_admin_reason(monkeypatch):
+    """저신뢰 경로: adjudicate가 만든 LLM 사유(admin)가 escalate 후에도 남는다."""
+    def _boom(_):
+        raise AssertionError("interrupt가 호출되면 안 됨")
+    monkeypatch.setattr(esc_mod, "interrupt", _boom)
+
+    out = await esc_mod.escalate(_state(
+        confidence=0.62,
+        reasons=Reasons(
+            requester="...",
+            admin="LLM 판단: 3개 심사관 전원 통과, 승인 후 잔액 118,000원",
+        ),
+    ))
+
+    assert out["verdict"] == "escalate"
+    assert "118,000원" in out["reasons"].admin
+    assert out["reasons"].requester == _requester_message(_state())
+
+
+async def test_mismatch_and_gate_triggers_use_escalation_detail_admin_message(monkeypatch):
+    """mismatch/gate 트리거(reasons=None, confidence=None)에서는 여전히 _escalation_detail
+    기반 admin 문구가 나온다 — adjudicate를 거치지 않은 경로라 LLM 사유가 없다."""
+    def _boom(_):
+        raise AssertionError("interrupt가 호출되면 안 됨")
+    monkeypatch.setattr(esc_mod, "interrupt", _boom)
+
+    mismatch = [Mismatch(field="amount", claimed="1000", receipt="2000")]
+    mismatch_state = _state(mismatch=mismatch)
+    out = await esc_mod.escalate(mismatch_state)
+    expected = f"에스컬레이션 사유 — {esc_mod._escalation_detail(mismatch_state)}"
+    assert out["reasons"].admin == expected
+    assert "LLM 판단" not in out["reasons"].admin
+
+    gate = GateResult(decision="escalate", triggered_rules=["rule_ambiguous"])
+    gate_state = _state(gate_result=gate)
+    out = await esc_mod.escalate(gate_state)
+    expected = f"에스컬레이션 사유 — {esc_mod._escalation_detail(gate_state)}"
+    assert out["reasons"].admin == expected
+    assert "LLM 판단" not in out["reasons"].admin

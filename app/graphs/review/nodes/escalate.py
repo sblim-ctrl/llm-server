@@ -76,6 +76,28 @@ def _escalation_detail(state: ReviewState) -> str:
     return "판정 신뢰도 미달 또는 심사 실패"
 
 
+def _requester_message(state: ReviewState) -> str:
+    """요청자용 에스컬레이션 사유 — 트리거 종류별 3종. 내부 수치·LLM 원문은 담지 않는다
+    (요청자에게 승인/반려로 오인될 수 있는 문구를 보이면 안 되므로 adjudicate의 LLM 원문은
+    쓰지 않는다)."""
+    if state.get("mismatch"):
+        return "영수증과 신청 내용이 일치하지 않아 관리자가 다시 확인합니다."
+    gate = state.get("gate_result")
+    if gate is not None and gate.triggered_rules:
+        return "회칙·예산 기준에 따라 관리자 확인이 필요한 건으로 분류되었습니다."
+    return "판정 결과에 대한 추가 확인이 필요하여 관리자가 검토합니다."
+
+
+def _admin_message(state: ReviewState, detail: str) -> str:
+    """관리자용 에스컬레이션 사유. adjudicate가 이미 LLM 사유를 만들어 둔 상태(저신뢰
+    경로 — state에 confidence와 reasons가 둘 다 있음)면 그 내용을 이어 붙인다. 그냥
+    버리면(종전 동작) LLM이 판단한 근거가 사라진다."""
+    prior = state.get("reasons")
+    if state.get("confidence") is not None and prior is not None:
+        return f"{detail} — LLM 판단: {prior.admin}"
+    return f"에스컬레이션 사유 — {detail}"
+
+
 async def escalate(state: ReviewState) -> dict:
     detail = _escalation_detail(state)
 
@@ -111,7 +133,7 @@ async def escalate(state: ReviewState) -> dict:
     return {
         "verdict": "escalate",
         "reasons": Reasons(
-            requester="관리자 확인이 필요한 건으로 분류되었습니다.",
-            admin=f"에스컬레이션 사유 — {detail}",
+            requester=_requester_message(state),
+            admin=_admin_message(state, detail),
         ),
     }
