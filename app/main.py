@@ -27,7 +27,7 @@ from app.api import (
     reviews_stream,
 )
 from app.config import get_settings
-from app.db.pool import apply_schema, close_pool, open_pool
+from app.db.pool import apply_schema, close_pool, open_pool, setup_checkpointer_locked
 from app.mcp_server import mcp_app, mcp_session_manager
 from app.tools.backend_client import close_backend_client
 from app.observability import setup_langsmith
@@ -48,7 +48,8 @@ async def lifespan(app: FastAPI):
     # 연다. 멈춘 심사가 Postgres에 남아 --workers N의 다른 프로세스·재시작 후에도
     # 재개된다 (reviews_stream 모듈 docstring 참고).
     async with AsyncPostgresSaver.from_conn_string(get_settings().database_url) as checkpointer:
-        await checkpointer.setup()  # idempotent — checkpoint 테이블 마이그레이션
+        # --workers 2 + 잡 워커가 동시에 기동해도 안전 (신규 DB 경쟁은 pool.py 참고)
+        await setup_checkpointer_locked(checkpointer)
         reviews_stream.init_hitl_graph(checkpointer)
         async with mcp_session_manager():  # MCP Streamable HTTP 세션 (§5.2)
             yield

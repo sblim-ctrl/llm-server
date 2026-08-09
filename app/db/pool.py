@@ -1,10 +1,12 @@
 """psycopg3 비동기 커넥션 풀 + 잡 테이블 헬퍼 (ADR-4)."""
 
+import asyncio
 import json
 import logging
 from pathlib import Path
 from typing import Any
 
+import psycopg
 from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
 
@@ -47,6 +49,53 @@ async def apply_schema() -> None:
     async with get_pool().connection() as conn:
         await conn.execute(sql)
     logger.info("DB schema applied")
+
+
+# advisory lock 키(int4 쌍의 첫 축). 두 번째 축: setup은 0 고정, HITL 재개는
+# hashtext(job_id) — reviews_stream.resume_review와 네임스페이스가 겹치지 않는다.
+CHECKPOINTER_SETUP_LOCK = "checkpointer_setup"
+_SETUP_LOCK_POLL_SEC = 0.5
+_SETUP_LOCK_MAX_WAIT_SEC = 120.0
+
+
+async def setup_checkpointer_locked(checkpointer: Any) -> None:
+    """checkpointer.setup()을 advisory lock으로 직렬화 — 다중 프로세스 동시 기동 안전.
+
+    setup()의 마이그레이션(테이블 생성 + checkpoint_migrations INSERT)은 동시 실행에
+    안전하지 않다: 신규 DB에서 API(--workers 2) + 잡 워커, 총 3개 프로세스가 같이
+    뜨면 UniqueViolation(checkpoint_migrations_pkey)으로 일부가 죽는다(2026-08-09
+    재현 — 3개 중 2개 사망, 첫 배포·데모 전 볼륨 초기화 시나리오).
+
+    잠금 대기는 반드시 **try-lock + sleep 폴링**이어야 한다. 블로킹
+    pg_advisory_lock()으로 기다리면 그 대기 쿼리가 가상 트랜잭션을 쥔 채 살아 있고,
+    잠금을 쥔 쪽의 setup()이 실행하는 CREATE INDEX CONCURRENTLY는 모든 동시 가상
+    트랜잭션의 종료를 기다리므로 서로를 영원히 기다린다 — 2026-08-09 검증에서 3개
+    프로세스 전부 교착으로 재현됐다. try-lock은 즉시 반환돼 대기 세션이 idle이
+    되므로 인덱스 생성이 진행된다. 세션 수준 잠금이라 잠근 프로세스가 죽어도
+    연결이 닫히며 함께 풀린다.
+    """
+    async with await psycopg.AsyncConnection.connect(
+            get_settings().database_url, autocommit=True) as conn:
+        waited = 0.0
+        while True:
+            got = (await (await conn.execute(
+                "SELECT pg_try_advisory_lock(hashtext(%s), 0)",
+                (CHECKPOINTER_SETUP_LOCK,))).fetchone())[0]
+            if got:
+                break
+            if waited >= _SETUP_LOCK_MAX_WAIT_SEC:
+                raise RuntimeError(
+                    "checkpointer setup 잠금을 "
+                    f"{_SETUP_LOCK_MAX_WAIT_SEC:.0f}초 내에 얻지 못했다 — "
+                    "다른 프로세스의 setup이 멈춰 있는지 확인할 것")
+            await asyncio.sleep(_SETUP_LOCK_POLL_SEC)
+            waited += _SETUP_LOCK_POLL_SEC
+        try:
+            await checkpointer.setup()
+        finally:
+            await conn.execute(
+                "SELECT pg_advisory_unlock(hashtext(%s), 0)",
+                (CHECKPOINTER_SETUP_LOCK,))
 
 
 # ── jobs 헬퍼 ─────────────────────────────────────────────

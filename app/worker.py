@@ -13,7 +13,14 @@ from typing import Any
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 from app.config import get_settings
-from app.db.pool import apply_schema, close_pool, finish_job, get_pool, open_pool
+from app.db.pool import (
+    apply_schema,
+    close_pool,
+    finish_job,
+    get_pool,
+    open_pool,
+    setup_checkpointer_locked,
+)
 from app.graphs.indexing.graph import indexing_graph
 from app.graphs.review.graph import build_review_graph
 from app.graphs.review.nodes.callback import trace_meta
@@ -308,7 +315,8 @@ async def main() -> None:
     await apply_schema()
 
     async with AsyncPostgresSaver.from_conn_string(get_settings().database_url) as checkpointer:
-        await checkpointer.setup()  # idempotent — checkpoint 테이블 마이그레이션
+        # API(--workers 2)와 동시에 기동해도 안전 (신규 DB 경쟁은 pool.py 참고)
+        await setup_checkpointer_locked(checkpointer)
         _checkpointer = checkpointer  # B-7: run_review_job의 체크포인트 존재 확인용
         _review_graph = build_review_graph(checkpointer=checkpointer)
         try:

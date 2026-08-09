@@ -35,8 +35,10 @@ from typing import Literal
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse, StreamingResponse
 from langgraph.types import Command
+from psycopg import AsyncConnection
 from pydantic import BaseModel
 
+from app.config import get_settings
 from app.graphs.review.graph import build_review_graph
 from app.observability import langsmith_config
 from app.schemas.analyze import AnalyzeRequest
@@ -173,21 +175,61 @@ async def stream_review(req: AnalyzeRequest) -> StreamingResponse:
                              headers={"Cache-Control": "no-cache"})
 
 
+# HITL 재개 advisory lock 네임스페이스 — (hashtext(NS), hashtext(job_id)) 쌍.
+# pool.py의 setup 잠금(hashtext('checkpointer_setup'), 0)과 축이 달라 안 겹친다.
+RESUME_LOCK_NS = "hitl_resume"
+
+
+async def _release_resume_lock(conn, job_id: str) -> None:
+    """재개 잠금 해제 — unlock이 실패해도 연결을 닫으면 세션 잠금은 함께 풀린다."""
+    try:
+        await conn.execute(
+            "SELECT pg_advisory_unlock(hashtext(%s), hashtext(%s))",
+            (RESUME_LOCK_NS, job_id))
+    finally:
+        await conn.close()
+
+
 @router.post("/v1/reviews/{job_id}/decision")
 async def resume_review(job_id: str, req: DecisionRequest):
-    """관리자 결정으로 멈춘 심사를 재개 — 콜백·판례 저장(ADMIN)까지 SSE 중계."""
+    """관리자 결정으로 멈춘 심사를 재개 — 콜백·판례 저장(ADMIN)까지 SSE 중계.
+
+    확인("대기 중인가")과 실행(그래프 재개) 사이를 job_id 단위 advisory lock으로
+    잠근다(2026-08-09 리뷰). 잠금이 없으면 같은 잡에 승인이 동시에 오는 경우
+    (버튼 두 번·클라이언트 재시도) 둘 다 확인을 통과해 콜백·판례 저장이 2번
+    일어난다 — 재현: 동시 2발 모두 200, ADMIN 판례 2행. MemorySaver 시절엔 다른
+    프로세스가 스레드 상태를 못 봐 우연히 409로 막혀 있던 동작이다. 세션 수준
+    잠금이라 재개 중 프로세스가 죽어도 연결이 닫히며 함께 풀린다.
+    """
     config = {"configurable": {"thread_id": job_id}}
-    snap = await hitl_graph.aget_state(config)
-    if not snap.next:  # 대기 중인 interrupt가 없음 — 모르는 잡이거나 이미 종결
-        return JSONResponse(status_code=409, content={
-            "detail": f"'{job_id}'는 관리자 결정 대기 상태가 아닙니다 "
-                      "(이미 종결됐거나 알 수 없는 잡)"})
+    lock_conn = await AsyncConnection.connect(
+        get_settings().database_url, autocommit=True)
+    try:
+        got = (await (await lock_conn.execute(
+            "SELECT pg_try_advisory_lock(hashtext(%s), hashtext(%s))",
+            (RESUME_LOCK_NS, job_id))).fetchone())[0]
+        if not got:  # 같은 잡을 다른 요청이 재개하는 중 — 기다리지 않고 거절
+            await lock_conn.close()
+            return JSONResponse(status_code=409, content={
+                "detail": f"'{job_id}'는 이미 다른 요청이 재개 중입니다 — "
+                          "잠시 후 심사 상태를 확인하세요"})
+        # 잠금 안에서 상태 확인 — 직전 재개가 방금 종결한 잡도 여기서 걸린다
+        snap = await hitl_graph.aget_state(config)
+        if not snap.next:  # 대기 중인 interrupt가 없음 — 모르는 잡이거나 이미 종결
+            await _release_resume_lock(lock_conn, job_id)
+            return JSONResponse(status_code=409, content={
+                "detail": f"'{job_id}'는 관리자 결정 대기 상태가 아닙니다 "
+                          "(이미 종결됐거나 알 수 없는 잡)"})
+    except Exception:
+        await lock_conn.close()
+        raise
 
     async def gen():
-        team_id = snap.values.get("team_id") or "unknown"
-        cfg = langsmith_config("review-resume", job_id, team_id, thread_id=job_id)
-        started = perf_counter()
         try:
+            team_id = snap.values.get("team_id") or "unknown"
+            cfg = langsmith_config("review-resume", job_id, team_id,
+                                   thread_id=job_id)
+            started = perf_counter()
             stream = hitl_graph.astream(
                 Command(resume={"decision": req.decision, "reason": req.reason}),
                 config=cfg, stream_mode="updates")
@@ -196,6 +238,8 @@ async def resume_review(job_id: str, req: DecisionRequest):
         except Exception:
             logger.exception("review resume failed")
             yield _sse("error", {"detail": "재개 실패 — 서버 로그 확인"})
+        finally:
+            await _release_resume_lock(lock_conn, job_id)
 
     return StreamingResponse(gen(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache"})

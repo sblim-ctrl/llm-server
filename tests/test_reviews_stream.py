@@ -1,11 +1,143 @@
-"""reviews_stream — SSE 포맷·노드 라벨 정합 (데모·관측 전용 스트리밍, 강의 04-07).
+"""reviews_stream — SSE 포맷·노드 라벨 정합 + HITL 재개 동시성 계약.
 
 전체 그래프 실행 검증은 골든셋(eval)·대시보드 수동 경로 담당 — 여기서는
 의존성 없는 순수 부분만: SSE 직렬화 형식과, 타임라인 노드 목록이 실제 심사
 그래프 배선과 일치하는지(노드 추가·개명 시 드리프트 감지)를 잠근다.
+
+재개(resume_review) 동시성 계약(2026-08-09 리뷰에서 이중 저장 재현 후 추가):
+잠금을 못 얻으면 실행 없이 409, 잠금 안 재확인에서 종결이면 409, 성공 경로는
+그래프 재개가 정확히 1회에 잠금 해제까지 — DB 없이 가짜 연결/그래프로 검증한다.
+실제 Postgres 경합 재현·해소는 리뷰 회신의 실측 절차가 담당.
 """
-from app.api.reviews_stream import NODE_LABELS, _sse
+from types import SimpleNamespace
+
+from app.api import reviews_stream
+from app.api.reviews_stream import NODE_LABELS, DecisionRequest, _sse
 from app.graphs.review.graph import build_review_graph
+
+
+class _FakeCursor:
+    def __init__(self, row):
+        self._row = row
+
+    async def fetchone(self):
+        return self._row
+
+
+class _FakeLockConn:
+    """advisory lock 연결 대역 — try_lock 결과를 정해 두고 실행 SQL을 기록한다."""
+
+    def __init__(self, grant: bool):
+        self.grant = grant
+        self.executed: list[str] = []
+        self.closed = False
+
+    async def execute(self, sql, params=None):
+        self.executed.append(sql)
+        if "pg_try_advisory_lock" in sql:
+            return _FakeCursor((self.grant,))
+        return _FakeCursor((True,))
+
+    async def close(self):
+        self.closed = True
+
+    @property
+    def unlocked(self) -> bool:
+        return any("pg_advisory_unlock" in s for s in self.executed)
+
+
+class _FakeGraph:
+    """hitl_graph 대역 — 상태 스냅숏 고정, 재개 호출 횟수 기록."""
+
+    def __init__(self, next_, values=None):
+        self._snap = SimpleNamespace(next=next_, values=values or {})
+        self.resumed = 0
+
+    async def aget_state(self, config):
+        return self._snap
+
+    def astream(self, *args, **kwargs):
+        self.resumed += 1
+
+        async def _gen():
+            yield {"escalate": {}}
+
+        return _gen()
+
+
+def _patch_lock_conn(monkeypatch, conn):
+    async def _connect(*args, **kwargs):
+        return conn
+
+    monkeypatch.setattr(reviews_stream, "AsyncConnection",
+                        SimpleNamespace(connect=_connect))
+
+
+async def test_resume_conflict_rejected_without_touching_graph(monkeypatch):
+    """잠금을 못 얻으면(같은 잡 재개 중) 그래프를 건드리지 않고 409."""
+    conn = _FakeLockConn(grant=False)
+    _patch_lock_conn(monkeypatch, conn)
+    monkeypatch.setattr(reviews_stream, "hitl_graph", None)  # 접근하면 즉사 → 검출
+
+    resp = await reviews_stream.resume_review(
+        "job-1", DecisionRequest(decision="approve"))
+
+    assert resp.status_code == 409
+    assert "재개 중" in resp.body.decode("utf-8")
+    assert conn.closed  # 거절 경로도 연결을 정리한다
+
+
+async def test_resume_recheck_inside_lock_returns_409_when_finished(monkeypatch):
+    """잠금 획득 후 재확인 — 직전 재개가 종결한 잡이면 실행 없이 409 + 잠금 해제."""
+    conn = _FakeLockConn(grant=True)
+    _patch_lock_conn(monkeypatch, conn)
+    graph = _FakeGraph(next_=())  # interrupt 없음 = 종결/모르는 잡
+    monkeypatch.setattr(reviews_stream, "hitl_graph", graph)
+
+    resp = await reviews_stream.resume_review(
+        "job-2", DecisionRequest(decision="approve"))
+
+    assert resp.status_code == 409
+    assert "대기 상태가 아닙니다" in resp.body.decode("utf-8")
+    assert graph.resumed == 0
+    assert conn.unlocked and conn.closed
+
+
+async def test_resume_success_runs_graph_once_and_releases_lock(monkeypatch):
+    """성공 경로 — 재개는 정확히 1회, 스트림 종료 시 잠금 해제·연결 정리."""
+    conn = _FakeLockConn(grant=True)
+    _patch_lock_conn(monkeypatch, conn)
+    graph = _FakeGraph(next_=("escalate",), values={"team_id": 9002})
+    monkeypatch.setattr(reviews_stream, "hitl_graph", graph)
+
+    resp = await reviews_stream.resume_review(
+        "job-3", DecisionRequest(decision="approve"))
+
+    assert resp.status_code == 200
+    body = "".join([chunk async for chunk in resp.body_iterator])
+    assert "event: result" in body  # 재개가 끝까지 갔다
+    assert graph.resumed == 1
+    assert conn.unlocked and conn.closed  # 스트림이 끝나야 풀린다
+
+
+async def test_resume_stream_failure_still_releases_lock(monkeypatch):
+    """재개 중 예외가 나도 잠금은 풀린다 — 안 풀리면 그 잡은 영영 재개 불가."""
+    conn = _FakeLockConn(grant=True)
+    _patch_lock_conn(monkeypatch, conn)
+    graph = _FakeGraph(next_=("escalate",), values={})
+
+    def _boom(*args, **kwargs):
+        raise RuntimeError("stream 실패 재현")
+
+    graph.astream = _boom
+    monkeypatch.setattr(reviews_stream, "hitl_graph", graph)
+
+    resp = await reviews_stream.resume_review(
+        "job-4", DecisionRequest(decision="approve"))
+    body = "".join([chunk async for chunk in resp.body_iterator])
+
+    assert "event: error" in body
+    assert conn.unlocked and conn.closed
 
 
 def test_sse_format_and_korean_passthrough():
