@@ -5,7 +5,7 @@
 """
 import pytest
 
-from app.graphs.review.nodes.classify_category import classify_category
+from app.graphs.review.nodes.classify_category import CategoryPrediction, classify_category
 from app.schemas.common import ExpenseClaim
 from app.tools.category_catalog import (
     all_categories, classify_by_keywords, fallback_category, keyword_category_or_none,
@@ -178,7 +178,7 @@ async def test_result_never_leaves_catalog():
 
 # ── 저확신 폴백 (카테고리 직접 입력 삭제 대응) ──────────────────────────────
 
-async def _classify_with(pred: "CategoryPrediction") -> str:
+async def _classify_with(pred: CategoryPrediction) -> str:
     """분류기가 주어진 예측을 냈을 때 최종 확정 카테고리를 얻는다."""
     from unittest.mock import AsyncMock, patch
 
@@ -191,7 +191,6 @@ async def _classify_with(pred: "CategoryPrediction") -> str:
 
 
 async def test_confident_prediction_is_used_as_is():
-    from app.graphs.review.nodes.classify_category import CategoryPrediction
     assert await _classify_with(CategoryPrediction(category="교육", confidence=0.9)) == "교육"
 
 
@@ -201,14 +200,12 @@ async def test_low_confidence_falls_back_to_keywords():
     되물어볼 사람이 없으므로 결정적 규칙으로 떨어뜨린다 — 같은 지출이 매번 같은
     카테고리로 가야 카테고리별 집계가 의미를 갖는다.
     """
-    from app.graphs.review.nodes.classify_category import CategoryPrediction
     # 키워드가 안 잡히는 문구라 폴백 결과는 '기타'
     assert await _classify_with(CategoryPrediction(category="교육", confidence=0.5)) == "기타"
 
 
 async def test_out_of_catalog_prediction_is_corrected():
     """환각 카테고리는 확신도와 무관하게 키워드로 교정한다."""
-    from app.graphs.review.nodes.classify_category import CategoryPrediction
     assert await _classify_with(CategoryPrediction(category="디자인", confidence=0.99)) == "기타"
 
 
@@ -216,7 +213,6 @@ async def test_low_confidence_keeps_keyword_hit():
     """저확신이어도 키워드가 잡히면 그 값을 쓴다 — 무조건 기타로 보내지 않는다."""
     from unittest.mock import AsyncMock, patch
 
-    from app.graphs.review.nodes.classify_category import CategoryPrediction
     state = {"claim": ExpenseClaim(title="회식 저녁", amount=40_000, category="",
                                    date="2026-07-10", description="정기 모임 식사")}
     with patch("app.graphs.review.nodes.classify_category.chat_structured",
@@ -293,7 +289,6 @@ async def test_etc_recheck_fires_even_at_high_confidence():
     """
     from unittest.mock import AsyncMock, patch
 
-    from app.graphs.review.nodes.classify_category import CategoryPrediction
 
     state = {"claim": ExpenseClaim(title="대관료", amount=50_000, category="",
                                    date="2026-07-10", description="")}
@@ -307,7 +302,6 @@ async def test_etc_recheck_respects_keyword_ignorance():
     """주입된 '기타'라도 키워드가 모르면 그대로 둔다 — 재질의는 아는 것만 고친다."""
     from unittest.mock import AsyncMock, patch
 
-    from app.graphs.review.nodes.classify_category import CategoryPrediction
 
     state = {"claim": ExpenseClaim(title="알 수 없는 지출", amount=10_000, category="",
                                    date="2026-07-10", description="")}
@@ -370,7 +364,6 @@ async def test_merchant_word_cannot_flip_confident_etc():
     """
     from unittest.mock import AsyncMock, patch
 
-    from app.graphs.review.nodes.classify_category import CategoryPrediction
 
     state = {"claim": ExpenseClaim(title="회원 경조사 조화", amount=50_000, category="",
                                    date="2026-07-10", description=""),
@@ -390,7 +383,6 @@ async def test_merchant_word_cannot_hijack_hallucination_correction():
     """
     from unittest.mock import AsyncMock, patch
 
-    from app.graphs.review.nodes.classify_category import CategoryPrediction
 
     state = {"claim": ExpenseClaim(title="회원 경조사 조화", amount=50_000, category="",
                                    date="2026-07-10", description=""),
@@ -405,7 +397,6 @@ async def test_merchant_word_cannot_hijack_low_confidence_fallback():
     """저확신 폴백도 같은 원칙 — '월 정산'+카페24(호스팅 업체)가 식비가 되면 안 된다."""
     from unittest.mock import AsyncMock, patch
 
-    from app.graphs.review.nodes.classify_category import CategoryPrediction
 
     state = {"claim": ExpenseClaim(title="월 정산", amount=33_000, category="",
                                    date="2026-07-10", description=""),
@@ -576,7 +567,6 @@ async def test_hints_still_reach_the_llm():
     """상호명·품목은 LLM user 메시지에는 들어간다 — 힌트 실측 개선(8건 중 5건)의 주 경로 보존."""
     from unittest.mock import AsyncMock, patch
 
-    from app.graphs.review.nodes.classify_category import CategoryPrediction
 
     state = {"claim": ExpenseClaim(title="6월 모임", amount=90_000, category="",
                                    date="2026-07-10", description=""),

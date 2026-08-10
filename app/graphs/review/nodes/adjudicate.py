@@ -108,9 +108,13 @@ async def adjudicate(state: ReviewState) -> dict:
     # — 즉 골든셋으로는 원리적으로 검출되지 않아 여기 단위 테스트가 유일한 그물이다.
     gate = state.get("gate_result")
     if gate is not None and gate.decision == "reject_candidate" and verdict == "approve":
+        # 식별자를 함께 남긴다 — 이 경고는 "안전장치가 실제로 작동한 순간"의 유일한
+        # 기록이라, 어느 지출이었는지 못 짚으면 사후에 되짚을 수가 없다 (2026-08-09 리뷰).
         logger.warning(
             "가드레일 반려 후보를 LLM이 승인으로 뒤집으려 함 — escalate로 강등 "
-            "(rules=%s, confidence=%.2f)",
+            "(expense=%s, job=%s, rules=%s, confidence=%.2f)",
+            state.get("expense_id"),
+            state.get("job_id"),
             gate.triggered_rules,
             result.confidence,
         )

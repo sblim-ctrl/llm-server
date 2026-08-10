@@ -21,6 +21,7 @@ import pytest
 from starlette.testclient import TestClient
 
 from app.main import app
+from app.schemas.ids import BIGINT_MAX
 
 TOKEN = {"Authorization": "Bearer dev-service-token-change-me"}
 
@@ -85,3 +86,42 @@ def test_body_accepts_real_integers(client):
         json={"jobId": "be-http-test-1", "expenseId": 4821, "organizationId": 17},
     )
     assert r.status_code == 202, r.text[:200]
+
+
+# ── 상한(BIGINT_MAX) 경계 (2026-08-09 리뷰 지적 — 하한만 덮여 있었다) ─────────
+#
+# 위 테스트들은 `gt=0`(0·음수 거절)만 확인한다. `le=BIGINT_MAX` 쪽은 아무도 안 봤다.
+# 이 경계가 중요한 건, 백엔드 PK가 BIGINT라 **상한값 자체는 실제로 올 수 있는 ID**이기
+# 때문이다 — 여기서 잘못 막으면 멀쩡한 지출이 422가 되고, 반대로 상한을 놓치면
+# 범위를 넘는 값이 그대로 DB 질의까지 내려간다.
+
+
+@pytest.mark.parametrize("path,param,_screen", QUERY_ENDPOINTS)
+def test_query_accepts_bigint_upper_bound(client, path, param, _screen):
+    """상한값 자체는 유효한 ID다 — `le`는 포함 경계여야 한다."""
+    r = client.get(f"{path}?{param}={BIGINT_MAX}", headers=TOKEN)
+    assert r.status_code == 200, f"{path}?{param}={BIGINT_MAX} → {r.status_code}"
+
+
+@pytest.mark.parametrize("path,param,_screen", QUERY_ENDPOINTS)
+def test_query_rejects_over_bigint_max(client, path, param, _screen):
+    """상한을 1 넘으면 422 — BIGINT 범위를 벗어난 값은 DB까지 가면 안 된다."""
+    r = client.get(f"{path}?{param}={BIGINT_MAX + 1}", headers=TOKEN)
+    assert r.status_code == 422, f"{path}?{param}={BIGINT_MAX + 1} → {r.status_code}"
+
+
+def test_body_ids_respect_bigint_bounds(client):
+    """본문(strict) 쪽도 같은 경계 — 상한값은 접수, 초과는 422."""
+    ok = client.post(
+        "/v1/analyze",
+        headers=TOKEN,
+        json={"jobId": "be-max", "expenseId": BIGINT_MAX, "organizationId": BIGINT_MAX},
+    )
+    assert ok.status_code == 202, ok.text[:200]
+
+    over = client.post(
+        "/v1/analyze",
+        headers=TOKEN,
+        json={"jobId": "be-over", "expenseId": BIGINT_MAX + 1, "organizationId": 17},
+    )
+    assert over.status_code == 422, over.text[:200]

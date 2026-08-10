@@ -120,7 +120,12 @@ from unittest.mock import AsyncMock, patch  # noqa: E402
 
 import pytest  # noqa: E402
 
-from app.graphs.review.nodes.adjudicate import AdjudicationResult, adjudicate  # noqa: E402
+from app.graphs.review.graph import build_review_graph  # noqa: E402
+from app.graphs.review.nodes.adjudicate import (  # noqa: E402
+    AdjudicationResult,
+    adjudicate,
+    route_after_adjudicate,
+)
 from app.schemas.common import (  # noqa: E402
     ExpenseClaim,
     GateResult,
@@ -159,10 +164,15 @@ async def test_llm_cannot_flip_reject_candidate_to_approve(caplog):
 
     §8 "어떤 실패도 자동 승인으로 이어지지 않는다"가 확률이 아니라 보장이 되는 자리.
     """
+    state = _state("reject_candidate", ["budget_insufficient"])
+    state["expense_id"] = 90123
+    state["job_id"] = "job-e4-demote"
     with _llm("approve"), caplog.at_level(logging.WARNING):
-        out = await adjudicate(_state("reject_candidate", ["budget_insufficient"]))
+        out = await adjudicate(state)
     assert out["verdict"] == "escalate"
     assert "강등" in caplog.text, "조용히 뒤집으면 안 된다 — 사람이 볼 로그가 남아야 한다"
+    # 어느 지출이었는지 못 짚는 경고는 사후 추적에 쓸 수 없다 (2026-08-09 리뷰 지적)
+    assert "90123" in caplog.text, "강등 경고에 지출 ID가 있어야 한다"
 
 
 async def test_reject_candidate_confirmed_as_reject_is_untouched():
@@ -185,3 +195,35 @@ async def test_low_confidence_still_escalates(gate_decision):
     with _llm("approve", confidence=0.5):
         out = await adjudicate(_state(gate_decision))
     assert out["verdict"] == "escalate"
+
+
+# ── 강등이 실제로 승인 경로를 끊는지 (배선까지 이어 확인, 2026-08-09 리뷰 지적) ──
+#
+# 위 테스트들은 전부 `adjudicate()`가 돌려주는 verdict만 본다. 그런데 강등의 목적은
+# "승인 콜백이 나가지 않는 것"이고, 그건 verdict가 아니라 **그 다음 분기**가 정한다.
+# `route_after_adjudicate`가 바뀌면(또는 graph.py의 매핑이 바뀌면) 위 5건은 전부
+# 초록인 채로 강등된 건이 execute_decision→콜백으로 새어 나간다. 그 이음매를 잠근다.
+
+
+async def test_demoted_verdict_routes_to_escalate_not_execute():
+    """강등된 건은 execute_decision이 아니라 escalate로 간다 — 승인 콜백이 안 나간다."""
+    with _llm("approve"):
+        out = await adjudicate(_state("reject_candidate", ["budget_insufficient"]))
+
+    assert route_after_adjudicate({**_state("reject_candidate"), **out}) == "escalate"
+
+
+async def test_normal_approve_still_routes_to_execute_decision():
+    """반대 방향도 잠근다 — 정상 승인이 escalate로 새면 자동 처리율이 0이 된다."""
+    with _llm("approve"):
+        out = await adjudicate(_state("proceed"))
+
+    assert route_after_adjudicate({**_state("proceed"), **out}) == "execute_decision"
+
+
+def test_graph_wires_both_adjudicate_branches():
+    """graph.py가 두 분기를 실제로 배선하는지 — 매핑이 빠지면 위 두 테스트가 무의미해진다."""
+    edges = build_review_graph().get_graph().edges
+    targets = {e.target for e in edges if e.source == "adjudicate"}
+    assert {"escalate", "execute_decision"} <= targets, (
+        f"adjudicate의 분기가 배선에서 빠졌다 — 현재 목적지: {targets}")
