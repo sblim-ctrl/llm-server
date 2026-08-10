@@ -211,6 +211,17 @@
       },
       "expense_history": "tight_study"
     },
+    "9027": {
+      "label": "golden-pending-review",
+      "team_type": "동아리/학생회",
+      "auto_approve": true,
+      "auto_approve_limit": 50000,
+      "budget": {
+        "total_budget": 400000,
+        "spent": 150000
+      },
+      "expense_history": "team_9027"
+    },
     "9001": {
       "label": "demo-team-9001",
       "team_type": "동아리/학생회",
@@ -2641,6 +2652,43 @@
         "category": "기타",
         "date": "2026-08-26",
         "status": "APPROVED"
+      }
+    ],
+    "team_9027": [
+      {
+        "title": "5월 정기 모임비",
+        "amount": 50000,
+        "category": "식비",
+        "date": "2026-05-10",
+        "status": "APPROVED"
+      },
+      {
+        "title": "세미나실 대관",
+        "amount": 60000,
+        "category": "장소_대관",
+        "date": "2026-06-12",
+        "status": "APPROVED"
+      },
+      {
+        "title": "7월 정기 모임비",
+        "amount": 40000,
+        "category": "식비",
+        "date": "2026-07-05",
+        "status": "APPROVED"
+      },
+      {
+        "title": "신규 노트북 구입",
+        "amount": 250000,
+        "category": "비품",
+        "date": "2026-07-15",
+        "status": "SUBMITTED"
+      },
+      {
+        "title": "예산 초과 물품 승인 요청",
+        "amount": 80000,
+        "category": "행사_활동",
+        "date": "2026-07-20",
+        "status": "ESCALATED"
       }
     ]
   },
