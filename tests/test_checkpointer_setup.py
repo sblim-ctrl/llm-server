@@ -14,6 +14,11 @@ schema.sql의 CREATE EXTENSION IF NOT EXISTS vector가 신규 DB 동시 실행�
 UniqueViolation(pg_extension_name_index)으로 죽는다(순수 apply_schema() 동시 호출
 3/3 재현, 실제 API+워커 토폴로지에서도 3개 중 2개 사망 1회 재현). apply_schema_locked가
 같은 try-lock+폴링 패턴으로 이를 막는다 — 아래 테스트는 두 함수에 동일한 계약을 검증한다.
+
+2026-08-10 후속: 위 재현으로 발견된 apply_schema()의 잠금 미적용이 scripts/·eval/ 14개
+호출부에도 그대로 남아 있어, 잠금을 apply_schema() 자체에 내장했다(apply_schema_locked는
+하위 호환 별칭). 이 파일의 _patch_apply_schema는 이제 내부 함수 _apply_schema_unlocked를
+패치한다 — pool.apply_schema 자체가 잠금 로직이 됐기 때문이다.
 """
 
 import psycopg
@@ -146,7 +151,7 @@ def _patch_apply_schema(monkeypatch, log, fail=False):
         if fail:
             raise RuntimeError("스키마 적용 실패 재현")
 
-    monkeypatch.setattr(pool, "apply_schema", _fake_apply_schema)
+    monkeypatch.setattr(pool, "_apply_schema_unlocked", _fake_apply_schema)
 
 
 async def test_schema_apply_runs_only_after_lock_granted(monkeypatch):
@@ -215,3 +220,9 @@ async def test_schema_apply_gives_up_after_max_wait(monkeypatch):
 def test_schema_apply_and_checkpointer_setup_use_different_lock_keys():
     """두 잠금이 같은 정수 키로 겹치면 무관한 프로세스끼리 서로 막는다 — 반드시 달라야 한다."""
     assert pool.SCHEMA_APPLY_LOCK != pool.CHECKPOINTER_SETUP_LOCK
+
+
+def test_apply_schema_locked_is_alias_for_apply_schema():
+    """apply_schema_locked는 apply_schema()의 별칭이다 — 별도 함수가 아니라 같은 객체를
+    가리켜야 app/main.py·app/worker.py를 고치지 않고도 동시 기동 잠금이 적용된다."""
+    assert pool.apply_schema_locked is pool.apply_schema

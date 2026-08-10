@@ -43,8 +43,12 @@ def get_pool() -> AsyncConnectionPool:
     return _pool
 
 
-async def apply_schema() -> None:
-    """schema.sql을 idempotent하게 적용 (TODO: alembic 전환)."""
+async def _apply_schema_unlocked() -> None:
+    """schema.sql을 idempotent하게 적용 (TODO: alembic 전환).
+
+    잠금 없이 DDL만 실행한다 — 직접 호출하지 말 것. 모든 호출은 apply_schema()를
+    통해야 동시 기동에 안전하다 (아래 apply_schema() docstring 참고).
+    """
     sql = (Path(__file__).parent / "schema.sql").read_text(encoding="utf-8")
     async with get_pool().connection() as conn:
         await conn.execute(sql)
@@ -59,17 +63,25 @@ _SETUP_LOCK_POLL_SEC = 0.5
 _SETUP_LOCK_MAX_WAIT_SEC = 120.0
 
 
-async def apply_schema_locked() -> None:
-    """apply_schema()를 advisory lock으로 직렬화 — 다중 프로세스 동시 기동 안전.
+async def apply_schema() -> None:
+    """schema.sql을 advisory lock으로 직렬화해 idempotent하게 적용 — 다중 프로세스
+    동시 기동 안전 (TODO: alembic 전환).
 
-    setup_checkpointer_locked이 막는 것은 checkpointer.setup()의 경쟁뿐이었는데,
-    apply_schema()는 그보다 먼저 잠금 없이 실행된다(main.py·worker.py 기동 순서).
-    schema.sql의 CREATE EXTENSION/TABLE/INDEX IF NOT EXISTS도 동시 실행에 안전하지
-    않아, 신규 DB에서 여러 프로세스가 같이 뜨면 CREATE EXTENSION IF NOT EXISTS
-    vector가 UniqueViolation(pg_extension_name_index)으로 죽는다(2026-08-10 재현 —
-    순수 apply_schema() 동시 호출 3/3 재현, API(--workers 2)+잡 워커 실기동에서도
-    3개 중 2개 사망을 재현). checkpoint_migrations_pkey와 같은 클래스의 결함이
-    한 단계 앞에 남아 있었다.
+    2026-08-09: setup_checkpointer_locked이 막는 건 checkpointer.setup()의 경쟁뿐이라,
+    당시 apply_schema()는 잠금 없이 먼저 실행돼 schema.sql의 CREATE EXTENSION/
+    TABLE/INDEX IF NOT EXISTS가 동시 실행에 안전하지 않았다 — 신규 DB에서 여러
+    프로세스가 같이 뜨면 CREATE EXTENSION IF NOT EXISTS vector가
+    UniqueViolation(pg_extension_name_index)으로 죽는다(순수 apply_schema() 동시 호출
+    3/3 재현, API(--workers 2)+잡 워커 실기동에서도 3개 중 2개 사망을 재현).
+    checkpoint_migrations_pkey와 같은 클래스의 결함이 한 단계 앞에 남아 있었다.
+    1차 수정은 잠금(당시 이름 apply_schema_locked())을 main.py·worker.py 진입점에만
+    적용했다.
+
+    2026-08-10 교차 검증(A): scripts/·eval/의 14개 호출부가 여전히 잠금 없는
+    apply_schema()를 직접 불렀다 — 신규 DB에서 서버 기동과 시드/평가 스크립트가
+    겹치면 같은 경쟁이 재발한다(재현: 3트라이얼 전부 1개 사망). 잠금을 이 함수
+    자체에 내장해 14곳을 개별 수정하지 않고 한 번에 안전하게 만든다. 이름이
+    하나뿐이면 다음 진입점도 자동으로 안전한 쪽을 고르게 된다.
 
     try-lock + 폴링인 이유는 setup_checkpointer_locked과 동일한 위험 회피 목적 —
     schema.sql은 현재 CONCURRENTLY 인덱스가 없어 블로킹 잠금이 당장 교착하지는
@@ -98,7 +110,7 @@ async def apply_schema_locked() -> None:
             await asyncio.sleep(_SETUP_LOCK_POLL_SEC)
             waited += _SETUP_LOCK_POLL_SEC
         try:
-            await apply_schema()
+            await _apply_schema_unlocked()
         finally:
             try:
                 await conn.execute(
@@ -108,6 +120,12 @@ async def apply_schema_locked() -> None:
                 # 연결이 죽어 unlock이 실패해도 세션 종료가 잠금을 함께 푼다 —
                 # 여기서 예외를 흘리면 apply_schema()의 원인 예외를 가린다
                 logger.warning("schema apply 잠금 해제 실패 — 연결 종료로 대체", exc_info=True)
+
+
+# 하위 호환 별칭 — app/main.py·app/worker.py가 이 이름으로 import한다(2026-08-09
+# 수정 당시 명명). apply_schema() 자체가 이제 잠금을 포함하므로 완전히 동일한
+# 함수를 가리킨다. 새 코드는 apply_schema()를 직접 쓰면 된다.
+apply_schema_locked = apply_schema
 
 
 async def setup_checkpointer_locked(checkpointer: Any) -> None:
