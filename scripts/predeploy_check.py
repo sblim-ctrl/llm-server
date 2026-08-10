@@ -78,11 +78,14 @@ _CATEGORY_LABEL_DEBT: set[tuple[str, str]] = set()
 
 
 def _collect_category_values(node, out: list) -> None:
-    """중첩 dict/list를 재귀 순회하며 키 이름이 정확히 'category'인 값을 out에 모은다."""
+    """중첩 dict/list를 재귀 순회하며 카테고리 라벨을 담는 키의 값을 out에 모은다.
+    tests/test_prompt_fewshot_contract.py의 동명 함수와 반드시 같이 갱신할 것."""
     if isinstance(node, dict):
         for key, value in node.items():
             if key == "category":
                 out.append(value)
+            elif key == "gap_categories" and isinstance(value, list):
+                out.extend(value)
             _collect_category_values(value, out)
     elif isinstance(node, list):
         for item in node:
