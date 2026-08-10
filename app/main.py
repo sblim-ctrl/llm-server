@@ -27,7 +27,7 @@ from app.api import (
     reviews_stream,
 )
 from app.config import get_settings
-from app.db.pool import apply_schema, close_pool, open_pool, setup_checkpointer_locked
+from app.db.pool import apply_schema_locked, close_pool, open_pool, setup_checkpointer_locked
 from app.mcp_server import mcp_app, mcp_session_manager
 from app.tools.backend_client import close_backend_client
 from app.observability import setup_langsmith
@@ -43,13 +43,12 @@ logging.basicConfig(level=logging.INFO)
 async def lifespan(app: FastAPI):
     setup_langsmith()  # B3 — PolicyDrafter 동기 호출(§2.2 예외)도 트레이싱 대상
     await open_pool()
-    await apply_schema()
+    await apply_schema_locked()  # --workers 2 + 잡 워커 동시 기동 안전 (pool.py 참고)
     # HITL 체크포인터 — 워커(worker.py main)와 같은 AsyncPostgresSaver를 앱 수명으로
     # 연다. 멈춘 심사가 Postgres에 남아 --workers N의 다른 프로세스·재시작 후에도
     # 재개된다 (reviews_stream 모듈 docstring 참고).
     async with AsyncPostgresSaver.from_conn_string(get_settings().database_url) as checkpointer:
-        # --workers 2 + 잡 워커가 동시에 기동해도 안전 (신규 DB 경쟁은 pool.py 참고)
-        await setup_checkpointer_locked(checkpointer)
+        await setup_checkpointer_locked(checkpointer)  # 동시 기동 안전 (pool.py 참고)
         reviews_stream.init_hitl_graph(checkpointer)
         async with mcp_session_manager():  # MCP Streamable HTTP 세션 (§5.2)
             yield

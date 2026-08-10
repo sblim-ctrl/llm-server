@@ -51,11 +51,63 @@ async def apply_schema() -> None:
     logger.info("DB schema applied")
 
 
-# advisory lock 키(int4 쌍의 첫 축). 두 번째 축: setup은 0 고정, HITL 재개는
+# advisory lock 키(int4 쌍의 첫 축). 두 번째 축: 둘 다 0 고정, HITL 재개는
 # hashtext(job_id) — reviews_stream.resume_review와 네임스페이스가 겹치지 않는다.
+SCHEMA_APPLY_LOCK = "schema_apply"
 CHECKPOINTER_SETUP_LOCK = "checkpointer_setup"
 _SETUP_LOCK_POLL_SEC = 0.5
 _SETUP_LOCK_MAX_WAIT_SEC = 120.0
+
+
+async def apply_schema_locked() -> None:
+    """apply_schema()를 advisory lock으로 직렬화 — 다중 프로세스 동시 기동 안전.
+
+    setup_checkpointer_locked이 막는 것은 checkpointer.setup()의 경쟁뿐이었는데,
+    apply_schema()는 그보다 먼저 잠금 없이 실행된다(main.py·worker.py 기동 순서).
+    schema.sql의 CREATE EXTENSION/TABLE/INDEX IF NOT EXISTS도 동시 실행에 안전하지
+    않아, 신규 DB에서 여러 프로세스가 같이 뜨면 CREATE EXTENSION IF NOT EXISTS
+    vector가 UniqueViolation(pg_extension_name_index)으로 죽는다(2026-08-10 재현 —
+    순수 apply_schema() 동시 호출 3/3 재현, API(--workers 2)+잡 워커 실기동에서도
+    3개 중 2개 사망을 재현). checkpoint_migrations_pkey와 같은 클래스의 결함이
+    한 단계 앞에 남아 있었다.
+
+    try-lock + 폴링인 이유는 setup_checkpointer_locked과 동일한 위험 회피 목적 —
+    schema.sql은 현재 CONCURRENTLY 인덱스가 없어 블로킹 잠금이 당장 교착하지는
+    않지만, 같은 함정을 다시 만들지 않도록 검증된 패턴을 그대로 쓴다.
+    """
+    async with await psycopg.AsyncConnection.connect(
+        get_settings().database_url, autocommit=True
+    ) as conn:
+        waited = 0.0
+        while True:
+            got = (
+                await (
+                    await conn.execute(
+                        "SELECT pg_try_advisory_lock(hashtext(%s), 0)", (SCHEMA_APPLY_LOCK,)
+                    )
+                ).fetchone()
+            )[0]
+            if got:
+                break
+            if waited >= _SETUP_LOCK_MAX_WAIT_SEC:
+                raise RuntimeError(
+                    "schema apply 잠금을 "
+                    f"{_SETUP_LOCK_MAX_WAIT_SEC:.0f}초 내에 얻지 못했다 — "
+                    "다른 프로세스의 apply_schema가 멈춰 있는지 확인할 것"
+                )
+            await asyncio.sleep(_SETUP_LOCK_POLL_SEC)
+            waited += _SETUP_LOCK_POLL_SEC
+        try:
+            await apply_schema()
+        finally:
+            try:
+                await conn.execute(
+                    "SELECT pg_advisory_unlock(hashtext(%s), 0)", (SCHEMA_APPLY_LOCK,)
+                )
+            except Exception:
+                # 연결이 죽어 unlock이 실패해도 세션 종료가 잠금을 함께 푼다 —
+                # 여기서 예외를 흘리면 apply_schema()의 원인 예외를 가린다
+                logger.warning("schema apply 잠금 해제 실패 — 연결 종료로 대체", exc_info=True)
 
 
 async def setup_checkpointer_locked(checkpointer: Any) -> None:
@@ -75,19 +127,25 @@ async def setup_checkpointer_locked(checkpointer: Any) -> None:
     연결이 닫히며 함께 풀린다.
     """
     async with await psycopg.AsyncConnection.connect(
-            get_settings().database_url, autocommit=True) as conn:
+        get_settings().database_url, autocommit=True
+    ) as conn:
         waited = 0.0
         while True:
-            got = (await (await conn.execute(
-                "SELECT pg_try_advisory_lock(hashtext(%s), 0)",
-                (CHECKPOINTER_SETUP_LOCK,))).fetchone())[0]
+            got = (
+                await (
+                    await conn.execute(
+                        "SELECT pg_try_advisory_lock(hashtext(%s), 0)", (CHECKPOINTER_SETUP_LOCK,)
+                    )
+                ).fetchone()
+            )[0]
             if got:
                 break
             if waited >= _SETUP_LOCK_MAX_WAIT_SEC:
                 raise RuntimeError(
                     "checkpointer setup 잠금을 "
                     f"{_SETUP_LOCK_MAX_WAIT_SEC:.0f}초 내에 얻지 못했다 — "
-                    "다른 프로세스의 setup이 멈춰 있는지 확인할 것")
+                    "다른 프로세스의 setup이 멈춰 있는지 확인할 것"
+                )
             await asyncio.sleep(_SETUP_LOCK_POLL_SEC)
             waited += _SETUP_LOCK_POLL_SEC
         try:
@@ -95,13 +153,14 @@ async def setup_checkpointer_locked(checkpointer: Any) -> None:
         finally:
             try:
                 await conn.execute(
-                    "SELECT pg_advisory_unlock(hashtext(%s), 0)",
-                    (CHECKPOINTER_SETUP_LOCK,))
+                    "SELECT pg_advisory_unlock(hashtext(%s), 0)", (CHECKPOINTER_SETUP_LOCK,)
+                )
             except Exception:
                 # 연결이 죽어 unlock이 실패해도 세션 종료가 잠금을 함께 푼다 —
                 # 여기서 예외를 흘리면 setup()의 원인 예외를 가린다
-                logger.warning("checkpointer setup 잠금 해제 실패 — 연결 종료로 대체",
-                               exc_info=True)
+                logger.warning(
+                    "checkpointer setup 잠금 해제 실패 — 연결 종료로 대체", exc_info=True
+                )
 
 
 # ── jobs 헬퍼 ─────────────────────────────────────────────

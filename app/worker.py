@@ -14,7 +14,7 @@ from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 from app.config import get_settings
 from app.db.pool import (
-    apply_schema,
+    apply_schema_locked,
     close_pool,
     finish_job,
     get_pool,
@@ -360,11 +360,10 @@ async def main() -> None:
     global _review_graph, _checkpointer
     setup_langsmith()  # B3 — 켜져 있으면 LANGCHAIN_* env 주입 (그래프 자동 트레이싱)
     await open_pool()
-    await apply_schema()
+    await apply_schema_locked()  # API(--workers 2)와 동시에 기동해도 안전 (pool.py 참고)
 
     async with AsyncPostgresSaver.from_conn_string(get_settings().database_url) as checkpointer:
-        # API(--workers 2)와 동시에 기동해도 안전 (신규 DB 경쟁은 pool.py 참고)
-        await setup_checkpointer_locked(checkpointer)
+        await setup_checkpointer_locked(checkpointer)  # 동시 기동 안전 (pool.py 참고)
         _checkpointer = checkpointer  # B-7: run_review_job의 체크포인트 존재 확인용
         _review_graph = build_review_graph(checkpointer=checkpointer)
         try:
