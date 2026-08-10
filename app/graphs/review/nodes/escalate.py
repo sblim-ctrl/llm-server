@@ -18,9 +18,10 @@ from app.schemas.common import Reasons
 
 # 가드레일 규칙 → 관리자 화면 문구.
 #
-# **규칙 식별자 자체는 바꾸지 않는다.** 골든셋의 `expected_gate_includes`(21건)와
-# Trajectory 채점이 이 이름으로 매칭하므로 바꾸면 평가 계약이 깨진다. 사람이 읽는
-# 자리에서만 옮긴다.
+# **규칙 식별자 자체는 바꾸지 않는다.** 골든셋의 `expected_gate_includes`와 Trajectory
+# 채점이 이 이름으로 매칭하므로 바꾸면 평가 계약이 깨진다 — 2026-08-10 기준 골든 케이스
+# 50건이 규칙 이름 6종을 직접 못박고 있다(골든셋이 늘면 같이 는다. 인용 전에 셀 것).
+# 사람이 읽는 자리에서만 옮긴다.
 #
 # `over_auto_approve_limit`과 `over_force_escalation_amount`가 **같은 문구**인 것은
 # 의도다. 2026-08-05 마법사 2단계 화면 개편으로 금액 칸이 하나가 되면서 두 값은 같은
