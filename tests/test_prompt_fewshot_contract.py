@@ -18,6 +18,7 @@ writers 골든셋 20건은 digest를 다루지 않아, 369건이 전부 통과�
 """
 
 import json
+import re
 
 import pytest
 import yaml
@@ -72,10 +73,13 @@ _register()
 #
 # report_writer/v3(PR-5, 2026-08-08)은 예외: v2의 카탈로그 라벨만 고친 정합 수정이라
 # few_shot 구조를 v2와 바이트 단위로 동일하게 유지하기로 했다 — 그래서 이 부채도
-# v2 그대로 이어받는다. 새 위반이 아니라 기존 부채의 승계다.
+# v2 그대로 이어받는다. 새 위반이 아니라 기존 부채의 승계다. report_writer/v4·
+# briefing_writer/v3(2026-08-10, A 리뷰)도 같은 이유 — 라벨만 고친 정합 수정이라
+# 구조를 손대지 않고 앞 버전의 부채를 그대로 이어받는다.
 _MULTILINE_INPUT_DEBT = {
     ("briefing_writer", "v1"),
     ("briefing_writer", "v2"),
+    ("briefing_writer", "v3"),
     ("budget_planner", "v1"),
     ("budget_planner", "v2"),
     ("dashboard_writer", "v1"),
@@ -91,6 +95,7 @@ _MULTILINE_INPUT_DEBT = {
     ("report_writer", "v1"),
     ("report_writer", "v2"),
     ("report_writer", "v3"),
+    ("report_writer", "v4"),
 }
 
 
@@ -274,6 +279,70 @@ def test_budget_planner_few_shot_passes_its_verifier():
         )
 
 
+def test_report_few_shot_passes_its_verifier():
+    """④ report 예시가 verify_report_pure를 통과하는가.
+
+    digest·dashboard·budget_planner에는 있던 자기검증이 report에는 없었다 —
+    2026-08-10 A 리뷰로 report_writer/v3 예시1의 by_category 중복 카테고리(식비가
+    두 행)가 사람 눈으로만 발견됐다. verify_report_pure는 숫자 존재만 대조해서
+    이 결함 자체는 못 잡지만(아래 별도 테스트가 잡는다), 다른 수치 불일치를
+    미리 잡기 위해 이 자리를 report에도 채운다.
+    """
+    from app.schemas.writers import BudgetReport, ReportFigures
+    from app.graphs.writers.report import verify_report_pure
+    from app.llm.prompts import load_prompt
+
+    spec = load_prompt("report_writer")
+    assert spec.few_shot, "report_writer few_shot이 비어 있다"
+    for i, ex in enumerate(spec.few_shot, 1):
+        fig = ReportFigures(**json.loads(ex["input"].strip()))
+        out = json.loads(ex["output"])
+        report = BudgetReport(
+            figures=fig, summary=out["summary"], recommendations=[], verified=False
+        )
+        assert verify_report_pure(report, fig), f"report_writer 예시{i}이 자기 검증기에서 폐기된다"
+
+
+def test_report_few_shot_by_category_has_unique_categories():
+    """by_category에 같은 카테고리가 두 번 나올 수 있는가 — 실제로는 불가능한 형태.
+
+    aggregate_pure(report.py)는 카테고리별로 dict에 합산하므로 런타임 출력에서
+    같은 카테고리가 두 행으로 갈라지는 일은 없다. report_writer/v3 예시1이
+    #37 라벨 치환의 부작용으로 정확히 그 불가능한 형태(식비 두 행)를 정답으로
+    가르치고 있었다 — verify_report_pure는 숫자 존재만 봐서 이 결함을 통과시켰다
+    (2026-08-10 A 리뷰). 이 테스트가 그 구멍을 직접 막는다.
+    """
+    from app.llm.prompts import load_prompt
+
+    spec = load_prompt("report_writer")
+    for i, ex in enumerate(spec.few_shot, 1):
+        raw = ex["input"].strip()
+        if not raw.startswith("{"):
+            continue
+        parsed = json.loads(raw)
+        cats = [c["category"] for c in parsed.get("by_category", [])]
+        assert len(cats) == len(set(cats)), (
+            f"report_writer 예시{i}의 by_category에 중복 카테고리: {cats} — "
+            f"aggregate_pure는 카테고리별로 합산하므로 런타임에 나올 수 없는 형태다"
+        )
+
+
+def test_briefing_few_shot_passes_its_verifier():
+    """④ briefing 예시가 verify_briefing_pure를 통과하는가 (digest·dashboard·
+    budget_planner에는 있던 자기검증이 briefing에는 없었다 — 2026-08-10 A 리뷰)."""
+    from app.graphs.writers.briefing import verify_briefing_pure
+    from app.llm.prompts import load_prompt
+    from app.schemas.writers import BriefingDoc, BriefingFigures
+
+    spec = load_prompt("briefing_writer")
+    assert spec.few_shot, "briefing_writer few_shot이 비어 있다"
+    for i, ex in enumerate(spec.few_shot, 1):
+        fig = BriefingFigures(**json.loads(ex["input"].strip()))
+        out = json.loads(ex["output"])
+        doc = BriefingDoc(figures=fig, summary=out["summary"], handover_notes=[], verified=False)
+        assert verify_briefing_pure(doc, fig), f"briefing_writer 예시{i}이 자기 검증기에서 폐기된다"
+
+
 def test_classifier_few_shot_labels_are_in_catalog():
     """분류기 예시의 정답 라벨이 카탈로그 안의 값인가.
 
@@ -311,11 +380,17 @@ def test_classifier_few_shot_labels_are_in_catalog():
 
 
 def _collect_category_values(node, out: list) -> None:
-    """중첩 dict/list를 재귀 순회하며 키 이름이 정확히 'category'인 값을 out에 모은다."""
+    """중첩 dict/list를 재귀 순회하며 카테고리 라벨을 담는 키의 값을 out에 모은다.
+
+    'category'는 단일 라벨, 'gap_categories'는 라벨 리스트다(briefing_writer의
+    figures 필드 — 2026-08-10 A 리뷰: 원래 'category' 키만 봐서 이 자리에 남아
+    있던 구 라벨을 놓쳤다)."""
     if isinstance(node, dict):
         for key, value in node.items():
             if key == "category":
                 out.append(value)
+            elif key == "gap_categories" and isinstance(value, list):
+                out.extend(value)
             _collect_category_values(value, out)
     elif isinstance(node, list):
         for item in node:
@@ -374,3 +449,35 @@ def test_all_active_fewshot_category_labels_are_in_catalog():
             f"{agent}/{version} few_shot에 카탈로그 밖 카테고리 라벨: {bad} "
             f"(카탈로그: {sorted(cats)})"
         )
+
+
+# adjudicator·rule_amendment는 few_shot 전체가 평문이라(판정 임계값·군집 요약으로
+# 시작) 위 test_all_active_fewshot_category_labels_are_in_catalog의
+# `json.JSONDecoder().raw_decode`가 맨 앞부터 실패해 아예 스캔되지 않는다.
+# 카테고리 라벨은 "(approve/ADMIN) [라벨] ..." 판례 인용이나 "군집 요약: [라벨] ..."
+# 형태로 대괄호 안에 박혀 있다 — 2026-08-10 A 리뷰에서 이 사각지대에 남아 있던
+# 구 라벨 2건(adjudicator/v4 예시3·4)을 사람이 직접 찾았다. 이 테스트가 그 형태
+# 두 가지를 정규식으로 직접 찾아 카탈로그와 대조한다.
+_BRACKET_CATEGORY_RE = re.compile(
+    r"\((?:approve|reject)/\w+\)\s*\[([^\]]+)\]|군집 요약:\s*\[([^\]]+)\]"
+)
+
+
+def test_active_plaintext_fewshot_category_labels_are_in_catalog():
+    """평문 few_shot(adjudicator·rule_amendment)의 대괄호 라벨이 카탈로그 안의 값인가."""
+    from app.llm.prompts import DEFAULT_VERSIONS, load_prompt
+    from app.tools.category_catalog import all_categories
+
+    cats = set(all_categories())
+    for agent in ("adjudicator", "rule_amendment"):
+        version = DEFAULT_VERSIONS.get(agent, "v1")
+        spec = load_prompt(agent, version)
+        for i, ex in enumerate(spec.few_shot, 1):
+            for field in ("input", "output"):
+                raw = ex.get(field) or ""
+                for m in _BRACKET_CATEGORY_RE.finditer(raw):
+                    label = m.group(1) or m.group(2)
+                    assert label in cats, (
+                        f"{agent}/{version} 예시{i}({field})의 대괄호 라벨 {label!r}이 "
+                        f"카탈로그에 없다 (카탈로그: {sorted(cats)})"
+                    )
