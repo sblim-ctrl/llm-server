@@ -68,23 +68,29 @@ _ENV_PREFIX = "PROMPT_VERSION_"  # A/B 실험용 오버라이드: PROMPT_VERSION
 # judge — cowbro 전용 하네스를 그대로 가져왔다(팀장 결정 3). 사유 품질은 판정
 #   정확도로 안 잡혀서 이 도구가 있어야 볼 수 있다.
 DEFAULT_VERSIONS = {
-    "rule_auditor": "v3",    # v4의 ②(few_shot을 런타임 형식에 정합화)만 v3에 반영
-                             #  (팀장 결정 5). v4의 ①(조항 번호 인용)은 동률이라 미승격.
-    "adjudicator": "v4",     # sblim v3 + cowbro v3의 두 문장 이식 (팀장 결정 2)
+    "rule_auditor": "v5",  # v5는 A/B 승격이 아니라 **정합 수정**이다 (PR-5, 2026-08-08):
+    #  카탈로그 밖 라벨 "다과"·"도서"를 few_shot에서 "식비"·"교육"으로
+    #  정정. v3 기반(v4 아님 — v4의 ① 조항 번호 인용은 동률이라 미승격
+    #  이었던 팀장 결정 5를 그대로 유지). 판정 기준·나머지 예시는 v3
+    #  그대로, 실측 재검증은 eval/run_eval 게이트로 확인했다.
+    "adjudicator": "v4",  # sblim v3 + cowbro v3의 두 문장 이식 (팀장 결정 2)
     "briefing_writer": "v2",
-    "report_writer": "v2",
-    "intake": "v3",          # parse_ok의 의미를 못박음 — 브랜치 통합 후 실모드 스모크에서
-                             #  6건 중 5건이 receipt_unreadable로 나와 잡았다. v2가 상호·
-                             #  품목 없는 추출 텍스트를 parse_ok=false로 봤고, 그게
-                             #  guardrail의 receipt_unreadable → 전건 관리자 확인이 된다.
-                             #  백엔드 추출 텍스트에는 상호·품목이 없는 경우가 흔해서
-                             #  운영 자동 처리율을 통째로 죽이는 결함이었다.
-    "precedent_auditor": "v3",
-    "digest_writer": "v3",   # sblim v2 + advice 계약 복구 (PR #9 리뷰 D2). v2는 코드가
-                             #  필수로 요구하는 advice를 system·few_shot 어디에서도 언급하지
-                             #  않아, 목 모드에서만 _mock_advice로 가려지고 실모드에서
-                             #  verify_digest_pure에 걸려 전건 폐기될 상태였다.
-                             #  few_shot input도 런타임 compact 직렬화에 맞췄다.
+    "report_writer": "v3",
+    "intake": "v3",  # parse_ok의 의미를 못박음 — 브랜치 통합 후 실모드 스모크에서
+    #  6건 중 5건이 receipt_unreadable로 나와 잡았다. v2가 상호·
+    #  품목 없는 추출 텍스트를 parse_ok=false로 봤고, 그게
+    #  guardrail의 receipt_unreadable → 전건 관리자 확인이 된다.
+    #  백엔드 추출 텍스트에는 상호·품목이 없는 경우가 흔해서
+    #  운영 자동 처리율을 통째로 죽이는 결함이었다.
+    "precedent_auditor": "v4",  # v4는 A/B 승격이 아니라 **정합 수정**이다 (PR-5, 2026-08-08):
+    #  few_shot 6건 중 5건이 구 체계 라벨(공간/대관비·대회/참가비·식비/간식비·
+    #  식비/다과비·행사)을 써서 카탈로그 밖 값을 가르치고 있었다 — 카탈로그
+    #  9종 라벨로 정정. system 규칙·판정 기준은 v3 그대로.
+    "digest_writer": "v3",  # sblim v2 + advice 계약 복구 (PR #9 리뷰 D2). v2는 코드가
+    #  필수로 요구하는 advice를 system·few_shot 어디에서도 언급하지
+    #  않아, 목 모드에서만 _mock_advice로 가려지고 실모드에서
+    #  verify_digest_pure에 걸려 전건 폐기될 상태였다.
+    #  few_shot input도 런타임 compact 직렬화에 맞췄다.
     "policy_drafter": "v3",  # sblim v2 + cowbro v2의 분량·문체 지침 이식 (PR #9 리뷰 D6).
                              #  상한을 코드 MAX_EXTRA_RULES=7과 일치시켰다 — v2는 프롬프트가
                              #  "최대 3개"라 실효 상한이 3이었다. few_shot 출력 건수도 함께
