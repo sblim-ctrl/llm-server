@@ -68,6 +68,9 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
+      - name: Check OpenAPI spec matches code
+        run: uv run python scripts/dump_openapi.py --check
+
       - name: Run pytest
         run: uv run pytest -q
 
