@@ -74,9 +74,12 @@ _register()
 # few_shot 구조를 v2와 바이트 단위로 동일하게 유지하기로 했다 — 그래서 이 부채도
 # v2 그대로 이어받는다. 새 위반이 아니라 기존 부채의 승계다.
 _MULTILINE_INPUT_DEBT = {
-    ("briefing_writer", "v1"), ("briefing_writer", "v2"),
-    ("budget_planner", "v1"), ("budget_planner", "v2"),
-    ("dashboard_writer", "v1"), ("dashboard_writer", "v2"),
+    ("briefing_writer", "v1"),
+    ("briefing_writer", "v2"),
+    ("budget_planner", "v1"),
+    ("budget_planner", "v2"),
+    ("dashboard_writer", "v1"),
+    ("dashboard_writer", "v2"),
     # v4 = v2 + 인젝션 방어 한 줄 — 여러 줄 입력을 **의도적으로 보존**한다. v2의 과장
     # 차단 실측(2026-08-04)이 여러 줄 입력 상태에서 재현된 것이라, 형식 정리는 v3
     # 계보(재측정 라운드)의 몫이다 (DEFAULT_VERSIONS의 dashboard_writer 주석 참조).
@@ -102,6 +105,14 @@ _SUPERSEDED_OUTPUT_DEBT = {
     ("digest_writer", "v1"),
     ("digest_writer", "v2"),
 }
+
+
+# test_all_active_fewshot_category_labels_are_in_catalog()의 기존 부채 자리 — **현재
+# 활성**(DEFAULT_VERSIONS 기준) 버전인데도 few_shot이 카탈로그 밖 라벨을 쓰는 경우.
+# 원래 default_policy/v1·query_rewriter/v1이 여기 있었으나, 두 에이전트 모두 이후
+# v2로 승격되며 라벨이 정합됐다(다과→식비, 회식비→식비, 도서→교육) — 지금은 부채가
+# 없다. 새로 부채가 생기면 (agent, version) 튜플로 여기 추가한다.
+_CATEGORY_LABEL_DEBT: set[tuple[str, str]] = set()
 
 
 def _prompt_files():
@@ -278,7 +289,7 @@ def test_classifier_few_shot_labels_are_in_catalog():
     # 새 버전을 만들 때마다 여기를 같이 늘려야 했고, 실제로 v6 승격 때 그걸 빠뜨려
     # "정작 런타임이 쓰는 버전만 무검사"인 상태가 된 적이 있다(2026-08-06 T7 후속).
     # 파일에서 직접 읽어 그 함정을 없앤다 — v7 추가(2026-08-10) 때 재발할 뻔했다.
-    legacy = {"v1", "v2"}   # 9종 확정(v3) 이전 어휘 — 그 시점 이력으로 남긴 버전
+    legacy = {"v1", "v2"}  # 9종 확정(v3) 이전 어휘 — 그 시점 이력으로 남긴 버전
     versions = sorted(p.stem for p in (_PROMPTS_DIR / "classifier").glob("*.yaml"))
     checked = [v for v in versions if v not in legacy]
     assert checked, "classifier 프롬프트를 하나도 못 찾았다"
@@ -297,3 +308,69 @@ def test_classifier_few_shot_labels_are_in_catalog():
                 f"classifier/{v} 예시{i}의 라벨 {label!r}이 카탈로그에 없다 "
                 f"(카탈로그: {sorted(cats)})"
             )
+
+
+def _collect_category_values(node, out: list) -> None:
+    """중첩 dict/list를 재귀 순회하며 키 이름이 정확히 'category'인 값을 out에 모은다."""
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if key == "category":
+                out.append(value)
+            _collect_category_values(value, out)
+    elif isinstance(node, list):
+        for item in node:
+            _collect_category_values(item, out)
+
+
+def test_all_active_fewshot_category_labels_are_in_catalog():
+    """15개 전 에이전트의 **현재 활성**(DEFAULT_VERSIONS 기준) few_shot이 카탈로그
+    밖 카테고리 라벨을 가르치고 있지 않은가.
+
+    위 `test_classifier_few_shot_labels_are_in_catalog`은 classifier 하나에만
+    적용돼, report_writer·rule_auditor·precedent_auditor·default_policy·
+    query_rewriter의 라벨 드리프트가 지금까지 감지되지 못했다(앞의 셋은 PR-5가
+    카탈로그 라벨 정합 수정으로 해소). 이 테스트는 그 검사를 프롬프트 디렉터리를
+    가진 모든 에이전트로 일반화한다.
+
+    **한계 (알려진 것이지 버그가 아님)**: input/output을 JSON으로 파싱할 수 있을
+    때만 그 안의 "category" 키를 본다. `rule_amendment`처럼 의도적으로 평문
+    few_shot을 쓰는 에이전트나, JSON이 아니라 산문 속에서만("…다과로…") 카테고리를
+    언급하는 경우는 잡지 못한다. 또한 few_shot 중에는 JSON 객체 뒤에 회칙 조항
+    같은 평문이 이어붙는 형식(rule_auditor·precedent_auditor·default_policy)도
+    있어, 전체 문자열이 아니라 **선두 JSON 값만** 관대하게 파싱한다
+    (`json.JSONDecoder().raw_decode`) — 그래도 맨 앞부터 JSON이 아니면 조용히
+    스킵한다(파싱 실패는 실패가 아니다).
+    """
+    from app.llm.prompts import DEFAULT_VERSIONS, load_prompt
+    from app.tools.category_catalog import all_categories
+
+    cats = set(all_categories())
+    agents = sorted({path.parent.name for path in _prompt_files()})
+
+    for agent in agents:
+        version = DEFAULT_VERSIONS.get(agent, "v1")
+        spec = load_prompt(agent, version)
+        bad = []
+        for i, ex in enumerate(spec.few_shot, 1):
+            for field in ("input", "output"):
+                raw = (ex.get(field) or "").strip()
+                try:
+                    parsed, _ = json.JSONDecoder().raw_decode(raw)
+                except (json.JSONDecodeError, ValueError):
+                    continue
+                values: list = []
+                _collect_category_values(parsed, values)
+                for label in values:
+                    if label not in cats:
+                        bad.append((i, field, label))
+
+        if (agent, version) in _CATEGORY_LABEL_DEBT:
+            assert bad, (
+                f"{agent}/{version}은 _CATEGORY_LABEL_DEBT에 있지만 카탈로그 밖 "
+                f"라벨이 실제로는 없다 — 이미 고쳐졌다면 부채 목록에서 뺄 것"
+            )
+            continue
+        assert not bad, (
+            f"{agent}/{version} few_shot에 카탈로그 밖 카테고리 라벨: {bad} "
+            f"(카탈로그: {sorted(cats)})"
+        )
