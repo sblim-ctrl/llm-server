@@ -795,6 +795,22 @@
           "아직 승인된 지출이 없어"
         ]
       }
+    },
+    {
+      "id": "db-pending-submitted-escalated",
+      "scenario": "승인 대기가 있는 팀(9027)의 7월 요약 — 대기 2건(SUBMITTED 250,000원 + ESCALATED 80,000원 = 330,000원)이 대기 건수·금액에 반영된다. 5e2a3eb 이전에는 PENDING_STATUSES에 SUBMITTED가 빠져 있어 대기가 1건(80,000원)으로 과소 집계됐다",
+      "input": {
+        "team_id": 9027,
+        "period": "2026-07"
+      },
+      "expect": {
+        "verified": true,
+        "pending_count": 2,
+        "pending_amount": 330000,
+        "message_contain": [
+          "승인 대기가 2건"
+        ]
+      }
     }
   ],
   "rule_amendment_cases": [

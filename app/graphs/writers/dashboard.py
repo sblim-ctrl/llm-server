@@ -29,9 +29,11 @@ from app.tools.backend_client import get_budget_status, get_expense_history
 
 logger = logging.getLogger(__name__)
 
-# 승인 대기로 볼 상태값. 백엔드 표기가 확정되면 여기만 고치면 된다
-# (풀스택_회신요청 — 지출 상태 ENUM 미확정).
-PENDING_STATUSES = {"PENDING", "REQUESTED", "ESCALATED", "AI_ESCALATED"}
+# 승인 대기로 볼 상태값. 백엔드 지출 상태 ENUM은 SUBMITTED/ESCALATED/APPROVED/REJECTED로
+# 확정됨(2026-08-10 백엔드 테이블 스키마 문서 — expenses.status). 대기 = SUBMITTED + ESCALATED.
+# 나머지 3종(PENDING/REQUESTED/AI_ESCALATED)은 확정 전 구 표기 — 테스트 픽스처가 아직 써서
+# 유지하며, 픽스처 정리 때 함께 제거한다.
+PENDING_STATUSES = {"SUBMITTED", "ESCALATED", "PENDING", "REQUESTED", "AI_ESCALATED"}
 APPROVED_STATUS = "APPROVED"
 
 

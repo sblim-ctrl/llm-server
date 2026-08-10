@@ -168,7 +168,12 @@ async def _run_dashboard_case(case: dict[str, Any]) -> dict[str, Any]:
     req = DashboardSummaryRequest.model_validate(case["input"])
     state = await dashboard_graph.ainvoke({"request": req})
     doc = state["doc"]
-    return {"verified": doc.verified, "message_text": doc.message}
+    return {
+        "verified": doc.verified,
+        "message_text": doc.message,
+        "pending_count": doc.figures.pending_count,
+        "pending_amount": doc.figures.pending_amount,
+    }
 
 
 async def _run_rule_amendment_case(case: dict[str, Any]) -> dict[str, Any]:
