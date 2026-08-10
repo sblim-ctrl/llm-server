@@ -8,6 +8,12 @@
 잠금을 못 얻으면 실행 없이 409, 잠금 안 재확인에서 종결이면 409, 성공 경로는
 그래프 재개가 정확히 1회에 잠금 해제까지 — DB 없이 가짜 연결/그래프로 검증한다.
 실제 Postgres 경합 재현·해소는 리뷰 회신의 실측 절차가 담당.
+
+재개 판정 기준(2026-08-10 리뷰): "관리자 결정 대기 중"인지는 snap.interrupts로만
+정확히 판별된다 — snap.next는 진짜 interrupt() 대기뿐 아니라 아직 END에 도달하지
+않은 모든 체크포인트(= 다른 요청이 지금 실행 중인 도중)에서도 채워진다. 실제
+Postgres 체크포인터로 재현: 1스텝만 실행하고 중단한 체크포인트도 snap.next는
+비어있지 않지만 snap.interrupts는 비어있었다.
 """
 from types import SimpleNamespace
 
@@ -50,10 +56,15 @@ class _FakeLockConn:
 
 
 class _FakeGraph:
-    """hitl_graph 대역 — 상태 스냅숏 고정, 재개 호출 횟수 기록."""
+    """hitl_graph 대역 — 상태 스냅숏 고정, 재개 호출 횟수 기록.
 
-    def __init__(self, next_, values=None):
-        self._snap = SimpleNamespace(next=next_, values=values or {})
+    interrupts는 기본 빈 튜플 — next_만 채우고 interrupts를 안 채우면 "실행 중이지만
+    interrupt는 아직 없는" 상태를 표현한다(2026-08-10 리뷰가 재현한 바로 그 상태).
+    진짜 interrupt 대기를 표현하려면 interrupts에 값을 채워야 한다.
+    """
+
+    def __init__(self, next_, interrupts=(), values=None):
+        self._snap = SimpleNamespace(next=next_, interrupts=interrupts, values=values or {})
         self.resumed = 0
 
     async def aget_state(self, config):
@@ -94,7 +105,7 @@ async def test_resume_recheck_inside_lock_returns_409_when_finished(monkeypatch)
     """잠금 획득 후 재확인 — 직전 재개가 종결한 잡이면 실행 없이 409 + 잠금 해제."""
     conn = _FakeLockConn(grant=True)
     _patch_lock_conn(monkeypatch, conn)
-    graph = _FakeGraph(next_=())  # interrupt 없음 = 종결/모르는 잡
+    graph = _FakeGraph(next_=())  # next·interrupts 둘 다 비어있음 = 종결/모르는 잡
     monkeypatch.setattr(reviews_stream, "hitl_graph", graph)
 
     resp = await reviews_stream.resume_review(
@@ -106,11 +117,38 @@ async def test_resume_recheck_inside_lock_returns_409_when_finished(monkeypatch)
     assert conn.unlocked and conn.closed
 
 
+async def test_resume_rejected_when_checkpoint_has_no_real_interrupt(monkeypatch):
+    """snap.next만 채워지고 snap.interrupts가 비어있으면(= interrupt 없이 실행되던
+    도중의 체크포인트) 409로 거절하고 그래프를 건드리지 않는다.
+
+    snap.next만 보면 이 상태를 "관리자 결정 대기 중"으로 오판해 재개를 허용해
+    버린다 — 이때 Command(resume=...)는 에러 없이 조용히 무시된 채 그래프가 원래
+    로직대로 계속 실행된다(관리자가 보낸 결정이 아무 효과 없이 버려짐). 실제
+    Postgres 체크포인터로 재현(2026-08-10 리뷰): 1스텝만 실행하고 중단한
+    체크포인트는 snap.next=("intake_receipt",)였지만 snap.interrupts=()였다.
+    """
+    conn = _FakeLockConn(grant=True)
+    _patch_lock_conn(monkeypatch, conn)
+    # next_는 채워져 있지만(다음 노드가 있음) interrupts는 비어있다 — "실행 중이지만
+    # interrupt는 아직 안 걸림" 상태. 종전 체크(`if not snap.next`)는 이걸 통과시켰다.
+    graph = _FakeGraph(next_=("intake_receipt",), interrupts=())
+    monkeypatch.setattr(reviews_stream, "hitl_graph", graph)
+
+    resp = await reviews_stream.resume_review(
+        "job-6", DecisionRequest(decision="approve"))
+
+    assert resp.status_code == 409
+    assert "대기 상태가 아닙니다" in resp.body.decode("utf-8")
+    assert graph.resumed == 0  # 재개를 시도조차 하지 않는다 — 조용히 무시되지 않는다
+    assert conn.unlocked and conn.closed
+
+
 async def test_resume_success_runs_graph_once_and_releases_lock(monkeypatch):
     """성공 경로 — 재개는 정확히 1회, 스트림 종료 시 잠금 해제·연결 정리."""
     conn = _FakeLockConn(grant=True)
     _patch_lock_conn(monkeypatch, conn)
-    graph = _FakeGraph(next_=("escalate",), values={"team_id": 9002})
+    graph = _FakeGraph(
+        next_=("escalate",), interrupts=("fake-interrupt",), values={"team_id": 9002})
     monkeypatch.setattr(reviews_stream, "hitl_graph", graph)
 
     resp = await reviews_stream.resume_review(
@@ -131,7 +169,8 @@ async def test_resume_unlock_failure_does_not_break_response(monkeypatch):
     """
     conn = _FakeLockConn(grant=True, unlock_fails=True)
     _patch_lock_conn(monkeypatch, conn)
-    graph = _FakeGraph(next_=("escalate",), values={"team_id": 9002})
+    graph = _FakeGraph(
+        next_=("escalate",), interrupts=("fake-interrupt",), values={"team_id": 9002})
     monkeypatch.setattr(reviews_stream, "hitl_graph", graph)
 
     resp = await reviews_stream.resume_review(
@@ -146,7 +185,7 @@ async def test_resume_stream_failure_still_releases_lock(monkeypatch):
     """재개 중 예외가 나도 잠금은 풀린다 — 안 풀리면 그 잡은 영영 재개 불가."""
     conn = _FakeLockConn(grant=True)
     _patch_lock_conn(monkeypatch, conn)
-    graph = _FakeGraph(next_=("escalate",), values={})
+    graph = _FakeGraph(next_=("escalate",), interrupts=("fake-interrupt",), values={})
 
     def _boom(*args, **kwargs):
         raise RuntimeError("stream 실패 재현")
