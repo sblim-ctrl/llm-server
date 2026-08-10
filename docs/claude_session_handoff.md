@@ -52,7 +52,7 @@
 
 | 항목 | 회신 내용 | 우리 영향 |
 |---|---|---|
-| 배포 위치 | AWS EC2, Elastic IP로 고정 예정. base URL·검증용 지출 ID는 배포 완료 후 전달 | Track 3 전체가 이 값 수신 전까지 블로킹 |
+| 배포 위치 | AWS EC2, Elastic IP로 고정 예정. base URL·검증용 지출 ID는 배포 완료 후 전달 — **이후 수신됨**: base URL은 `https://bravobudget.duckdns.org`(2026-08-10 HTTPS 재통보, 상세는 `docs/LLM-Deploy/T2_Track3_실행매뉴얼_2026-08-10.md`), 지출 ID만 대기 | Track 3 전체가 이 값 수신 전까지 블로킹 |
 | 검증용 팀 ID | `1`로 확정 | `verify_backend_contract.py --team-id 1`에 바로 사용 가능 |
 | 역방향 토큰 | **LLM→백엔드 호출(콜백·내부API)을 백엔드가 검증할 토큰 문자열을 우리가 정해서 전달해야 함.** 기존에 전달한 값은 백엔드→LLM 방향(우리가 검증)이라 별개 | 신규 작업 T1(코드)·T2(값 생성·전달) |
 | 내부 API 오픈 현황 | ✅ BE-001(상세)·002(팀설정)·003(예산)·005(회칙원본)·006(팀프로필) 열림 / BE-004(영수증)는 전용 엔드포인트 없이 기존 `/api/files` 재사용 / ⛔ **BE-007(멤버명단)·BE-009(지출이력) 미구현** | T3(BE-007 방어)·T4(BE-004 확인)·T5(BE-009는 현행 유지+문서화, 사용자 결정) |
@@ -183,7 +183,8 @@ BE-009 구현 전까지 불가능하다는 사실을 배포 문서(T5-문서)와
 
 - GCP 방화벽 인바운드 규칙 추가(소스 = 백엔드 Elastic IP `/32`) + 우리 쪽 외부
   IP 예약 후 백엔드에 전달.
-- 배포 VM `.env`에 `BACKEND_BASE_URL`(AWS EIP)·`BACKEND_SERVICE_TOKEN`(T1·T2로
+- 배포 VM `.env`에 `BACKEND_BASE_URL`(`https://bravobudget.duckdns.org` —
+  2026-08-10 HTTPS 재통보)·`BACKEND_SERVICE_TOKEN`(T1·T2로
   만든 새 값) 설정. **로컬 개발 `.env`의 `MOCK_LLM=true`는 절대 건드리지 않는다**
   (규율 4번 그대로 유지 — 이건 배포 VM 얘기다).
 - `scripts/verify_backend_contract.py --team-id 1 --expense-id <전달받은 값>`
