@@ -224,13 +224,21 @@ async def resume_review(job_id: str, req: DecisionRequest):
             return JSONResponse(status_code=409, content={
                 "detail": f"'{job_id}'는 이미 다른 요청이 재개 중입니다 — "
                           "잠시 후 심사 상태를 확인하세요"})
-        # 잠금 안에서 상태 확인 — 직전 재개가 방금 종결한 잡도 여기서 걸린다
+        # 잠금 안에서 상태 확인 — 직전 재개가 방금 종결한 잡도 여기서 걸린다.
+        #
+        # snap.next가 아니라 snap.interrupts를 본다(2026-08-10 리뷰) — snap.next는
+        # interrupt()로 멈춘 경우뿐 아니라 그래프가 아직 END에 도달하지 않은 모든
+        # 체크포인트(= 다른 요청이 지금 실행 중인 도중)에서도 채워진다. 재현: 1스텝만
+        # 실행하고 중단한 체크포인트에서도 snap.next는 비어있지 않지만 snap.interrupts는
+        # 비어있다 — 그 상태에 Command(resume=...)를 걸면 에러 없이 조용히 무시된 채
+        # 그래프가 원래 로직대로 계속 실행된다(관리자가 보낸 결정이 아무 효과 없이
+        # 버려짐). snap.interrupts만이 "진짜 interrupt 대기"를 정확히 가리킨다.
         snap = await hitl_graph.aget_state(config)
-        if not snap.next:  # 대기 중인 interrupt가 없음 — 모르는 잡이거나 이미 종결
+        if not snap.interrupts:
             await _release_resume_lock(lock_conn, job_id)
             return JSONResponse(status_code=409, content={
                 "detail": f"'{job_id}'는 관리자 결정 대기 상태가 아닙니다 "
-                          "(이미 종결됐거나 알 수 없는 잡)"})
+                          "(이미 종결됐거나, 아직 실행 중이거나, 알 수 없는 잡)"})
     except Exception:
         with contextlib.suppress(Exception):  # close 실패가 원인 예외를 가리지 않게
             await lock_conn.close()
