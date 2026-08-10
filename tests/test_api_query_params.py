@@ -125,3 +125,18 @@ def test_body_ids_respect_bigint_bounds(client):
         json={"jobId": "be-over", "expenseId": BIGINT_MAX + 1, "organizationId": 17},
     )
     assert over.status_code == 422, over.text[:200]
+
+
+def test_body_organization_id_respects_bigint_upper_bound(client):
+    """organizationId도 같은 상한 — 위 테스트는 expenseId 초과만 덮고 있었다(팀장 지적, 2026-08-10).
+
+    `organization_id: BigIntId`(app/schemas/analyze.py)도 expenseId와 동일한
+    `le=BIGINT_MAX` 제약을 받는다. expenseId 쪽만 경계를 넘겨보고 organizationId
+    단독 초과는 아무도 확인하지 않았다 — 이 자리가 그 갭.
+    """
+    over = client.post(
+        "/v1/analyze",
+        headers=TOKEN,
+        json={"jobId": "be-org-over", "expenseId": 4821, "organizationId": BIGINT_MAX + 1},
+    )
+    assert over.status_code == 422, over.text[:200]
