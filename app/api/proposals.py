@@ -25,9 +25,10 @@ async def create_budget_proposal_job(req: ProposalBudgetRequest) -> AnalyzeAccep
     payload는 Figma 확정 3블록(category_analysis·budget_status_analysis·recommendation)
     + figures + verified다.
 
-    `verified=false`는 "본문 수치와 집계값의 대조가 통과하지 못했다"는 뜻이지 "쓸 수 없는
-    값"이라는 뜻이 아니다 — 그때는 집계로 조립한 안전한 문장으로 교체해 저장하므로
-    **3블록은 언제나 그대로 화면에 띄워도 된다.**
+    `verified=false`는 LLM이 만든 문장이 수치 검증을 통과하지 못해 집계값 기반의
+    결정적 문구로 교체됐다는 뜻이다 — "쓸 수 없는 값"이라는 뜻이 아니다. 이 경우에도
+    3블록(본문)은 언제나 안전한 값이므로 그대로 화면에 띄워도 된다. (예외: 동기 초안
+    생성 API인 `POST /v1/policy-draft` 계열은 폴백 없이 5xx로 실패를 반환한다.)
     """
     job_id = await insert_job(
         team_id=req.team_id, job_type="proposal_budget", payload=req.model_dump(mode="json")

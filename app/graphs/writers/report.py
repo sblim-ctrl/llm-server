@@ -141,12 +141,25 @@ def verify_report_pure(report: BudgetReport, figures: ReportFigures) -> bool:
 
 
 async def verify_report(state: ReportState) -> dict:
+    """검증 실패 시 **집계로 조립한 안전한 문장으로 교체**한다 (verified=false는 유지).
+
+    dashboard.py의 verify와 동일한 정책: verified=false는 정직하게 남기되(계약상
+    "본문 수치와 집계값의 대조 통과 여부"), summary 본문은 환각 가능성이 있는 원문을
+    그대로 두지 않고 _mock_report_text(집계값만으로 조립 — 정의상 검증을 통과)로
+    교체해 항상 안전한 값이 나가게 한다.
+    """
     report = state["report"]
     ok = verify_report_pure(report, state["figures"])
-    if not ok:
-        # 수치 불일치 → 요약은 신뢰 불가로 강등, 결정적 figures만 사용하도록 표시
-        logger.error("report verification failed — 수치 불일치, verified=false로 강등")
-    return {"report": report.model_copy(update={"verified": ok})}
+    if ok:
+        return {"report": report.model_copy(update={"verified": True})}
+
+    logger.error(
+        "report verification failed — 수치 불일치, 집계 기반 문장으로 교체(verified=false 유지). "
+        "거부된 원문: %r",
+        report.summary,
+    )
+    safe = _mock_report_text(state["figures"]).summary
+    return {"report": report.model_copy(update={"summary": safe, "verified": False})}
 
 
 def build_report_graph():

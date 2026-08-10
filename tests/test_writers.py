@@ -15,7 +15,13 @@ from app.graphs.writers.policy_draft import (
     retrieve_references,
     verify_draft_pure,
 )
-from app.graphs.writers.report import aggregate_pure, generate_report, verify_report_pure
+from app.graphs.writers.report import (
+    _mock_report_text,
+    aggregate_pure,
+    generate_report,
+    verify_report,
+    verify_report_pure,
+)
 from app.schemas.writers import (
     BudgetReport,
     PolicyDraft,
@@ -428,3 +434,31 @@ async def test_generated_report_passes_verification():
     state = await generate_report({"figures": f})
     assert verify_report_pure(state["report"], f) is True
     assert state["llm_meta"]["report_writer"].mock is True  # 목 모드 계측 확인 (B-7 재료)
+
+
+async def test_verify_report_falls_back_to_mock_text_on_mismatch():
+    f = aggregate_pure("2026-06", EXPENSES)
+    bad = BudgetReport(figures=f, summary="총 지출 999,999원", recommendations=[], verified=False)
+    result = await verify_report({"report": bad, "figures": f})
+    report = result["report"]
+    assert report.verified is False
+    assert report.summary == _mock_report_text(f).summary
+
+
+async def test_verify_report_keeps_verified_true_on_match():
+    f = aggregate_pure("2026-06", EXPENSES)
+    text = f"총 지출 {f.total_spent:,}원 (2건). 식비 {80_000:,}원, 도서 {20_000:,}원"
+    good = BudgetReport(figures=f, summary=text, recommendations=[], verified=False)
+    result = await verify_report({"report": good, "figures": f})
+    report = result["report"]
+    assert report.verified is True
+    assert report.summary == text  # 검증 통과 시 원문 그대로
+
+
+def test_mock_report_text_passes_its_own_verifier():
+    """폴백 텍스트 자체가 verify_report_pure를 통과해야 한다(자기모순 방지)."""
+    f = aggregate_pure("2026-06", EXPENSES)
+    fallback = BudgetReport(
+        figures=f, summary=_mock_report_text(f).summary, recommendations=[], verified=False
+    )
+    assert verify_report_pure(fallback, f) is True
