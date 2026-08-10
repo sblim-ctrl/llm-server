@@ -270,13 +270,26 @@ def test_classifier_few_shot_labels_are_in_catalog():
     밖 라벨을 가르치면 그 예시는 학습이 아니라 잡음이 된다. 2026-08-05 카테고리
     이름을 ENUM 저장값(밑줄)으로 바꾸면서 실제로 전 예시를 손봐야 했던 자리다.
     """
-    from app.llm.prompts import load_prompt
+    from app.llm.prompts import DEFAULT_VERSIONS, load_prompt
     from app.tools.category_catalog import all_categories
 
     cats = set(all_categories())
-    # v6이 현재 활성 기본 버전이다 — 빠뜨리면 정작 런타임이 쓰는 버전만 무검사가 된다
-    # (2026-08-06 T7 후속: v6 승격 때 이 목록을 늘리지 않아 실제로 그 상태였다).
-    for v in ("v3", "v4", "v5", "v6"):
+    # **버전 목록을 손으로 적지 않는다.** 종전에는 ("v3","v4","v5","v6") 하드코딩이라
+    # 새 버전을 만들 때마다 여기를 같이 늘려야 했고, 실제로 v6 승격 때 그걸 빠뜨려
+    # "정작 런타임이 쓰는 버전만 무검사"인 상태가 된 적이 있다(2026-08-06 T7 후속).
+    # 파일에서 직접 읽어 그 함정을 없앤다 — v7 추가(2026-08-10) 때 재발할 뻔했다.
+    legacy = {"v1", "v2"}   # 9종 확정(v3) 이전 어휘 — 그 시점 이력으로 남긴 버전
+    versions = sorted(p.stem for p in (_PROMPTS_DIR / "classifier").glob("*.yaml"))
+    checked = [v for v in versions if v not in legacy]
+    assert checked, "classifier 프롬프트를 하나도 못 찾았다"
+
+    active = DEFAULT_VERSIONS.get("classifier", "v1")
+    assert active in checked, (
+        f"기본 버전 classifier/{active}이 검사 대상에 없다 — 런타임이 쓰는 버전이 "
+        f"무검사면 이 테스트의 의미가 없다 (검사 대상: {checked})"
+    )
+
+    for v in checked:
         spec = load_prompt("classifier", v)
         for i, ex in enumerate(spec.few_shot, 1):
             label = json.loads(ex["output"])["category"]
