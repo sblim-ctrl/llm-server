@@ -93,7 +93,7 @@ async def test_draft_amendment_mock_meta():
     meta = out["llm_meta"]["rule_amendment_0"]
     assert meta.mock is True
     assert meta.model == "gpt-4o"  # models.yaml rule_amendment 라우팅
-    assert meta.prompt_version == "rule_amendment/v1"
+    assert meta.prompt_version == "rule_amendment/v2"
 
 
 async def test_save_skips_persistence_when_not_verified(monkeypatch):
