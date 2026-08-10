@@ -1,5 +1,6 @@
 """공유 httpx 클라이언트 (성능 고도화) — 싱글턴·정리·재생성 동작 + 응답 키 정규화."""
 
+import httpx
 import pytest
 
 from app.tools import backend_client
@@ -27,6 +28,14 @@ async def test_client_recreated_after_close():
     c2 = _client()
     assert c2 is not c1 and not c2.is_closed  # 종료 후 재요청 시 새로 생성
     await close_backend_client()  # 테스트 뒷정리
+
+
+def test_headers_use_backend_service_token(monkeypatch):
+    """아웃바운드(LLM→백엔드) 헤더는 backend_service_token을 실어 보낸다(service_token 아님)."""
+    monkeypatch.setattr(
+        backend_client.get_settings(), "backend_service_token", "outbound-token", raising=False
+    )
+    assert backend_client._headers() == {"Authorization": "Bearer outbound-token"}
 
 
 # ── 예산 응답 키 정규화 (DB 표기 used_budget / API 표기 usedBudget) ──
@@ -233,3 +242,25 @@ async def test_get_team_profile_normalizes_real_mode_team_type(monkeypatch):
 
     profile = await backend_client.get_team_profile(1)
     assert profile["team_type"] == "동아리/학생회"
+
+
+async def test_get_team_members_fails_open_on_http_error(monkeypatch, caplog):
+    """BE-007 미구현(404 등)으로 HTTP 에러가 나도 예외를 던지지 않고 빈 리스트로 fail-open한다."""
+
+    class _FakeResponse:
+        @staticmethod
+        def raise_for_status() -> None:
+            raise httpx.HTTPStatusError("404", request=None, response=None)
+
+    class _FakeClient:
+        @staticmethod
+        async def get(_url: str) -> _FakeResponse:
+            return _FakeResponse()
+
+    monkeypatch.setattr(backend_client, "_client", lambda: _FakeClient())
+    monkeypatch.setattr(backend_client.get_settings(), "mock_backend", False, raising=False)
+
+    with caplog.at_level("WARNING"):
+        members = await backend_client.get_team_members(1)
+    assert members == []
+    assert "get_team_members" in caplog.text

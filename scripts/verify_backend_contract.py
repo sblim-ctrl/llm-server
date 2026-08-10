@@ -267,7 +267,7 @@ def run_checks(args: argparse.Namespace, client: httpx.Client) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser(description="백엔드 내부 조회 API 8종 계약 검증")
     ap.add_argument("--base-url", help="백엔드 base URL (기본: 설정의 backend_base_url)")
-    ap.add_argument("--token", help="SERVICE_TOKEN (기본: 설정값)")
+    ap.add_argument("--token", help="BACKEND_SERVICE_TOKEN (기본: 설정값)")
     ap.add_argument("--team-id", type=int, required=True, help="백엔드에 실재하는 팀(모임) ID")
     ap.add_argument("--expense-id", type=int, required=True, help="그 팀에 실재하는 지출 ID")
     ap.add_argument("--receipt-path", help="영수증 조회 경로 (백엔드가 주는 receipt_path 형식)")
@@ -278,7 +278,7 @@ def main() -> int:
 
         s = get_settings()
         args.base_url = args.base_url or s.backend_base_url
-        args.token = args.token or s.service_token
+        args.token = args.token or s.backend_service_token
 
     print(f"대상: {args.base_url} (team={args.team_id}, expense={args.expense_id})\n")
     with httpx.Client(

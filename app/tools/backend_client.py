@@ -57,7 +57,7 @@ def _fixture_history(name: str) -> list[dict[str, Any]]:
 
 
 def _headers() -> dict[str, str]:
-    return {"Authorization": f"Bearer {get_settings().service_token}"}
+    return {"Authorization": f"Bearer {get_settings().backend_service_token}"}
 
 
 def _client() -> httpx.AsyncClient:
@@ -409,6 +409,15 @@ async def get_team_members(team_id: int) -> list[dict[str, Any]]:
     """팀 멤버 명단(실명·역할) — PIIMasker 치환용 (§4.3).
 
     엔드포인트 경로는 풀스택 팀과 미확정. 목: 고정 명단.
+
+    실모드에서 이 함수만 HTTP 에러를 예외로 전파하지 않고 빈 리스트로 fail-open한다
+    (이 파일의 다른 함수는 대부분 예외를 그대로 전파시킨다 — 여기만 의도적 예외).
+    BE-007(팀 멤버 명단) 미구현으로 404가 오면 masked_claim_summary·save_precedent를
+    거쳐 판례 심사관 전체가 error 소견으로 쏠리거나(precedent_auditor), 관리자 수동
+    등록 API(POST /v1/precedents)가 무방비로 500을 내는 문제가 있었다 — 경계를 이
+    함수 내부로 내려 load_context가 이미 하는 fail-open과 같은 형태로 맞춘다.
+    빈 목록을 반환하면 PII 마스킹 자체가 무력화된다(실명이 그대로 LLM에 노출)는
+    한계는 남는다 — 코드로 풀 수 있는 문제가 아니다.
     """
     s = get_settings()
     if s.mock_backend:
@@ -417,9 +426,13 @@ async def get_team_members(team_id: int) -> list[dict[str, Any]]:
             {"name": "이영희", "role": "회원"},
             {"name": "박민준", "role": "회원"},
         ]
-    r = await _client().get(f"/internal/agent/teams/{team_id}/members")
-    r.raise_for_status()
-    return r.json()
+    try:
+        r = await _client().get(f"/internal/agent/teams/{team_id}/members")
+        r.raise_for_status()
+        return r.json()
+    except httpx.HTTPError as e:
+        logger.warning("get_team_members failed(BE-007 미구현 가능) — 마스킹 없이 진행: %s", e)
+        return []
 
 
 @dataclass(frozen=True)

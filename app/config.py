@@ -9,6 +9,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # not_ready로 떨어뜨린다(app/api/health.py check_config_ready).
 DEFAULT_SERVICE_TOKEN = "dev-service-token-change-me"  # noqa: S105
 
+# 개발용 기본 토큰(아웃바운드용). 리포를 볼 수 있는 사람은 누구나 아는 값이므로 운영에서
+# 이 값이 남아 있으면 백엔드 호출 인증이 사실상 없는 것과 같다. /readyz가 실모드에서
+# 이 값을 감지해 not_ready로 떨어뜨린다(app/api/health.py check_config_ready).
+DEFAULT_BACKEND_SERVICE_TOKEN = "dev-backend-service-token-change-me"  # noqa: S105
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
@@ -18,6 +23,7 @@ class Settings(BaseSettings):
 
     # 인증
     service_token: str = DEFAULT_SERVICE_TOKEN
+    backend_service_token: str = DEFAULT_BACKEND_SERVICE_TOKEN
 
     # LLM
     openai_api_key: str = ""

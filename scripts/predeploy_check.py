@@ -55,7 +55,11 @@ check(f"분류기 few_shot이 카탈로그와 일치 ({spec.version})", not bad,
 # ── 3. 운영 설정 가드가 실제로 거절하는가 ─────────────────────────────────
 # check_config_ready는 단위 테스트가 있지만, 여기서는 '실모드 + 기본값' 조합이
 # 정말 not_ready로 떨어지는지 한 번 더 본다 — 배포 사고가 났던 지점이라서다.
-from app.api.health import DEFAULT_SERVICE_TOKEN, check_config_ready  # noqa: E402
+from app.api.health import (  # noqa: E402
+    DEFAULT_BACKEND_SERVICE_TOKEN,
+    DEFAULT_SERVICE_TOKEN,
+    check_config_ready,
+)
 from app.config import get_settings                                   # noqa: E402
 
 s = get_settings()
@@ -66,6 +70,8 @@ else:
     check("운영 설정 가드(실모드)", ok, status)
     check("서비스 토큰이 기본값이 아님", s.service_token != DEFAULT_SERVICE_TOKEN,
           "기본 토큰이면 인증이 없는 것과 같다")
+    check("백엔드 발신 토큰이 기본값이 아님", s.backend_service_token != DEFAULT_BACKEND_SERVICE_TOKEN,
+          "기본 토큰이면 백엔드가 우리를 인증할 수 없다")
     check("실모드에서 목 백엔드를 쓰지 않음", not s.mock_backend)
 
 # ── 4. 배포 이미지에 필요한 파일이 들어가는가 ─────────────────────────────

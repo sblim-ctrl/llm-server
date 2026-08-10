@@ -7,7 +7,7 @@ readyz는 배포 오케스트레이터의 readiness probe 대상이라 자주 �
 """
 from fastapi import APIRouter, Response
 
-from app.config import DEFAULT_SERVICE_TOKEN, get_settings
+from app.config import DEFAULT_BACKEND_SERVICE_TOKEN, DEFAULT_SERVICE_TOKEN, get_settings
 from app.db.pool import get_pool
 
 router = APIRouter(tags=["health"])
@@ -31,6 +31,8 @@ def check_config_ready() -> tuple[bool, str]:
         return True, "mock"
     if s.service_token == DEFAULT_SERVICE_TOKEN:
         return False, "default_service_token"
+    if s.backend_service_token == DEFAULT_BACKEND_SERVICE_TOKEN:
+        return False, "default_backend_service_token"
     if s.mock_backend:
         return False, "mock_backend_in_real_mode"
     return True, "ok"

@@ -66,9 +66,9 @@ class DashboardFigures(BaseModel):
 
     period: str
     total_budget: int
-    spent: int                   # 승인된 지출 합계
-    remaining: int               # total_budget − spent
-    usage_ratio: float           # spent / total_budget (예산 0이면 0.0)
+    spent: int                   # 이번 달 승인 지출 합계
+    remaining: int               # total_budget − 백엔드 누적 spent (budget_auditor·budget_planner와 동일 기준, 월별 아님)
+    usage_ratio: float           # 백엔드 누적 spent / total_budget (예산 0이면 0.0)
     pending_count: int           # 승인 대기 건수
     pending_amount: int          # 승인 대기 금액 합계
     categories: list[CategoryTrend]        # 이번 달 지출 상위 순
