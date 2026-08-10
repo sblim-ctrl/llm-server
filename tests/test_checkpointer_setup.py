@@ -1,4 +1,4 @@
-"""setup_checkpointer_locked — 다중 프로세스 동시 기동 직렬화 계약 (pool.py).
+"""apply_schema_locked·setup_checkpointer_locked — 다중 프로세스 동시 기동 직렬화 계약 (pool.py).
 
 배경(2026-08-09 리뷰): checkpointer.setup()의 마이그레이션은 동시 실행에 안전하지
 않아, 신규 DB에서 API(--workers 2) + 잡 워커가 같이 뜨면 UniqueViolation으로 일부
@@ -7,7 +7,15 @@
 교착됐다 — 그래서 try-lock + 폴링이 계약이다. 여기서는 DB 없이 호출 순서 계약만
 잠근다: setup은 잠금 획득 후에만, 실패해도 잠금 해제, 못 얻으면 폴링, 상한 초과 시
 명시적 실패. 실제 Postgres 3프로세스 동시 기동 생존은 리뷰 회신의 실측 절차가 담당.
+
+추가 배경(2026-08-10 교차 검증): 위 수정이 막는 건 checkpointer.setup()의 경쟁뿐이고,
+그보다 먼저 잠금 없이 실행되는 apply_schema()에 같은 클래스의 결함이 남아 있었다 —
+schema.sql의 CREATE EXTENSION IF NOT EXISTS vector가 신규 DB 동시 실행에서
+UniqueViolation(pg_extension_name_index)으로 죽는다(순수 apply_schema() 동시 호출
+3/3 재현, 실제 API+워커 토폴로지에서도 3개 중 2개 사망 1회 재현). apply_schema_locked가
+같은 try-lock+폴링 패턴으로 이를 막는다 — 아래 테스트는 두 함수에 동일한 계약을 검증한다.
 """
+
 import psycopg
 import pytest
 
@@ -130,3 +138,80 @@ async def test_setup_gives_up_after_max_wait(monkeypatch):
 
     assert "setup" not in log  # 잠금 없이 setup이 실행된 적 없다
     assert log[-1] == "close"
+
+
+def _patch_apply_schema(monkeypatch, log, fail=False):
+    async def _fake_apply_schema():
+        log.append("apply_schema")
+        if fail:
+            raise RuntimeError("스키마 적용 실패 재현")
+
+    monkeypatch.setattr(pool, "apply_schema", _fake_apply_schema)
+
+
+async def test_schema_apply_runs_only_after_lock_granted(monkeypatch):
+    """첫 시도에 잠금을 얻으면: 획득 → apply_schema → 해제 → 연결 정리."""
+    log: list[str] = []
+    _patch(monkeypatch, log, grants=[True])
+    _patch_apply_schema(monkeypatch, log)
+
+    await pool.apply_schema_locked()
+
+    assert log == ["try:True", "apply_schema", "unlock", "close"]
+
+
+async def test_schema_apply_polls_with_trylock_until_free(monkeypatch):
+    """잠금이 차 있으면 setup_checkpointer_locked과 동일하게 try-lock 폴링으로 기다린다."""
+    log: list[str] = []
+    _patch(monkeypatch, log, grants=[False, False, True])
+    _patch_apply_schema(monkeypatch, log)
+
+    await pool.apply_schema_locked()
+
+    assert log == ["try:False", "try:False", "try:True", "apply_schema", "unlock", "close"]
+
+
+async def test_schema_apply_failure_still_unlocks(monkeypatch):
+    """apply_schema가 죽어도 잠금은 풀린다 — 안 풀리면 다른 프로세스 기동이 영영 막힌다."""
+    log: list[str] = []
+    _patch(monkeypatch, log, grants=[True])
+    _patch_apply_schema(monkeypatch, log, fail=True)
+
+    with pytest.raises(RuntimeError, match="스키마 적용 실패"):
+        await pool.apply_schema_locked()
+
+    assert log == ["try:True", "apply_schema", "unlock", "close"]
+
+
+async def test_schema_apply_success_survives_unlock_failure(monkeypatch):
+    """unlock이 실패해도(연결 유실) apply_schema 성공이 예외로 바뀌지 않는다 —
+    연결 종료가 세션 잠금을 함께 푼다."""
+    log: list[str] = []
+    _patch(monkeypatch, log, grants=[True])
+    _patch_apply_schema(monkeypatch, log)
+    _FakeConn.unlock_fails = True
+    try:
+        await pool.apply_schema_locked()
+    finally:
+        _FakeConn.unlock_fails = False
+
+    assert log == ["try:True", "apply_schema", "unlock", "close"]
+
+
+async def test_schema_apply_gives_up_after_max_wait(monkeypatch):
+    """상한을 넘도록 잠금을 못 얻으면 조용히 돌지 않고 명시적으로 실패한다."""
+    log: list[str] = []
+    _patch(monkeypatch, log, grants=[])  # 영원히 False
+    _patch_apply_schema(monkeypatch, log)
+    monkeypatch.setattr(pool, "_SETUP_LOCK_MAX_WAIT_SEC", 0.003)
+
+    with pytest.raises(RuntimeError, match="잠금"):
+        await pool.apply_schema_locked()
+
+    assert "apply_schema" not in log  # 잠금 없이 apply_schema가 실행된 적 없다
+    assert log[-1] == "close"
+
+
+def test_schema_apply_and_checkpointer_setup_use_different_lock_keys():
+    """두 잠금이 같은 정수 키로 겹치면 무관한 프로세스끼리 서로 막는다 — 반드시 달라야 한다."""
+    assert pool.SCHEMA_APPLY_LOCK != pool.CHECKPOINTER_SETUP_LOCK
