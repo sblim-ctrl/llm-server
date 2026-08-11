@@ -73,14 +73,20 @@ def ordered_opinions(opinions: dict[str, Any]) -> list:
 # 인용하도록 강제하는 것은 그대로 둔다 — "ADMIN 판례만 근거" 규칙이 이 표기에
 # 의존하고(precedent_auditor.py _precedent_lines 참조), 입력 표기 그대로 인용해야
 # 충실성(환각 여부)을 원문 대조로 검증할 수 있다. 대신 사용자에게 나가는 마지막
-# 지점(콜백 페이로드 조립)에서만 코드가 결정적으로 옮긴다 — LLM에게 번역을
-# 시키면 의역 드리프트·환각 표면이 새로 생긴다.
+# 지점에서만 코드가 결정적으로 옮긴다 — LLM에게 번역을 시키면 의역 드리프트·환각
+# 표면이 새로 생긴다.
+#
+# **출구는 콜백 하나가 아니다** (#71): 콜백이 유실되면 백엔드가
+# `GET /v1/jobs/{job_id}`로 폴링하고(§7.1 안전망), 그 응답은 worker가 저장한
+# 원본 opinions를 그대로 싣는다. 그래서 `translate_precedent_citation`은 공개
+# 함수로 두고 `app/api/jobs.py`가 조회 시점에 같은 치환을 적용한다 — 저장 시점이
+# 아니라 조회 시점에 거는 이유는 이미 저장된 잡 결과까지 함께 덮기 위해서다.
 _CITATION_PREFIX_RE = re.compile(r"^\((approve|reject|escalate)/(ADMIN|AGENT)(, override)?\)\s*")
 _CITATION_DECISION_LABELS = {"approve": "승인", "reject": "반려", "escalate": "보류"}
 _CITATION_ACTOR_LABELS = {"ADMIN": "관리자", "AGENT": "AI 자동"}
 
 
-def _translate_precedent_citation(citation: str) -> str:
+def translate_precedent_citation(citation: str) -> str:
     """판례 인용 문자열의 시스템 표기 접두만 한국어로 옮긴다 (순수 함수).
 
     접두 뒤 본문("사유: ..." 포함)은 관리자가 원래 남긴 자유 텍스트이므로 그대로
@@ -102,7 +108,7 @@ def _translate_opinion_citations(opinion: Opinion) -> Opinion:
     if not opinion.similar_cases:
         return opinion
     return opinion.model_copy(
-        update={"similar_cases": [_translate_precedent_citation(c) for c in opinion.similar_cases]}
+        update={"similar_cases": [translate_precedent_citation(c) for c in opinion.similar_cases]}
     )
 
 

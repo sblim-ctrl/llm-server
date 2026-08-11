@@ -59,6 +59,27 @@ def scan_callback_payload_terms(payload: CallbackPayload) -> list[str]:
     return scan_banned_terms(*texts)
 
 
+def scan_job_result_terms(result: Any) -> list[str]:
+    """폴링 응답(`GET /v1/jobs/{job_id}`의 `result`) 사용자 노출 텍스트 스캔.
+
+    콜백과 같은 심사 결과인데 **출구가 다르다** — 콜백만 검사하면 폴링 안전망
+    (§7.1)으로 나가는 문구는 게이트 밖에 남는다(#71). dict가 아니거나 심사 잡이
+    아니면(예: `dead`의 `{"error", "message"}`) 검사할 대상이 없어 빈 목록이다.
+    """
+    if not isinstance(result, dict):
+        return []
+    texts: list[str] = []
+    reasons = result.get("reasons")
+    if isinstance(reasons, dict):
+        texts += [str(reasons.get("requester") or ""), str(reasons.get("admin") or "")]
+    for op in result.get("opinions") or []:
+        if not isinstance(op, dict):
+            continue
+        texts.append(str(op.get("summary") or ""))
+        texts += [str(c) for c in (op.get("similar_cases") or [])]
+    return scan_banned_terms(*texts)
+
+
 async def run_case(case: dict[str, Any]) -> dict[str, Any]:
     # pull 모델 — 워커(run_review_job)와 같은 초기 상태로 실행. 지출 상세는
     # load_context가 expense_id로 eval/fixtures/mock_backend.json을 되물어 채운다(T9).
