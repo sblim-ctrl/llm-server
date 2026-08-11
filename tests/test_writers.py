@@ -1,5 +1,6 @@
 """문서 생성 에이전트 순수 함수 테스트 — 검증(Generator-Evaluator)·집계."""
 
+import re
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -160,7 +161,8 @@ def test_no_description_adds_no_extra_rules():
 def test_hiking_description_adds_safety_rule():
     rules = _mock_extra_rules("매주 등산을 가는 모임입니다")
     assert len(rules) == 1
-    assert "안전장비" in rules[0]
+    assert "안전장비" in rules[0].text
+    assert rules[0].title  # 조 제목이 비면 "제N조() …"가 된다
 
 
 def test_multiple_keywords_still_capped_at_max():
@@ -178,13 +180,18 @@ async def test_generate_draft_appends_extra_rules_without_touching_base():
     state = await load_template({"request": req})
     result = await generate_draft({"request": req, "template": state["template"]})
     draft = result["draft"]
-    base_count = len(load_templates()["동호회"]["base_rules"])
-    assert len(draft.rules) == base_count + 1  # 기본 6개 + 추가 1개
+    base_count = len(load_templates()["동호회"]["bylaw_articles"])
+    assert len(draft.rules) == base_count + 1
     assert "안전장비" in draft.rules[-1]
     assert _verify(draft, force=50_000) is None  # placeholder 없이 정상 치환
 
 
-async def test_generate_draft_without_description_matches_old_behavior():
+async def test_generate_draft_without_description_uses_bylaw_articles_only():
+    """소개가 없으면 LLM을 부르지 않고 유형별 회칙 조항만 나온다.
+
+    회사 유형은 dues_default=0이라 회비 조가 빠진다 — '회비 1인당 0원' 조항은
+    회칙으로 성립하지 않기 때문이다.
+    """
     req = PolicyDraftRequest(
         **{**BASE_KW, "team_type": "회사", "team_name": "테스트팀", "initial_budget": 1_000_000},
         rule_source="ai",
@@ -192,7 +199,43 @@ async def test_generate_draft_without_description_matches_old_behavior():
     state = await load_template({"request": req})
     result = await generate_draft({"request": req, "template": state["template"]})
     draft = result["draft"]
-    assert len(draft.rules) == len(load_templates()["회사"]["base_rules"])
+    articles = load_templates()["회사"]["bylaw_articles"]
+    dues_articles = sum(1 for a in articles if "회비는 1인당 " in a["text"])
+    assert len(draft.rules) == len(articles) - dues_articles
+
+
+# ── 회칙 초안 형식 · 예산 연동 (2026-08-11 개편) ──────────
+
+
+async def test_articles_are_numbered_and_titled():
+    """조 번호와 제목이 붙어야 회칙 문서로 읽힌다 — 종전엔 번호 없는 단문 목록이었다."""
+    draft = await _draft_for(initial_budget=600_000, dues=20_000)
+    assert draft.rules[0].startswith("제1조(")
+    assert draft.rules[1].startswith("제2조(")
+    # 조 번호는 끊기지 않고 이어져야 한다
+    for i, rule in enumerate(draft.rules, start=1):
+        assert rule.startswith(f"제{i}조("), rule[:20]
+
+
+async def test_limits_scale_with_budget():
+    """한도가 예산에 따라 달라져야 한다 — 종전엔 PER_MEAL_LIMIT 상수 하나였다."""
+    small = await _draft_for(initial_budget=300_000, member_count=10, dues=20_000)
+    large = await _draft_for(initial_budget=10_000_000, member_count=10, dues=20_000)
+
+    def meal_of(draft):
+        rule = next(r for r in draft.rules if "1인 1회" in r)
+        return max(int(a.replace(",", "")) for a in re.findall(r"([\d,]+)\s*원", rule))
+
+    assert meal_of(small) < meal_of(large)
+
+
+async def test_no_bylaw_article_uses_a_non_catalog_category_word():
+    """'다과비'처럼 카탈로그에 없는 분류명을 쓰면 회원이 고를 수 있는 분류와 어긋난다."""
+    templates = load_templates()
+    for team_type, tpl in templates.items():
+        blob = " ".join(a["text"] for a in tpl["bylaw_articles"]) + " ".join(tpl["base_rules"])
+        assert "다과비" not in blob, team_type
+        assert "간식비" not in blob, team_type
 
 
 # ── 마법사 2단계 기준 금액 · 1단계 회비 ───────────────────
@@ -213,22 +256,35 @@ async def test_ai_draft_uses_the_requested_amount_in_rules():
     assert _verify(draft, force=70_000) is None
 
 
-async def test_dues_adds_one_rule_and_appears_in_notes():
-    base = len(load_templates()["스터디"]["base_rules"])
+async def test_dues_input_wins_over_suggestion():
+    """사용자가 입력한 회비가 원천이다 — 제안값으로 덮어쓰지 않는다."""
     draft = await _draft_for(initial_budget=600_000, dues=20_000)
-    assert len(draft.rules) == base + 1
-    assert "20,000원" in draft.rules[-1]
+    dues_rule = next(r for r in draft.rules if "회비는 1인당 " in r)
+    assert "20,000원" in dues_rule
     assert "회비 20,000원" in draft.notes
+    assert "제안값" not in draft.notes
     assert _verify(draft, force=50_000) is None
 
 
-async def test_no_dues_adds_no_rule():
-    """화면의 '없음' 체크 — None·0 둘 다 조항을 만들지 않는다."""
-    base = len(load_templates()["스터디"]["base_rules"])
+async def test_no_dues_gets_a_suggested_amount_marked_as_such():
+    """화면의 '월 회비'가 비어 있어도 회칙이 참고할 금액을 제안한다 (2026-08-11 요구).
+
+    다만 제안이라는 사실이 notes에 남아야 관리자가 입력값과 구분할 수 있다.
+    """
     for dues in (None, 0):
         draft = await _draft_for(initial_budget=600_000, dues=dues)
-        assert len(draft.rules) == base
-        assert "회비" not in draft.notes
+        dues_rule = next(r for r in draft.rules if "회비는 1인당 " in r)
+        assert re.search(r"([\d,]+)원", dues_rule)
+        assert "회비는 1인당 0원" not in dues_rule
+        assert "제안값" in draft.notes
+        assert _verify(draft, force=50_000) is None
+
+
+async def test_dues_amount_matches_between_rule_and_notes():
+    """조항과 notes가 다른 금액을 말하면 조립 버그 — verify가 잡아야 한다."""
+    draft = await _draft_for(initial_budget=600_000, dues=20_000)
+    broken = draft.model_copy(update={"notes": draft.notes.replace("20,000원", "99,000원")})
+    assert _verify(broken, force=50_000) is not None
 
 
 # ── LLM-005 통합 요청 계약 (전면 개정 2026-08-05, 개정안 §1) ──
