@@ -83,6 +83,33 @@ def gate_includes_hit(run, example) -> dict:
     return {"key": "gate_includes_hit", "score": int(set(expected) <= triggered)}
 
 
+async def judge_quality(run, example) -> dict:
+    """사유 품질 — LLM-as-judge(run_eval_judge.py와 동일 rubric·게이트)를 5번째 축으로.
+
+    approve/reject(사유가 실제 생성된 건)만 채점하고 escalate는 제외(score=None —
+    fail-safe 문구라 품질 채점이 무의미). 채점 기준은 passes(): 요청자 정중·내부
+    미노출 + 관리자 근거 보유 + 인용 수치 실재(faithfulness, judge/v3) + 점수≥0.7.
+    비용: judge gpt-4o 호출이 승인·반려 건수만큼 추가된다(회당 ≈ $0.01).
+    """
+    from app.eval_judge import judge_reasons, passes
+    from app.llm.prompts import load_prompt
+    from app.schemas.common import Opinion
+
+    out = run.outputs or {}
+    verdict = out.get("verdict")
+    if verdict not in ("approve", "reject") or not out.get("reason_requester"):
+        return {"key": "judge_quality", "score": None}
+
+    # judge v3(근거 충실성)부터 소견을 대조 자료로 — run_eval_judge.py와 같은 분기
+    use_opinions = load_prompt("judge").version not in ("judge/v1", "judge/v2")
+    ops = {d["auditor"]: Opinion.model_validate(d) for d in out.get("opinions") or []}
+    result, _meta = await judge_reasons(
+        verdict, out["reason_requester"], out.get("reason_admin") or "",
+        opinions=ops if (use_opinions and ops) else None)
+    return {"key": "judge_quality", "score": int(passes(result)),
+            "comment": result.notes or ""}
+
+
 async def main() -> int:
     s = get_settings()
     if s.mock_llm or not s.openai_api_key:
@@ -135,10 +162,15 @@ async def main() -> int:
             )
             gate = final.get("gate_result")
             claim = final.get("claim")  # 분류 결과 추출 — run_eval_real.py와 동일 규약
+            reasons = final.get("reasons")  # judge_quality 채점 재료 (escalate면 None)
             return {
                 "verdict": final.get("verdict") or "escalate",
                 "gate": gate.triggered_rules if gate else [],
                 "category": (claim.category if claim else "") or "",
+                "reason_requester": reasons.requester if reasons else None,
+                "reason_admin": reasons.admin if reasons else None,
+                # 소견은 judge faithfulness 대조 자료 — 웹 트레이스에서도 보인다
+                "opinions": [op.model_dump() for op in (final.get("opinions") or {}).values()],
             }
 
         prefix = "golden-" + "-".join(v.replace("/", "") for v in versions.values())
@@ -149,7 +181,8 @@ async def main() -> int:
         results = await aevaluate(
             target,
             data=DATASET_NAME,
-            evaluators=[verdict_correct, no_false_approve, category_correct, gate_includes_hit],
+            evaluators=[verdict_correct, no_false_approve, category_correct,
+                        gate_includes_hit, judge_quality],
             experiment_prefix=prefix,
             metadata={"prompt_versions": versions, "harness": "run_eval_langsmith"},
             max_concurrency=1,
