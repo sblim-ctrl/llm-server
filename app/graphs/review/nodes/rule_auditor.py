@@ -107,10 +107,14 @@ async def _retrieve_with_correction(
 def _receipt_status_line(receipt: ReceiptData | None) -> str:
     """기본 정책 user 메시지에 넣는 영수증 첨부·판독 상태 한 줄.
 
-    기본 조항에 "모든 지출은 영수증을 첨부해야 한다"가 있는데 첨부 여부를 안 주면
-    모델이 "첨부 불명확"으로 헤지해 정상 첨부 건까지 warn이 된다 — 2026-08-11 데모
-    (팀2 expense 9)에서 실제 재현. intake가 심사관보다 먼저 돌므로 그래프 경로에서는
-    receipt_data가 항상 있다(None은 그래프 밖 직접 호출뿐).
+    2026-08-11 데모(팀2 expense 9) 재현 당시엔 기본 조항에 "모든 지출은 영수증을
+    첨부해야 한다"가 있는데 첨부 여부를 안 줘서 모델이 "첨부 불명확"으로 헤지했다.
+    근본 조치는 그 조항 자체를 근거에서 뺀 것(`default_conduct_rules` — 증빙 판단은
+    evidence 심사관·가드레일 영역이라 rule 축이 중복 판단하지 않는다). 이 줄은 그
+    뒤에도 남긴다 — default_policy/v2 시스템 프롬프트가 "증빙이 없는 지출"을 warn
+    예시로 여전히 들고 있어(조항 무관 일반 지시), 판독 상태를 사실대로 알려주는 편이
+    조항 없이 추측하게 두는 것보다 안전하다. intake가 심사관보다 먼저 돌므로 그래프
+    경로에서는 receipt_data가 항상 있다(None은 그래프 밖 직접 호출뿐).
     """
     if receipt is None:
         return "영수증 상태: 정보 없음"

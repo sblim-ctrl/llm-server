@@ -8,6 +8,7 @@
 - 근거에 금액 한도 조항이 섞이지 않을 것 (가드레일과 중복이고, 팀이 합의한 금액도 아님)
 - 어떤 경우에도 fail이 나가지 않을 것 (팀이 동의한 적 없는 기준으로 반려하지 않는다)
 """
+
 import pytest
 
 from app.graphs.review.nodes.rule_auditor import _audit_by_default_policy
@@ -21,8 +22,11 @@ from app.tools.policy_defaults import (
 TEAM_TYPES = ["동아리/학생회", "스터디", "친목", "동호회", "회사"]
 
 CLAIM = ExpenseClaim(
-    title="모임 다과", amount=45_000, category="다과",
-    date="2026-07-10", description="정기 모임 간식",
+    title="모임 다과",
+    amount=45_000,
+    category="다과",
+    date="2026-07-10",
+    description="정기 모임 간식",
 )
 
 
@@ -37,6 +41,14 @@ def test_default_rules_exclude_amount_clauses(team_type):
     assert not any("원" in r and ("한도" in r or "초과" in r) for r in rules)
     # placeholder가 남아 사용자에게 그대로 노출되는 일도 없어야 한다
     assert not any("{" in r for r in rules)
+
+
+@pytest.mark.parametrize("team_type", TEAM_TYPES)
+def test_default_rules_exclude_receipt_clauses(team_type):
+    """영수증·증빙 첨부 조항은 근거에서 빠진다 — 그 판단은 evidence 심사관(증빙 심사관)과
+    가드레일(receipt_unreadable/receipt_mismatch) 영역이라 rule 축이 또 말하면 중복이다."""
+    rules = default_conduct_rules(team_type)
+    assert not any("영수증" in r or "증빙" in r for r in rules)
 
 
 @pytest.mark.parametrize("team_type", TEAM_TYPES)
@@ -61,8 +73,7 @@ def test_rules_cached_as_tuple():
 
 async def test_default_policy_used_when_no_rules_indexed():
     """회칙이 없어도 rule 소견이 남는다 — 예전처럼 빈 pass로 끝나지 않는다."""
-    out = await _audit_by_default_policy(
-        {"team_type": "동아리/학생회"}, CLAIM, members=[])
+    out = await _audit_by_default_policy({"team_type": "동아리/학생회"}, CLAIM, members=[])
     opinion = out["opinions"]["rule"]
     assert opinion.auditor == "rule"
     assert opinion.evidence, "기본 조항을 근거로 남겨야 관리자가 판단 이유를 안다"
@@ -82,8 +93,7 @@ async def test_default_policy_never_rejects():
         )
 
     with patch("app.graphs.review.nodes.rule_auditor.chat_structured", _fail_opinion):
-        out = await _audit_by_default_policy(
-            {"team_type": "동아리/학생회"}, CLAIM, members=[])
+        out = await _audit_by_default_policy({"team_type": "동아리/학생회"}, CLAIM, members=[])
 
     opinion = out["opinions"]["rule"]
     assert opinion.verdict == "warn", "이 모드에서 반려 판정은 나가면 안 된다"
@@ -92,8 +102,7 @@ async def test_default_policy_never_rejects():
 
 async def test_default_policy_records_llm_meta():
     """비용·버전 계측 대상 — 새 경로도 llm_meta에 남아야 한다."""
-    out = await _audit_by_default_policy(
-        {"team_type": "스터디"}, CLAIM, members=[])
+    out = await _audit_by_default_policy({"team_type": "스터디"}, CLAIM, members=[])
     meta = out["llm_meta"]["default_policy"]
     assert meta.prompt_version == "default_policy/v2"
 
@@ -135,10 +144,12 @@ async def test_user_message_states_receipt_parsed_ok():
     """정상 첨부·판독 건은 그 사실이 명시된다 — 헤지 warn의 원인 제거."""
     from app.schemas.common import ReceiptData
 
-    user = await _capture_user_message({
-        "team_type": "동아리/학생회",
-        "receipt_data": ReceiptData(amount=45_000, date="2026-07-10"),
-    })
+    user = await _capture_user_message(
+        {
+            "team_type": "동아리/학생회",
+            "receipt_data": ReceiptData(amount=45_000, date="2026-07-10"),
+        }
+    )
     assert "영수증 상태: 첨부됨, 정상 판독" in user
 
 
@@ -146,10 +157,12 @@ async def test_user_message_states_receipt_missing():
     """미첨부 건은 미첨부로 명시된다 — '증빙이 없는 지출' warn 근거가 되도록."""
     from app.schemas.common import ReceiptData
 
-    user = await _capture_user_message({
-        "team_type": "동아리/학생회",
-        "receipt_data": ReceiptData(parse_ok=False, parse_error="영수증 미첨부"),
-    })
+    user = await _capture_user_message(
+        {
+            "team_type": "동아리/학생회",
+            "receipt_data": ReceiptData(parse_ok=False, parse_error="영수증 미첨부"),
+        }
+    )
     assert "영수증 상태: 영수증 미첨부" in user
 
 
@@ -157,11 +170,14 @@ async def test_user_message_states_receipt_unreadable():
     """판독 실패는 실패 사유가 그대로 실린다 (에스컬레이션은 가드레일 몫)."""
     from app.schemas.common import ReceiptData
 
-    user = await _capture_user_message({
-        "team_type": "동아리/학생회",
-        "receipt_data": ReceiptData(
-            parse_ok=False, parse_error="영수증 판독 실패 (Vision OCR 오류)"),
-    })
+    user = await _capture_user_message(
+        {
+            "team_type": "동아리/학생회",
+            "receipt_data": ReceiptData(
+                parse_ok=False, parse_error="영수증 판독 실패 (Vision OCR 오류)"
+            ),
+        }
+    )
     assert "영수증 상태: 영수증 판독 실패" in user
 
 
