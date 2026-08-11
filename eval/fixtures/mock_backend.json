@@ -3210,6 +3210,41 @@
       "amount": 300001,
       "date": "2026-07-21",
       "description": "동아리 발표회용 공용 빔프로젝터 구매 (예산 잔액 충분 — 금액 게이트 순수 커버리지)"
+    },
+    "90101": {
+      "label": "ruleonly-personal-001",
+      "title": "개인용 무선 이어폰",
+      "amount": 42000,
+      "date": "2026-07-14",
+      "description": "집에서 쓸 개인 이어폰 구입"
+    },
+    "90102": {
+      "label": "ruleonly-percap-002",
+      "title": "회식비",
+      "amount": 45000,
+      "date": "2026-07-15",
+      "description": "동아리 회식 — 참석 1명"
+    },
+    "90103": {
+      "label": "ruleonly-ambiguous-003",
+      "title": "스터디 도서 구입",
+      "amount": 48000,
+      "date": "2026-07-16",
+      "description": "스터디 교재 1권 — 스터디원 1명이 개인 소장하며 모임에는 두지 않음"
+    },
+    "90104": {
+      "label": "ruleonly-negative-004",
+      "title": "동아리방 공용 프린터 토너",
+      "amount": 40000,
+      "date": "2026-07-17",
+      "description": "동아리방에 비치해 회원 공동 사용"
+    },
+    "90105": {
+      "label": "ruleonly-noclause-005",
+      "title": "모임 택배비",
+      "amount": 18000,
+      "date": "2026-07-18",
+      "description": "우편 택배 발송 비용"
     }
   }
 }

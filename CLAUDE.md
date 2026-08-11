@@ -15,6 +15,8 @@
 - 테스트: `uv run pytest`
 - 스모크(무DB E2E): `uv run python scripts/smoke_review.py`
 - 골든셋 평가: `uv run python -m eval.run_eval`
+- 회칙 축 실모드 전용 골든셋(CI 미편입 — 목 모드에서 `rule_auditor`가 고정 pass라
+  검증 불가): `MOCK_LLM=false uv run python eval/run_eval_real.py eval/golden/golden_rule_axis.json`
 - 포맷/린트: `uv run ruff format .` / `uv run ruff check .`
 - 머지 게이트: `uv run pytest` 전체 통과 + `run_eval` 오승인 0건·정확도 ≥90%
 
