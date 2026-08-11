@@ -249,7 +249,7 @@ async def _send_review_failsafe(job: dict[str, Any]) -> None:
         verdict="escalate",
         reasons=Reasons(
             requester="심사 지연으로 관리자 확인이 필요합니다.",
-            admin="AI 분석 실패 (재시도 소진) — fail-safe 에스컬레이션",
+            admin="AI 분석이 반복 실패하여 안전 정책에 따라 관리자 확인으로 전환 (재시도 소진)",
         ),
     )
     await send_callback(fail_safe.model_dump(mode="json", by_alias=True))
