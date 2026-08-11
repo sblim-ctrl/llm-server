@@ -24,7 +24,7 @@ from pydantic import BaseModel
 from app.graphs.review.state import ReviewState
 from app.llm.client import chat_structured
 from app.llm.prompts import load_prompt
-from app.schemas.common import ExpenseClaim, LLMCallMeta, Opinion
+from app.schemas.common import ExpenseClaim, LLMCallMeta, Opinion, ReceiptData
 from app.tools.policy_defaults import FALLBACK_TEAM_TYPE, default_conduct_rules
 from app.tools.search_rules import search_rules
 
@@ -104,6 +104,21 @@ async def _retrieve_with_correction(
     return [], "insufficient", rewrite_meta
 
 
+def _receipt_status_line(receipt: ReceiptData | None) -> str:
+    """기본 정책 user 메시지에 넣는 영수증 첨부·판독 상태 한 줄.
+
+    기본 조항에 "모든 지출은 영수증을 첨부해야 한다"가 있는데 첨부 여부를 안 주면
+    모델이 "첨부 불명확"으로 헤지해 정상 첨부 건까지 warn이 된다 — 2026-08-11 데모
+    (팀2 expense 9)에서 실제 재현. intake가 심사관보다 먼저 돌므로 그래프 경로에서는
+    receipt_data가 항상 있다(None은 그래프 밖 직접 호출뿐).
+    """
+    if receipt is None:
+        return "영수증 상태: 정보 없음"
+    if receipt.parse_ok:
+        return "영수증 상태: 첨부됨, 정상 판독 (증빙 확인됨)"
+    return f"영수증 상태: {receipt.parse_error or '판독 실패'}"
+
+
 async def _audit_by_default_policy(
     state: ReviewState,
     claim: ExpenseClaim,
@@ -136,7 +151,8 @@ async def _audit_by_default_policy(
         agent="default_policy",
         system=spec.system_with_few_shot(),
         user=f"{claim.model_dump_json()}\n\n"
-        f"기본 정책 조항 (등록된 회칙 아님 — 유형별 기본값):\n{evidence_text}",
+        f"기본 정책 조항 (등록된 회칙 아님 — 유형별 기본값):\n{evidence_text}\n\n"
+        f"{_receipt_status_line(state.get('receipt_data'))}",
         schema=Opinion,
         mock_response=Opinion(
             auditor="rule",

@@ -102,3 +102,70 @@ async def test_missing_team_type_does_not_crash():
     """team_type이 상태에 없어도(조회 실패) 기본 유형으로 심사한다."""
     out = await _audit_by_default_policy({}, CLAIM, members=[])
     assert out["opinions"]["rule"].verdict in {"pass", "warn"}
+
+
+# ── 영수증 상태 컨텍스트 ────────────────────────────────
+#
+# 기본 조항에 "모든 지출은 영수증을 첨부해야 한다"가 있는데 user 메시지에 첨부
+# 여부가 없으면, 모델이 "첨부 불명확"으로 헤지해 정상 첨부 건까지 warn을 낸다 —
+# 2026-08-11 프론트 데모(팀2 expense 9)에서 실제 재현. 아래는 intake 결과별로
+# user 메시지에 상태 한 줄이 정확히 들어가는지 본다.
+
+
+async def _capture_user_message(state) -> str:
+    from unittest.mock import patch
+
+    from app.schemas.common import LLMCallMeta, Opinion
+
+    captured = {}
+
+    async def _spy(**kwargs):
+        captured.update(kwargs)
+        return (
+            Opinion(auditor="rule", verdict="pass", summary="ok"),
+            LLMCallMeta(model="gpt-4o-mini", mock=True, prompt_version="default_policy/v2"),
+        )
+
+    with patch("app.graphs.review.nodes.rule_auditor.chat_structured", _spy):
+        await _audit_by_default_policy(state, CLAIM, members=[])
+    return captured["user"]
+
+
+async def test_user_message_states_receipt_parsed_ok():
+    """정상 첨부·판독 건은 그 사실이 명시된다 — 헤지 warn의 원인 제거."""
+    from app.schemas.common import ReceiptData
+
+    user = await _capture_user_message({
+        "team_type": "동아리/학생회",
+        "receipt_data": ReceiptData(amount=45_000, date="2026-07-10"),
+    })
+    assert "영수증 상태: 첨부됨, 정상 판독" in user
+
+
+async def test_user_message_states_receipt_missing():
+    """미첨부 건은 미첨부로 명시된다 — '증빙이 없는 지출' warn 근거가 되도록."""
+    from app.schemas.common import ReceiptData
+
+    user = await _capture_user_message({
+        "team_type": "동아리/학생회",
+        "receipt_data": ReceiptData(parse_ok=False, parse_error="영수증 미첨부"),
+    })
+    assert "영수증 상태: 영수증 미첨부" in user
+
+
+async def test_user_message_states_receipt_unreadable():
+    """판독 실패는 실패 사유가 그대로 실린다 (에스컬레이션은 가드레일 몫)."""
+    from app.schemas.common import ReceiptData
+
+    user = await _capture_user_message({
+        "team_type": "동아리/학생회",
+        "receipt_data": ReceiptData(
+            parse_ok=False, parse_error="영수증 판독 실패 (Vision OCR 오류)"),
+    })
+    assert "영수증 상태: 영수증 판독 실패" in user
+
+
+async def test_user_message_without_receipt_data_says_unknown():
+    """그래프 밖 직접 호출(intake 미실행)에서는 사실대로 '정보 없음' — 지어내지 않는다."""
+    user = await _capture_user_message({"team_type": "동아리/학생회"})
+    assert "영수증 상태: 정보 없음" in user
