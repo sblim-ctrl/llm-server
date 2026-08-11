@@ -209,7 +209,8 @@ def test_rule_violation_alone_still_escalates():
 
 
 def test_budget_insufficient_beats_force_escalation_amount():
-    """절대 상한도 예산 부족을 막지 못한다 (2026-08-11 팀 결정 — 팀장 위임).
+    """절대 상한도 예산 부족을 막지 못한다 (2026-08-11 팀장 승인 — PR #64 리뷰 회신의
+    결정 1·2, 요청 범위 확대 포함).
 
     종전에는 "이 금액 이상은 무조건 사람"이 우선이었으나, 잔액 부족은 수치로 확정된
     사실이고 반려는 안전 방향이라 결론(지출 불가)이 금액과 무관하게 같다. 관리자가
