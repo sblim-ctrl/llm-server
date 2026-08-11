@@ -64,7 +64,7 @@ class PolicyParams(BaseModel):
     # 최상위 규칙. 모델 기본값 True는 목·단위테스트의 기존 흐름 보존용이고, 실제 값은
     # 항상 백엔드 조회 결과로 덮인다(조회 실패 시 load_context가 False로 fail-safe).
     auto_approve: bool = True
-    auto_approve_limit: int = 50_000  # 이 금액 초과 시 무조건 에스컬레이션
+    auto_approve_limit: int = 50_000  # 이 금액 이상이면 에스컬레이션 (단, 예산 부족 시엔 반려가 이긴다 — guardrail_gate _BUDGET_OVERRIDES)
     # 절대 상한 — 마법사 2단계 화면의 '고액 지출 20만원 이상' 기준에 맞춤
     force_escalation_amount: int = 200_000
     confidence_threshold: float = 0.8  # θ (§3.3)
