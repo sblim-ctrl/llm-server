@@ -44,6 +44,26 @@ def trace_meta(state: ReviewState) -> dict[str, Any]:
     }
 
 
+# 콜백 opinions 배열의 고정 순서. 화면 카드 순서(회칙·예산·이상탐지·증빙)와 같다.
+#
+# **왜 필요한가.** 심사관 3종은 병렬 노드고 opinions는 리듀서(merge_opinions)가 fan-in
+# 시점에 병합하는 dict다 — dict 삽입 순서가 **매 실행마다 완료 순서에 따라 달라진다**.
+# 게다가 evidence는 fan-out 이전(mismatch_gate)에 들어가 항상 맨 앞이라, 순서가
+# [evidence, ?, ?, ?]로 나가고 뒤 3개는 실행마다 뒤바뀐다.
+# 각 소견에 auditor 필드가 있으니 수신 측이 그 필드로 매핑하면 문제가 없지만, 배열
+# 순서로 카드를 그리면 "회칙 심사관 자리에 영수증 내용"처럼 라벨이 어긋난다
+# (2026-08-11 배포 데모에서 실제로 발생 — 같은 지출을 새로고침할 때마다 내용이 바뀜).
+# 순서를 계약으로 고정하면 수신 측 구현과 무관하게 안정된다.
+_OPINION_ORDER = ("rule", "budget", "precedent", "evidence")
+
+
+def ordered_opinions(opinions: dict[str, Any]) -> list:
+    """소견을 고정 순서로 정렬. 목록에 없는 키(향후 신설 심사관)는 뒤에 이름순으로."""
+    known = [opinions[k] for k in _OPINION_ORDER if k in opinions]
+    extra = [opinions[k] for k in sorted(opinions) if k not in _OPINION_ORDER]
+    return known + extra
+
+
 def build_callback_payload(state: ReviewState) -> CallbackPayload:
     verdict = state.get("verdict") or "escalate"
     return CallbackPayload(
@@ -58,7 +78,7 @@ def build_callback_payload(state: ReviewState) -> CallbackPayload:
         suggested_category=state["claim"].category or None,
         processed_by=resolve_processed_by(verdict, state.get("admin_decision")),
         confidence=state.get("confidence"),
-        opinions=list(state.get("opinions", {}).values()),
+        opinions=ordered_opinions(state.get("opinions", {})),
         mismatch=state.get("mismatch", []),
         reasons=state.get("reasons"),
     )

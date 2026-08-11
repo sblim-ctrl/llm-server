@@ -35,6 +35,53 @@ logger = logging.getLogger(__name__)
 _AMOUNT_RE = re.compile(r"(\d{1,3}(?:,\d{3})+|\d{4,})\s*원")
 _DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 
+# 영수증 바이트의 실제 형식 판별 — **파일명이 아니라 내용(매직 넘버)으로** 본다
+# (document_parser._detect_kind와 같은 원칙: 확장자는 사용자가 붙인 것이라 믿을 수 없다).
+#
+# 왜 필요한가: chat_structured_vision의 media_type 기본값이 "image/jpeg"인데
+# intake가 이 인자를 한 번도 넘기지 않아, 무엇이 오든 data:image/jpeg로 감싸 보냈다.
+# PNG는 관대한 디코더 덕에 통과하곤 했지만 **PDF는 Vision이 받지 못해 전건 판독 실패**
+# → receipt_unreadable → 에스컬레이션이 됐다 (2026-08-11 배포 데모에서 발견).
+_MAGIC_MEDIA_TYPES = (
+    (b"\xff\xd8\xff", "image/jpeg"),
+    (b"\x89PNG\r\n\x1a\n", "image/png"),
+    (b"GIF87a", "image/gif"),
+    (b"GIF89a", "image/gif"),
+)
+_PDF_MAGIC = b"%PDF-"
+# PDF 텍스트 레이어를 영수증으로 인정할 최소 길이. 회칙용 MIN_TEXT_CHARS(50자)보다
+# 낮다 — 카드전표는 "승인 33,236원 2026-07-23 ANTHROPIC" 수준으로도 판독에 충분하고,
+# 금액·날짜가 없으면 어차피 parse_receipt_text가 parse_ok=False로 떨어뜨린다.
+_MIN_PDF_RECEIPT_CHARS = 10
+
+
+def detect_media_type(data: bytes) -> str | None:
+    """영수증 바이트의 media type. 이미지면 문자열, PDF면 "application/pdf", 미상이면 None."""
+    if data.startswith(_PDF_MAGIC):
+        return "application/pdf"
+    for magic, media_type in _MAGIC_MEDIA_TYPES:
+        if data.startswith(magic):
+            return media_type
+    # WEBP: RIFF....WEBP (4~8바이트가 크기라 건너뛴다)
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    return None
+
+
+def pdf_receipt_text(data: bytes) -> str:
+    """PDF 영수증에서 텍스트 레이어를 뽑는다. 실패·스캔본이면 빈 문자열.
+
+    카드전표·전자영수증 PDF는 대부분 텍스트 레이어가 있어 Vision 없이 읽힌다.
+    스캔 이미지 PDF는 여기서 빈 문자열이 나오고, 호출부가 판독 불능으로 처리한다.
+    """
+    from app.tools.document_parser import _extract_pdf, _normalize
+
+    try:
+        return _normalize(_extract_pdf(data))
+    except Exception:  # noqa: BLE001 — 손상·암호화 등 어떤 실패도 판독 불능으로 수렴(§8)
+        logger.warning("PDF 영수증 텍스트 추출 실패 — 판독 불능으로 처리", exc_info=True)
+        return ""
+
 
 def parse_receipt_text(text: str) -> ReceiptData:
     """백엔드가 추출해 준 영수증 텍스트에서 금액·날짜를 뽑는다 (정규식·결정적).
@@ -114,12 +161,31 @@ async def intake_receipt(state: ReviewState) -> dict:
             # MOCK_BACKEND=true 혼합 모드(실키 스모크)면 fetch가 None — URL을 그대로
             # Vision에 넘긴다 (공개 이미지 URL 시나리오, A-9 스모크 경로)
             image = await get_receipt_by_path(receipt_ref)
+
+            # PDF 영수증은 Vision이 받지 못한다 — 텍스트 레이어를 뽑아 텍스트 경로로
+            # 태운다(카드전표·전자영수증이 대부분 여기 해당). 스캔본이면 텍스트가
+            # 안 나오고 판독 불능으로 수렴한다(§8).
+            if isinstance(image, bytes) and detect_media_type(image) == "application/pdf":
+                text = pdf_receipt_text(image)
+                if len(text) >= _MIN_PDF_RECEIPT_CHARS:
+                    logger.info("PDF 영수증 텍스트 추출 — %d자, 텍스트 경로로 처리", len(text))
+                    return await _intake_from_text(text)
+                return {"receipt_data": ReceiptData(
+                    parse_ok=False,
+                    parse_error="PDF 영수증에서 글자를 읽지 못했습니다 "
+                                "(스캔 이미지 PDF로 보입니다) — 관리자 확인 필요")}
+
+            # 실제 형식으로 감싼다 — media_type 기본값(image/jpeg) 고정이 오판의 원인이었다.
+            # bytes가 아니거나(URL 경로) 미상 형식이면 종전 기본값을 그대로 쓴다.
+            media_type = detect_media_type(image) if isinstance(image, bytes) else None
+
             spec = load_prompt("intake")
             data, meta = await chat_structured_vision(
                 agent="intake",
                 system=spec.system_with_few_shot(),
                 image=image if image is not None else receipt_ref,
                 schema=ReceiptData,
+                media_type=media_type or "image/jpeg",
                 prompt_version=spec.version,
             )
             return {"receipt_data": data, "llm_meta": {"intake": meta}}

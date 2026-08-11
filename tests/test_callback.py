@@ -119,3 +119,41 @@ def test_processed_by_serializes_as_null_not_omitted():
     state["verdict"] = "escalate"
     dumped = build_callback_payload(state).model_dump(mode="json", by_alias=True)
     assert "processedBy" in dumped and dumped["processedBy"] is None
+
+
+# ── opinions 배열 순서 고정 (2026-08-11 배포 데모 결함) ──────────────────────
+#
+# 심사관 3종이 병렬이라 opinions dict의 삽입 순서가 실행마다 달라진다. 각 소견에
+# auditor 필드가 있어도, 수신 측이 배열 순서로 카드를 그리면 "회칙 심사관 자리에
+# 영수증 내용"처럼 라벨이 어긋난다(새로고침할 때마다 내용이 바뀌는 증상).
+
+def _op(auditor: str):
+    from app.schemas.common import Opinion
+    return Opinion(auditor=auditor, verdict="pass", summary=f"{auditor} 소견")
+
+
+def test_opinions_are_emitted_in_fixed_order():
+    """완료 순서가 어떻든 rule·budget·precedent·evidence 순으로 나간다."""
+    state = _state()
+    # evidence가 먼저 들어간 실제 순서(mismatch_gate가 fan-out 이전) + 뒤섞인 심사관
+    state["opinions"] = {k: _op(k) for k in ("evidence", "precedent", "rule", "budget")}
+    payload = build_callback_payload(state)
+    assert [o.auditor for o in payload.opinions] == ["rule", "budget", "precedent", "evidence"]
+
+
+def test_opinion_order_is_stable_across_completion_orders():
+    """삽입 순서를 바꿔도 결과 배열이 동일해야 한다 — 이것이 깨지면 화면이 흔들린다."""
+    import itertools
+    outputs = set()
+    for perm in itertools.permutations(("rule", "budget", "precedent", "evidence")):
+        state = _state()
+        state["opinions"] = {k: _op(k) for k in perm}
+        outputs.add(tuple(o.auditor for o in build_callback_payload(state).opinions))
+    assert outputs == {("rule", "budget", "precedent", "evidence")}
+
+
+def test_partial_opinions_keep_relative_order():
+    """심사관이 일부만 있어도(에스컬레이션 경로) 상대 순서는 유지된다."""
+    state = _state()
+    state["opinions"] = {k: _op(k) for k in ("evidence", "budget")}
+    assert [o.auditor for o in build_callback_payload(state).opinions] == ["budget", "evidence"]
