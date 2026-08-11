@@ -33,11 +33,15 @@ from app.tools.search_references import search_references
 logger = logging.getLogger(__name__)
 
 # 추가 조항 상한 — 천장이지 목표가 아니다(프롬프트가 "빠짐없이, 단 중복·일반론 금지"로
-# 실제 개수를 조절). base_rules 4~5개와 합쳐 총 10~12개 = 모바일 카드 한 장 분량.
+# 실제 개수를 조절). 2026-08-11 회칙 개편으로 기본 조가 유형당 16~18개가 되면서
+# 상한도 7 → 10으로 올렸다. 합치면 유형별 총 26~28조 = 실제 회칙 문서 분량이다
+# (개편 전에는 기본 4~5개 + 추가 7개로 모바일 카드 한 장을 노렸다).
 #
-# 프롬프트가 이 상한을 실제로 쓰는 것은 **v3부터**다. v1·v2는 본문에 "0~3개"·"최대 3개"로
-# 적혀 있어 실효 상한이 3이었고, 이 주석도 "v2가 0~7개를 사용한다"로 사실과 달랐다
-# (PR #9 리뷰 D6 지적). v3가 "0~7개"로 맞췄다.
+# **이 주석의 숫자는 MAX_EXTRA_RULES·템플릿과 함께 고쳐야 한다.** 상한만 7→10으로
+# 바꾸고 주석을 두고 온 적이 있고(PR #65 리뷰 N2), 그전에도 같은 계열의 지적이
+# 있었다(PR #9 리뷰 D6 — "v2가 0~7개"라는 사실과 다른 서술).
+# 프롬프트가 이 상한을 실제로 쓰는 것은 v3부터다 — v1·v2는 본문이 "최대 3개"라
+# 실효 상한이 3이었다. 현재 기본은 v6.
 MAX_EXTRA_RULES = 10
 
 
@@ -164,6 +168,26 @@ def _round_to(amount: float, unit: int = 1_000) -> int:
     return max(unit, int(round(amount / unit)) * unit)
 
 
+def _bylaw_unit(amount: float) -> int:
+    """round_bylaw_amount가 쓰는 반올림 단위 — 하한 올림에서도 같은 단위를 써야 한다."""
+    if amount < 50_000:
+        return 5_000
+    if amount < 200_000:
+        return 10_000
+    return 50_000
+
+
+def round_bylaw_amount_up(amount: float) -> int:
+    """같은 단위로 **올림** — 선언한 하한을 반올림이 깎지 않도록 쓰는 짝 함수.
+
+    `round_bylaw_amount`는 가까운 쪽으로 붙이므로 12,000원처럼 단위의 배수가 아닌
+    값은 10,000원으로 내려간다. 한도의 `min`은 "이보다 낮게는 주지 않는다"는 선언이라
+    내림이 적용되면 안 된다 (PR #65 리뷰 N1).
+    """
+    unit = _bylaw_unit(amount)
+    return max(unit, -(-int(amount) // unit) * unit)
+
+
 def round_bylaw_amount(amount: float) -> int:
     """회칙에 적을 금액으로 반올림 — **금액 크기에 따라 단위를 키운다**.
 
@@ -173,11 +197,7 @@ def round_bylaw_amount(amount: float) -> int:
         20만 미만  → 10,000원 단위  (48,000 → 50,000)
         20만 이상  → 50,000원 단위  (320,000 → 300,000)
     """
-    if amount < 50_000:
-        return _round_to(amount, 5_000)
-    if amount < 200_000:
-        return _round_to(amount, 10_000)
-    return _round_to(amount, 50_000)
+    return _round_to(amount, _bylaw_unit(amount))
 
 
 def suggested_limits(template: dict, initial_budget: int, member_count: int | None) -> dict[str, str]:
@@ -199,6 +219,11 @@ def suggested_limits(template: dict, initial_budget: int, member_count: int | No
         clamped = min(max(raw, cfg.get("min", 0)), cfg.get("max", raw or 0))
         # 반올림이 상한을 넘지 않게 상한도 같은 규칙으로 둥글린 값과 비교한다
         rounded = min(round_bylaw_amount(clamped), round_bylaw_amount(cfg.get("max", clamped)))
+        # 반올림이 **하한을 깎는 것**은 막는다 — min은 "이보다 낮게는 주지 않는다"는
+        # 선언이라 내림이 적용되면 안 된다. 예: meal.min=12,000이 5,000 단위 반올림으로
+        # 10,000이 되던 자리(동아리·동호회, PR #65 리뷰 N1). 하한만 올림으로 맞춘다.
+        if (floor := cfg.get("min")) and rounded < floor:
+            rounded = round_bylaw_amount_up(floor)
         out[key] = f"{rounded:,}"
     return out
 
@@ -361,10 +386,14 @@ async def generate_draft(state: DraftState) -> dict:
                     "모호어 조항 %d개 제외 — %s",
                     len(vague), [f"{vague_terms_in(v)}: {v[:40]}" for v in vague],
                 )
-            # 회칙이 정한 한도·승인 기준 밖의 금액을 쓴 조항도 뺀다
+            # 회칙이 정한 한도·승인 기준 밖의 금액을 쓴 조항도 뺀다.
+            # 회비도 이 회칙이 정한 금액이다 — 빼두면 기본 조항의 회비를 정당하게
+            # 인용한 LLM 조항이 통째로 버려진다 (PR #65 리뷰 N4).
             allowed = {req.force_escalation_amount} | {
                 int(v.replace(",", "")) for v in limits.values()
             }
+            if dues:
+                allowed.add(dues)
             kept = [r for r in fresh if not unknown_amounts_in(r, allowed)]
             if len(kept) != len(fresh):
                 logger.info(
@@ -383,8 +412,16 @@ async def generate_draft(state: DraftState) -> dict:
     # notes의 회비 표기는 **실제로 회비 조가 실렸을 때만** 붙인다 — 회사 유형처럼
     # 회비 조 자체가 없는 템플릿에서는 사용자가 회비를 입력해도 조항이 생기지 않으므로,
     # 입력값만 보고 notes에 적으면 verify의 '조항 ↔ notes 금액 일치' 검사에 걸린다.
-    dues_note = DUES_NOTE.format(dues=f"{dues:,}") if any(
-        DUES_MARK in r for r in base_rules) else ""
+    has_dues_rule = any(DUES_MARK in r for r in base_rules)
+    if dues and not has_dues_rule:
+        # 회사 유형에는 회비 조가 없다 — 입력을 받아도 조항·notes 어디에도 안 남는다.
+        # 의도된 동작이지만 화면 입력이 흔적 없이 사라지는 자리라 로그로 남긴다
+        # (PR #65 리뷰 N6). 계약·문구는 바꾸지 않는다.
+        logger.info(
+            "회비 %s원 입력이 초안에 반영되지 않음 — '%s' 유형에 회비 조가 없다",
+            f"{dues:,}", req.team_type,
+        )
+    dues_note = DUES_NOTE.format(dues=f"{dues:,}") if has_dues_rule else ""
     draft = PolicyDraft(
         rules=base_rules + extra_rules,
         recommended_categories=all_categories(),  # 전역 고정 9종 (신규 생성 없음)
@@ -400,6 +437,9 @@ async def generate_draft(state: DraftState) -> dict:
 # 기존 조항 28개(5유형 base + 회비 + 목 추가조항) 전수 확인 결과 헛경보 0건.
 _AUTO_RULE_HINT = re.compile(r"자동\s*(?:심사|승인)|관리자.{0,4}(?:승인|확인)")
 _AMOUNT_RE = re.compile(r"([\d,]+)\s*원")
+# '3만원'·'20만 원' 같은 한글 단위 표기 — 숫자 표기만 보면 필터를 우회한다(N5).
+# 위 정규식과 겹치지 않는다: '3만원'은 숫자 뒤가 '만'이라 `[\d,]+\s*원`에 안 걸린다.
+_MAN_AMOUNT_RE = re.compile(r"([\d,]+)\s*만\s*원")
 # DUES_RULE·DUES_NOTE에서 placeholder 앞부분만 — 문구를 고쳐도 따라간다
 _DUES_NOTE_MARK = DUES_NOTE.split("{")[0]
 # 회비 조항 안의 금액을 뽑는다 — notes 표기와 같은 값인지 대조하기 위해서다.
@@ -409,12 +449,22 @@ _DUES_IN_NOTE = re.compile(re.escape(_DUES_NOTE_MARK) + r"([\d,]+)\s*원")
 
 
 def _amounts_in(text: str) -> list[int]:
-    """조항 문장에 등장하는 '12,000원' 형태의 금액을 모두 정수로."""
+    """조항 문장에 등장하는 금액을 모두 정수로 — '12,000원'과 '3만원' 둘 다.
+
+    한글 단위 표기를 함께 잡는 이유: 이 함수 결과가 한도 밖 금액 필터
+    (`unknown_amounts_in`)와 자동 심사 조항 검사의 입력이다. 숫자 표기만 보면
+    LLM이 "3만원"이라고 쓰는 순간 두 검사를 조용히 우회한다 (PR #65 리뷰 N5).
+    '3만원'과 '30,000원'은 같은 값으로 환산하므로 한도 표와 그대로 대조된다.
+    """
     out: list[int] = []
     for raw in _AMOUNT_RE.findall(text):
         digits = raw.replace(",", "")
         if digits.isdigit():
             out.append(int(digits))
+    for raw in _MAN_AMOUNT_RE.findall(text):
+        digits = raw.replace(",", "")
+        if digits.isdigit():
+            out.append(int(digits) * 10_000)
     return out
 
 

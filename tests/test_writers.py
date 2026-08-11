@@ -11,6 +11,8 @@ from app.graphs.writers.policy_draft import (
     ExtraRules,
     drop_vague_rules,
     round_bylaw_amount,
+    round_bylaw_amount_up,
+    suggested_limits,
     unknown_amounts_in,
     vague_terms_in,
     MAX_EXTRA_RULES,
@@ -322,11 +324,44 @@ def test_bylaw_amounts_are_rounded_to_readable_units():
     assert round_bylaw_amount(280_000) == 300_000  # 50,000원 단위
 
 
+def test_bylaw_amount_rounding_never_lowers_declared_floor():
+    """반올림이 한도의 하한(min)을 깎으면 안 된다 (PR #65 리뷰 N1).
+
+    `round_bylaw_amount`는 가까운 쪽으로 붙이는 범용 반올림이라 12,000 → 10,000이
+    맞다. 문제는 그것을 **하한에 그대로 쓰던 것**이었다 — min은 "이보다 낮게는 주지
+    않는다"는 선언이므로 올림으로 맞춘다. 예산이 아무리 작아도 선언한 하한 미만은
+    나오지 않는지 유형 전수로 고정한다.
+    """
+    assert round_bylaw_amount(12_000) == 10_000      # 범용 반올림은 그대로
+    assert round_bylaw_amount_up(12_000) == 15_000   # 하한은 올림
+
+    for team_type, template in load_templates().items():
+        # 예산·인원을 최소로 줘서 모든 항목이 하한에 걸리게 만든다
+        limits = suggested_limits(template, initial_budget=1, member_count=1)
+        for key, cfg in (template.get("limits") or {}).items():
+            floor = cfg.get("min")
+            if not floor:
+                continue
+            got = int(limits[key].replace(",", ""))
+            assert got >= floor, (
+                f"{team_type}/{key}: 선언한 하한 {floor:,}보다 낮은 {got:,}이 나왔다"
+            )
+
+
 def test_unknown_amounts_are_detected():
     """한도 표에 없는 금액을 쓴 LLM 조항은 걸러진다."""
     allowed = {50_000, 240_000}
     assert unknown_amounts_in("건당 240,000원 이내로 인정한다", allowed) == []
     assert unknown_amounts_in("건당 777,000원 이내로 인정한다", allowed) == [777_000]
+
+
+def test_unknown_amounts_catch_korean_man_notation():
+    """'3만원' 같은 한글 단위 표기도 잡는다 — 숫자 표기만 보면 필터를 우회한다 (N5)."""
+    allowed = {30_000, 50_000}
+    assert unknown_amounts_in("1인 1회 3만원 이내로 집행한다", allowed) == []
+    assert unknown_amounts_in("1인 1회 7만원 이내로 집행한다", allowed) == [70_000]
+    # 숫자 표기와 같은 값으로 환산되어 한도 표와 그대로 대조된다
+    assert unknown_amounts_in("20만 원 이내", {200_000}) == []
 
 
 async def test_bylaw_forbids_duplicate_split_and_false_claims():

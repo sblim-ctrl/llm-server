@@ -4,7 +4,7 @@
   "policy_draft_cases": [
     {
       "id": "pd-club-base",
-      "scenario": "동아리/학생회 기본 — 승인 기준은 금액 없이 참조되고 placeholder는 모두 치환된다",
+      "scenario": "동아리/학생회 기본 — 승인 기준이 금액 숫자로 적히고 placeholder는 모두 치환된다",
       "input": {
         "team_id": 9001,
         "team_type": "동아리/학생회",
@@ -23,7 +23,9 @@
         ],
         "rules_not_contain": [
           "{auto_approve_limit}",
-          "{per_meal_limit}"
+          "{meal}",
+          "{dues}",
+          "{dues_period}"
         ]
       }
     },
@@ -80,7 +82,7 @@
     },
     {
       "id": "pd-company-base",
-      "scenario": "회사 기본 — 승인 기준은 금액 없이 참조. 회비 개념이 없어 회비 조는 빠진다",
+      "scenario": "회사 기본 — 승인 기준이 금액 숫자로 적히고, 회비 개념이 없어 회비 조는 빠진다",
       "input": {
         "team_id": 9001,
         "team_type": "회사",
