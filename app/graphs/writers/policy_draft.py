@@ -91,18 +91,54 @@ def dedupe_rules(base: list[str], extra: list[str]) -> list[str]:
 DUES_NOTE = " · 회비 {dues}원"
 # 회비 조항을 식별하는 문구. 템플릿(bylaw_articles)의 회비 조 본문이 이 말로 시작한다.
 DUES_MARK = "회비는 1인당 "
-# 회비 미입력 시 제안값의 하한 — 유형별 dues_default를 인원·예산으로 보정한 뒤 이 아래로는
-# 내리지 않는다(0원 제안은 회칙 문장이 성립하지 않는다).
-MIN_SUGGESTED_DUES = 5_000
+
+
+#: 회칙에 쓰면 안 되는 **금액·정도의 모호어**. 심사관이 판단할 수 없는 말이라 조항이
+#: 기준으로 기능하지 못한다("소액 선물은 인정한다" → 얼마까지가 소액인가?).
+#:
+#: v5 프롬프트가 이미 금지하지만 LLM이 지키지 않는 것을 실측으로 확인했다(2026-08-11:
+#: 친목 초안에 "소액 선물" 조항이 나왔고, 그것도 템플릿의 경조사비 조와 내용이 겹쳤다).
+#: 프롬프트만으로는 못 막는 계열이라 코드에서 한 번 더 거른다 — 이 프로젝트에서 반복된
+#: "규칙보다 예시가 세다"의 다른 얼굴이다.
+#:
+#: **의도적으로 좁게 잡았다.** "충분한"(잔액이 충분한 = 잔액 ≥ 청구액, 사실 조건)과
+#: "필요한 경우"(절차 조건)는 우리 템플릿이 정당하게 쓰고 있어 넣지 않는다. 금액이
+#: 들어갈 자리를 형용사로 때우는 말만 막는다.
+VAGUE_AMOUNT_TERMS = (
+    "소액", "고액", "고가", "적절한", "적절히", "적당한", "적당히",
+    "상당한", "과도한", "알맞은", "합리적인", "저렴한", "소정의",
+)
+
+
+def vague_terms_in(text: str) -> list[str]:
+    """조항에 들어간 금액 모호어 목록 (없으면 빈 목록)."""
+    return [w for w in VAGUE_AMOUNT_TERMS if w in text]
+
+
+def drop_vague_rules(rules: list[str]) -> tuple[list[str], list[str]]:
+    """모호어가 든 조항을 떨어뜨린다. (남길 것, 버린 것) 반환.
+
+    초안 전체를 불통과시키지 않고 해당 조만 버리는 이유: 이 API는 마법사가 동기로
+    부르는 자리라 검증 실패가 5xx가 된다(모듈 docstring 참조). 기본 조항은 우리가
+    쓴 것이라 이미 깨끗하고(테스트로 고정), 위험한 것은 LLM 조항뿐이므로 그것만
+    버리면 초안은 여전히 완결된 회칙으로 남는다.
+    """
+    keep, dropped = [], []
+    for rule in rules:
+        (dropped if vague_terms_in(rule) else keep).append(rule)
+    return keep, dropped
 
 
 def _article_applies(article: dict, dues: int) -> bool:
-    """회비 조는 회비가 0일 때 뺀다 — '회비는 1인당 0원' 조항은 회칙으로 성립하지 않는다.
+    """`requires_dues: true`인 조는 회비 입력이 없으면 통째로 뺀다.
 
-    회사 유형처럼 회비 개념이 없는 모임(dues_default=0)에서 사용자도 입력하지 않은
-    경우가 이에 해당한다.
+    회비 조뿐 아니라 '회비를 기한 내 납부한다', '잔여 회비를 이월한다'처럼 **회비가
+    있다는 것을 전제하는 의무 조항**이 여기 해당한다. 회비를 정한 적 없는 모임에
+    그런 조항을 만들어 주면 회칙이 사실과 다른 의무를 부과하게 된다(2026-08-11).
+    템플릿에 플래그로 표시하는 이유는 문구 검색으로 걸러면 표현이 바뀔 때마다
+    조용히 새는 자리이기 때문이다.
     """
-    return dues > 0 or DUES_MARK not in article.get("text", "")
+    return dues > 0 or not article.get("requires_dues")
 
 
 def _round_to(amount: float, unit: int = 1_000) -> int:
@@ -131,28 +167,21 @@ def suggested_limits(template: dict, initial_budget: int, member_count: int | No
     return out
 
 
-def effective_dues(template: dict, req_dues: int | None, initial_budget: int,
-                   member_count: int | None) -> tuple[int, bool]:
-    """회칙에 적을 회비와 '제안값인지' 여부.
+def effective_dues(req_dues: int | None) -> int:
+    """회칙에 적을 회비 — **사용자 입력이 유일한 원천**이다. 입력이 없으면 회비 조를 뺀다.
 
-    사용자가 마법사 1단계에서 입력했으면 그 값이 원천이다(제안하지 않는다). 입력이
-    없으면 유형별 기본 회비를 인원·예산으로 보정해 제안한다 — 화면의 '월 회비' 칸이
-    비어 있을 때 관리자가 참고할 값이 회칙 안에 있어야 한다는 요구(2026-08-11)다.
+    한때(2026-08-11 오전) 입력이 없으면 유형별 기본값을 인원·예산으로 보정해 제안했다.
+    같은 날 되돌렸다. 이유는 두 가지다.
 
-    ※ 이것은 2026-08-05에 제거된 `policy_params`(승인 정책 제안)의 부활이 아니다.
-      승인 기준 금액은 여전히 사용자 입력이 유일한 원천이고, 여기서 만드는 것은
-      **회칙 조항 안의 권고 문구**뿐이다 — API 응답 필드가 늘지 않는다.
+    ① **관리자가 정한 적 없는 금액을 회칙이 단정하게 된다.** 관리자가 화면에서 그 값을
+       입력하지 않는 한 실제 설정에는 반영되지 않으므로, 회칙 문서와 시스템 설정이
+       처음부터 어긋난 채로 시작한다.
+    ② 확정된 회칙은 인덱싱되어 rule_auditor의 판정 근거가 된다 — 지어낸 금액이 심사
+       근거로 굳는 경로다.
+
+    승인 기준 금액도 같은 이유로 회칙 조항에서 숫자를 뺐다(templates 참조).
     """
-    if req_dues:
-        return req_dues, False
-    base = int(template.get("dues_default") or 0)
-    if base <= 0:
-        return 0, True  # 회사 유형 등 회비 개념이 없는 경우
-    # 인원이 많고 예산이 넉넉하면 1인 부담을 낮춘다 (1인당 예산이 클수록 회비는 덜 필요)
-    n = max(member_count or 1, 1)
-    per_person = initial_budget / n
-    factor = 0.6 if per_person >= base * 30 else (0.8 if per_person >= base * 15 else 1.0)
-    return max(_round_to(base * factor), MIN_SUGGESTED_DUES), True
+    return req_dues or 0
 
 
 class DraftState(TypedDict, total=False):
@@ -248,9 +277,7 @@ async def generate_draft(state: DraftState) -> dict:
     # 백엔드가 auto_approve_limit = escalation_threshold = 기준금액으로 저장하므로
     # (개정안 §1-3 저장 규약) 두 이름은 같은 금액을 가리킨다.
     limits = suggested_limits(template, req.initial_budget, req.member_count)
-    dues, dues_is_suggested = effective_dues(
-        template, req.dues, req.initial_budget, req.member_count
-    )
+    dues = effective_dues(req.dues)
     fmt = {
         "auto_approve_limit": f"{req.force_escalation_amount:,}",
         "dues": f"{dues:,}",
@@ -286,6 +313,12 @@ async def generate_draft(state: DraftState) -> dict:
             )
             # 중복 제거를 상한 적용보다 먼저 — 그래야 겹친 조항이 상한 자리를 차지하지 않는다
             fresh = dedupe_rules(base_rules, [r.rendered() for r in result.extra_rules])
+            fresh, vague = drop_vague_rules(fresh)
+            if vague:
+                logger.info(
+                    "모호어 조항 %d개 제외 — %s",
+                    len(vague), [f"{vague_terms_in(v)}: {v[:40]}" for v in vague],
+                )
             extra_rules = [
                 # 기본 조항 뒤에 조 번호를 이어 붙인다 — 한 문서로 읽혀야 한다
                 f"제{len(base_rules) + i}조{r}"
@@ -294,13 +327,16 @@ async def generate_draft(state: DraftState) -> dict:
         except Exception:
             logger.exception("policy_drafter 추가 조항 생성 실패 — 기본 조항만 사용")
 
-    dues_note = DUES_NOTE.format(dues=f"{dues:,}") if dues else ""
-    suffix = "(회비는 제안값)" if (dues and dues_is_suggested) else ""
+    # notes의 회비 표기는 **실제로 회비 조가 실렸을 때만** 붙인다 — 회사 유형처럼
+    # 회비 조 자체가 없는 템플릿에서는 사용자가 회비를 입력해도 조항이 생기지 않으므로,
+    # 입력값만 보고 notes에 적으면 verify의 '조항 ↔ notes 금액 일치' 검사에 걸린다.
+    dues_note = DUES_NOTE.format(dues=f"{dues:,}") if any(
+        DUES_MARK in r for r in base_rules) else ""
     draft = PolicyDraft(
         rules=base_rules + extra_rules,
         recommended_categories=all_categories(),  # 전역 고정 9종 (신규 생성 없음)
         notes=f"'{req.team_name}' ({req.team_type}) 초기예산 {req.initial_budget:,}원{dues_note}"
-        f"{suffix} 기준 자동 생성 초안 — 관리자 검토 후 확정",
+        " 기준 자동 생성 초안 — 관리자 검토 후 확정",
     )
     return {"draft": draft}
 
@@ -364,6 +400,13 @@ def verify_draft_pure(
     keys = [normalize_rule(r) for r in draft.rules]
     if len(keys) != len(set(keys)):
         return "중복 조항 존재"
+
+    # 금액 모호어 — LLM 조항은 조립 단계(drop_vague_rules)에서 이미 걸러지므로, 여기까지
+    # 오는 것은 **템플릿에 모호어가 들어간 경우**뿐이다. 그건 우리 쪽 결함이라 조용히
+    # 넘기지 않고 불통과시킨다(테스트가 CI에서 먼저 잡지만 이중으로 막는다).
+    for rule in draft.rules:
+        if found := vague_terms_in(rule):
+            return f"금액 모호어 사용: {found[0]} — 금액이나 조건으로 바꿔야 한다"
 
     # 환각 방어 — 자동 심사를 말하는 조항의 금액은 요청의 기준 금액 하나뿐이어야 한다
     for rule in draft.rules:

@@ -4,7 +4,7 @@
   "policy_draft_cases": [
     {
       "id": "pd-club-base",
-      "scenario": "동아리/학생회 기본 — 기준 금액 5만이 조항에 그대로 반영 (LLM-005 개정: 추천 계산 없음)",
+      "scenario": "동아리/학생회 기본 — 승인 기준은 금액 없이 참조되고 placeholder는 모두 치환된다",
       "input": {
         "team_id": 9001,
         "team_type": "동아리/학생회",
@@ -15,10 +15,11 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 14,
+        "rules_count": 15,
         "categories_count": 9,
         "rules_contain": [
-          "50,000원"
+          "50,000원",
+          "AI가 자동 심사한다"
         ],
         "rules_not_contain": [
           "{auto_approve_limit}",
@@ -39,7 +40,7 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 15,
+        "rules_count": 16,
         "categories_count": 9
       }
     },
@@ -56,7 +57,7 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 15,
+        "rules_count": 16,
         "categories_count": 9
       }
     },
@@ -73,13 +74,13 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 15,
+        "rules_count": 16,
         "categories_count": 9
       }
     },
     {
       "id": "pd-company-base",
-      "scenario": "회사 기본 — 기준 금액 9만 반영. 회비 개념이 없어 회비 조는 빠진다",
+      "scenario": "회사 기본 — 승인 기준은 금액 없이 참조. 회비 개념이 없어 회비 조는 빠진다",
       "input": {
         "team_id": 9001,
         "team_type": "회사",
@@ -90,7 +91,7 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 14,
+        "rules_count": 15,
         "categories_count": 9,
         "rules_contain": [
           "90,000원"
@@ -99,7 +100,7 @@
     },
     {
       "id": "pd-amount-passthrough",
-      "scenario": "개정 — 사용자 입력 기준 금액(7만)이 추천 계산 없이 그대로 회칙에 들어간다 (구 pd-floor 대체 — 최소 5만 보장은 화면 몫으로 이관)",
+      "scenario": "사용자 입력 기준 금액(7만)이 추천 계산 없이 그대로 회칙 조항에 들어간다",
       "input": {
         "team_id": 9001,
         "team_type": "동아리/학생회",
@@ -110,10 +111,14 @@
       },
       "expect": {
         "verified": true,
+        "rules_count": 15,
         "rules_contain": [
-          "70,000원"
+          "70,000원",
+          "AI가 자동 심사한다"
         ],
-        "rules_count": 14
+        "rules_not_contain": [
+          "{auto_approve_limit}"
+        ]
       }
     },
     {
@@ -147,7 +152,7 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 16,
+        "rules_count": 17,
         "rules_contain": [
           "안전장비"
         ]
@@ -167,7 +172,7 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 16,
+        "rules_count": 17,
         "rules_contain": [
           "서버"
         ]
@@ -187,7 +192,7 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 15,
+        "rules_count": 16,
         "rules_contain": [
           "홍보물"
         ]
@@ -207,7 +212,7 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 18,
+        "rules_count": 19,
         "rules_contain": [
           "안전장비",
           "서버",
@@ -229,7 +234,7 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 17,
+        "rules_count": 18,
         "rules_contain": [
           "안전장비",
           "서버"
