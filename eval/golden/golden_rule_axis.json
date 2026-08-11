@@ -77,7 +77,7 @@
         "receiptPath": "file://eval/golden/receipts/ruleonly-noclause-005.png"
       },
       "expected_verdict": "approve",
-      "expected_category": "교통",
+      "expected_category": "기타",
       "must_not_approve": false
     }
   ]
