@@ -56,6 +56,33 @@ def no_false_approve(run, example) -> dict:
     return {"key": "no_false_approve", "score": 0 if (mna and actual == "approve") else 1}
 
 
+def category_correct(run, example) -> dict:
+    """분류(카테고리)가 기대와 일치하는가 — run_eval_real.py의 분류 축과 동일.
+
+    v7 회귀 4건(2026-08-10)이 정확히 이 축에서 났다 — verdict만 보면 안 보이는
+    지표라 Experiment에도 별도 열로 남긴다. 기대값 없는 케이스는 분모에서 제외
+    (score=None — run_eval_real의 '0점 처리하지 않는다'와 같은 규약).
+    """
+    expected = (example.outputs or {}).get("expected_category") or ""
+    if not expected:
+        return {"key": "category_correct", "score": None}
+    actual = (run.outputs or {}).get("category") or ""
+    return {"key": "category_correct", "score": int(actual == expected)}
+
+
+def gate_includes_hit(run, example) -> dict:
+    """기대 가드레일 규칙이 전부 발동됐는가 (기대값 있는 50건만 채점, 없으면 제외).
+
+    verdict가 맞아도 '왜 막혔는지'가 다르면 회귀다 — budget_insufficient로 막혀야
+    할 건이 rule_ambiguous로 막히는 종류의 미끄러짐을 이 축이 잡는다.
+    """
+    expected = (example.outputs or {}).get("expected_gate_includes") or []
+    if not expected:
+        return {"key": "gate_includes_hit", "score": None}
+    triggered = set((run.outputs or {}).get("gate") or [])
+    return {"key": "gate_includes_hit", "score": int(set(expected) <= triggered)}
+
+
 async def main() -> int:
     s = get_settings()
     if s.mock_llm or not s.openai_api_key:
@@ -89,7 +116,10 @@ async def main() -> int:
         await clean_golden_teams()
         for t in teams:
             await indexing_graph.ainvoke({"team_id": t, "doc_type": "rule"})
-        versions = {a: load_prompt(a).version for a in ("rule_auditor", "adjudicator")}
+        # classifier 포함 — category_correct 축을 채점하므로 어떤 분류기 버전으로
+        # 측정했는지가 experiment 이름·메타데이터에 남아야 한다 (v7→v8 교체 전례)
+        versions = {a: load_prompt(a).version
+                    for a in ("rule_auditor", "adjudicator", "classifier")}
         print(f"골든 팀 {len(teams)}개 회칙 실인덱싱 완료 — 프롬프트 {versions}")
 
         async def target(inputs: dict) -> dict:
@@ -104,9 +134,11 @@ async def main() -> int:
                 }
             )
             gate = final.get("gate_result")
+            claim = final.get("claim")  # 분류 결과 추출 — run_eval_real.py와 동일 규약
             return {
                 "verdict": final.get("verdict") or "escalate",
                 "gate": gate.triggered_rules if gate else [],
+                "category": (claim.category if claim else "") or "",
             }
 
         prefix = "golden-" + "-".join(v.replace("/", "") for v in versions.values())
@@ -117,7 +149,7 @@ async def main() -> int:
         results = await aevaluate(
             target,
             data=DATASET_NAME,
-            evaluators=[verdict_correct, no_false_approve],
+            evaluators=[verdict_correct, no_false_approve, category_correct, gate_includes_hit],
             experiment_prefix=prefix,
             metadata={"prompt_versions": versions, "harness": "run_eval_langsmith"},
             max_concurrency=1,
