@@ -76,10 +76,14 @@ _register()
 # v2 그대로 이어받는다. 새 위반이 아니라 기존 부채의 승계다. report_writer/v4·
 # briefing_writer/v3(2026-08-10, A 리뷰)도 같은 이유 — 라벨만 고친 정합 수정이라
 # 구조를 손대지 않고 앞 버전의 부채를 그대로 이어받는다.
+# briefing_writer/v4(2026-08-11, 비직관 용어 제거)도 같은 이유 — "override"를
+# "AI 추천 번복"으로 바꾼 어휘 정합 수정이라 여러 줄 입력 구조는 손대지 않고
+# v3의 부채를 그대로 이어받는다.
 _MULTILINE_INPUT_DEBT = {
     ("briefing_writer", "v1"),
     ("briefing_writer", "v2"),
     ("briefing_writer", "v3"),
+    ("briefing_writer", "v4"),
     ("budget_planner", "v1"),
     ("budget_planner", "v2"),
     ("dashboard_writer", "v1"),

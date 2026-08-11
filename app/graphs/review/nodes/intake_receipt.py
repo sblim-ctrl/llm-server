@@ -19,6 +19,7 @@ parse_ok=False로 수렴 — guardrail_gate의 receipt_unreadable 에스컬레�
 TODO(P2 컷 후보, 업무분장 A-6): receipt_text 경로의 실모드 gpt-4o-mini 구조화
 추출 승격 — 데모 필수는 Vision 경로뿐이라 정규식 파서 유지.
 """
+
 import logging
 import re
 from urllib.parse import parse_qs, urlparse
@@ -93,9 +94,10 @@ def parse_receipt_text(text: str) -> ReceiptData:
     amounts = [int(m.replace(",", "")) for m in _AMOUNT_RE.findall(text)]
     date_match = _DATE_RE.search(text)
     return ReceiptData(
-        amount=max(amounts) if amounts else None,   # 합계가 최대 금액이라는 가정 (mock)
+        amount=max(amounts) if amounts else None,  # 합계가 최대 금액이라는 가정 (mock)
         date=date_match.group(0) if date_match else None,
-        merchant=None, items=[],
+        merchant=None,
+        items=[],
         parse_ok=bool(amounts),
         parse_error=None if amounts else "텍스트에서 금액을 찾지 못함",
     )
@@ -135,7 +137,7 @@ def _mock_receipt_from_url(url: str, default_amount: int, default_date: str) -> 
     params = parse_qs(urlparse(url).query)
     amount = int(params["amount"][0]) if "amount" in params else default_amount
     date = params["date"][0] if "date" in params else default_date
-    return ReceiptData(amount=amount, date=date, merchant="(mock)", items=[])
+    return ReceiptData(amount=amount, date=date, merchant=None, items=[])
 
 
 async def intake_receipt(state: ReviewState) -> dict:
@@ -170,10 +172,13 @@ async def intake_receipt(state: ReviewState) -> dict:
                 if len(text) >= _MIN_PDF_RECEIPT_CHARS:
                     logger.info("PDF 영수증 텍스트 추출 — %d자, 텍스트 경로로 처리", len(text))
                     return await _intake_from_text(text)
-                return {"receipt_data": ReceiptData(
-                    parse_ok=False,
-                    parse_error="PDF 영수증에서 글자를 읽지 못했습니다 "
-                                "(스캔 이미지 PDF로 보입니다) — 관리자 확인 필요")}
+                return {
+                    "receipt_data": ReceiptData(
+                        parse_ok=False,
+                        parse_error="PDF 영수증에서 글자를 읽지 못했습니다 "
+                        "(스캔 이미지 PDF로 보입니다) — 관리자 확인 필요",
+                    )
+                }
 
             # 실제 형식으로 감싼다 — media_type 기본값(image/jpeg) 고정이 오판의 원인이었다.
             # bytes가 아니거나(URL 경로) 미상 형식이면 종전 기본값을 그대로 쓴다.
@@ -191,10 +196,18 @@ async def intake_receipt(state: ReviewState) -> dict:
             return {"receipt_data": data, "llm_meta": {"intake": meta}}
         except Exception:
             logger.exception("Vision OCR 실패 — 판독 불능으로 처리 (→ escalate, §8)")
-            return {"receipt_data": ReceiptData(
-                parse_ok=False, parse_error="영수증 판독 실패 (Vision OCR 오류)")}
+            return {
+                "receipt_data": ReceiptData(
+                    parse_ok=False, parse_error="영수증 판독 실패 (Vision OCR 오류)"
+                )
+            }
 
     # 목 모드 — 청구 일치 영수증 가정
-    return {"receipt_data": ReceiptData(
-        amount=claim.amount, date=claim.date, merchant="(mock)", items=[claim.title],
-    )}
+    return {
+        "receipt_data": ReceiptData(
+            amount=claim.amount,
+            date=claim.date,
+            merchant=None,
+            items=[claim.title],
+        )
+    }

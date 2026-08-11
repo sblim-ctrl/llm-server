@@ -85,16 +85,19 @@ DEFAULT_VERSIONS = {
     #  정정. v3 기반(v4 아님 — v4의 ① 조항 번호 인용은 동률이라 미승격
     #  이었던 팀장 결정 5를 그대로 유지). 판정 기준·나머지 예시는 v3
     #  그대로, 실측 재검증은 eval/run_eval 게이트로 확인했다.
-    "adjudicator": "v5",  # v4(sblim v3 + cowbro v3의 두 문장 이식, 팀장 결정 2) +
-    #  정합 수정(2026-08-10, A 리뷰): 유사 판례 인용 안 대괄호 라벨
-    #  "[활동/프로그램비]"·"[대회/참가비]"가 카탈로그 밖 값이었다 — "[활동/프로그램비]"는
-    #  "[교육]"으로(classify_by_keywords 실행 결과·v7 경계와 정합, 문자적 매핑인
-    #  "[행사_활동]"은 실제 분류기와 어긋나 A 리뷰에서 재지적), "[대회/참가비]"는
-    #  "[행사_활동]"으로(_LEGACY_CATEGORY_ALIASES 매핑 그대로) 정정.
-    "briefing_writer": "v3",  # v2 + 정합 수정(2026-08-10, A 리뷰): gap_categories
-    #  예시의 "식비/간식비"가 카탈로그 밖 값이었다 — "식비"로 정정. 실제
-    #  gap_categories는 코드가 결정적으로 조립해 화면 유출은 없었지만,
-    #  모델이 구 표기를 흉내 낼 잡음이라 정리했다.
+    "adjudicator": "v6",  # v5(유사 판례 인용 카탈로그 라벨 정합) + 정합 수정
+    #  (2026-08-11): reason_admin few_shot 예시3·4가 판례 인용 시스템 표기
+    #  "(approve/ADMIN)"을 사유 문장에 그대로 베끼고 있었다 — 관리자를
+    #  "admin"이라 지칭하는 등 비직관 용어 노출 결함. system에 시스템 표기
+    #  (ADMIN/AGENT/override/confidence 수치)를 사유에 옮기지 말라는 규칙을
+    #  추가하고 두 예시를 한국어 내용만 남게 교정했다. 자세한 실측·근거는
+    #  prompts/adjudicator/v6.yaml 헤더 참고.
+    "briefing_writer": "v4",  # v3(gap_categories 카탈로그 라벨 정합) + 정합 수정
+    #  (2026-08-11): system·few_shot이 "override {override_count}건"을
+    #  영문 그대로 쓰도록 강제하고 있었다 — "AI 추천 번복"으로 정정.
+    #  app/graphs/writers/briefing.py의 코드 고정 문구(_mock_briefing_text·
+    #  _handover_notes)도 함께 정리(eval/golden/writers_golden_v1.json의
+    #  notes_contain 기대값도 동반 갱신 필요).
     "report_writer": "v4",  # v3 + 정합 수정(2026-08-10, A 리뷰): 예시1의 by_category에
     #  #37 라벨 치환 부작용으로 식비가 두 행으로 갈라져 있었다(집계 함수가
     #  만들 수 없는 형태) — 293,000원 한 행으로 병합.
@@ -104,10 +107,12 @@ DEFAULT_VERSIONS = {
     #  guardrail의 receipt_unreadable → 전건 관리자 확인이 된다.
     #  백엔드 추출 텍스트에는 상호·품목이 없는 경우가 흔해서
     #  운영 자동 처리율을 통째로 죽이는 결함이었다.
-    "precedent_auditor": "v4",  # v4는 A/B 승격이 아니라 **정합 수정**이다 (PR-5, 2026-08-08):
-    #  few_shot 6건 중 5건이 구 체계 라벨(공간/대관비·대회/참가비·식비/간식비·
-    #  식비/다과비·행사)을 써서 카탈로그 밖 값을 가르치고 있었다 — 카탈로그
-    #  9종 라벨로 정정. system 규칙·판정 기준은 v3 그대로.
+    "precedent_auditor": "v5",  # v4(카탈로그 라벨 정합) + 정합 수정(2026-08-11):
+    #  화면 심사관 카드 summary에 톤·용어 지침이 없던 공백을 메웠다 — system에
+    #  "summary는 한국어로만, ADMIN/AGENT/override는 관리자·AI 자동·AI 추천
+    #  번복으로 풀어 쓴다"는 규칙을 추가(few_shot은 이미 한국어라 교정 불요).
+    #  similar_cases의 "입력 표기 그대로" 규칙은 유지 — 화면 노출 문구는
+    #  콜백 경계(callback.py _translate_precedent_citation)에서 옮긴다.
     "digest_writer": "v3",  # sblim v2 + advice 계약 복구 (PR #9 리뷰 D2). v2는 코드가
     #  필수로 요구하는 advice를 system·few_shot 어디에서도 언급하지
     #  않아, 목 모드에서만 _mock_advice로 가려지고 실모드에서
