@@ -110,6 +110,24 @@ VAGUE_AMOUNT_TERMS = (
 )
 
 
+#: limits 키 → 회칙에 쓰는 항목 이름. LLM에게 한도 표를 보여줄 때 쓴다.
+LIMIT_LABELS = {
+    "meal": "식비(1인 1회)", "venue": "장소 대관비(회당)", "supplies": "비품비(분기)",
+    "transport": "교통비(1인당)", "education": "교육비(1인당)",
+    "event": "행사·활동비(건당)", "gift": "경조사비(1건)", "travel": "여행·숙박(1인 1박)",
+}
+
+
+def unknown_amounts_in(text: str, allowed: set[int]) -> list[int]:
+    """조항이 인용한 금액 중 허용 목록(회칙 한도·승인 기준)에 없는 것.
+
+    LLM이 한도를 지어내면 회칙 안에서 숫자가 갈린다. 프롬프트로 금지하고 한도 표까지
+    주지만, 실측에서 프롬프트만으로는 안 지켜지는 계열임이 반복 확인돼(모호어와 같은
+    유형) 조립 단계에서 한 번 더 거른다.
+    """
+    return [a for a in _amounts_in(text) if a not in allowed]
+
+
 def vague_terms_in(text: str) -> list[str]:
     """조항에 들어간 금액 모호어 목록 (없으면 빈 목록)."""
     return [w for w in VAGUE_AMOUNT_TERMS if w in text]
@@ -142,8 +160,24 @@ def _article_applies(article: dict, dues: int) -> bool:
 
 
 def _round_to(amount: float, unit: int = 1_000) -> int:
-    """회칙에 적을 금액으로 반올림 — 1,000원 단위가 아니면 사람이 쓴 규정처럼 안 보인다."""
+    """단위 반올림 (하한은 unit)."""
     return max(unit, int(round(amount / unit)) * unit)
+
+
+def round_bylaw_amount(amount: float) -> int:
+    """회칙에 적을 금액으로 반올림 — **금액 크기에 따라 단위를 키운다**.
+
+    사람이 쓴 규정은 19,000원·48,000원·320,000원처럼 적지 않는다. 자릿수가 올라갈수록
+    끝자리가 둥글어지는 것이 자연스럽다(2026-08-11 지적):
+        5만 미만   → 5,000원 단위   (19,000 → 20,000)
+        20만 미만  → 10,000원 단위  (48,000 → 50,000)
+        20만 이상  → 50,000원 단위  (320,000 → 300,000)
+    """
+    if amount < 50_000:
+        return _round_to(amount, 5_000)
+    if amount < 200_000:
+        return _round_to(amount, 10_000)
+    return _round_to(amount, 50_000)
 
 
 def suggested_limits(template: dict, initial_budget: int, member_count: int | None) -> dict[str, str]:
@@ -163,7 +197,9 @@ def suggested_limits(template: dict, initial_budget: int, member_count: int | No
         basis = per_person if cfg.get("basis") == "per_person" else initial_budget
         raw = basis * float(cfg.get("ratio", 0))
         clamped = min(max(raw, cfg.get("min", 0)), cfg.get("max", raw or 0))
-        out[key] = f"{_round_to(clamped):,}"
+        # 반올림이 상한을 넘지 않게 상한도 같은 규칙으로 둥글린 값과 비교한다
+        rounded = min(round_bylaw_amount(clamped), round_bylaw_amount(cfg.get("max", clamped)))
+        out[key] = f"{rounded:,}"
     return out
 
 
@@ -281,6 +317,7 @@ async def generate_draft(state: DraftState) -> dict:
     fmt = {
         "auto_approve_limit": f"{req.force_escalation_amount:,}",
         "dues": f"{dues:,}",
+        "dues_period": template.get("dues_period", ""),
         **limits,
     }
     # 회칙 초안은 bylaw_articles를 쓴다 — base_rules는 심사용(회칙 미등록 팀의 기본
@@ -304,7 +341,12 @@ async def generate_draft(state: DraftState) -> dict:
                 f"회원 수: {req.member_count or '미입력'}\n"
                 f"총예산: {req.initial_budget:,}원\n"
                 f"관리자 승인 기준 금액: {req.force_escalation_amount:,}원\n\n"
-                f"이미 작성된 기본 조항 (같은 내용을 반복하지 마세요):\n"
+                # 한도 표를 그대로 준다 — 종전에는 LLM이 금액을 몰라 "회칙이 정한 한도
+                # 범위에서"처럼 실제 한도가 불분명한 문구를 썼다(2026-08-11 지적).
+                # 이제 이 표의 금액만 인용하게 하고, 그 밖의 금액은 조립부가 걸러낸다.
+                + "이 회칙이 정한 한도 (조항에 금액을 쓸 때는 이 값만 그대로 인용하세요):\n"
+                + "\n".join(f"- {LIMIT_LABELS.get(k, k)}: {v}원" for k, v in limits.items())
+                + "\n\n이미 작성된 기본 조항 (같은 내용을 반복하지 마세요):\n"
                 + "\n".join(f"- {r}" for r in base_rules)
                 + f"\n\n참고 규정(다른 모임 사례 — 그대로 베끼지 말고 참고만):\n{ref_text}",
                 schema=ExtraRules,
@@ -319,6 +361,17 @@ async def generate_draft(state: DraftState) -> dict:
                     "모호어 조항 %d개 제외 — %s",
                     len(vague), [f"{vague_terms_in(v)}: {v[:40]}" for v in vague],
                 )
+            # 회칙이 정한 한도·승인 기준 밖의 금액을 쓴 조항도 뺀다
+            allowed = {req.force_escalation_amount} | {
+                int(v.replace(",", "")) for v in limits.values()
+            }
+            kept = [r for r in fresh if not unknown_amounts_in(r, allowed)]
+            if len(kept) != len(fresh):
+                logger.info(
+                    "한도 밖 금액 조항 %d개 제외 — %s", len(fresh) - len(kept),
+                    [r[:50] for r in fresh if unknown_amounts_in(r, allowed)],
+                )
+            fresh = kept
             extra_rules = [
                 # 기본 조항 뒤에 조 번호를 이어 붙인다 — 한 문서로 읽혀야 한다
                 f"제{len(base_rules) + i}조{r}"
@@ -350,7 +403,8 @@ _AMOUNT_RE = re.compile(r"([\d,]+)\s*원")
 # DUES_RULE·DUES_NOTE에서 placeholder 앞부분만 — 문구를 고쳐도 따라간다
 _DUES_NOTE_MARK = DUES_NOTE.split("{")[0]
 # 회비 조항 안의 금액을 뽑는다 — notes 표기와 같은 값인지 대조하기 위해서다.
-_DUES_IN_RULE = re.compile(re.escape(DUES_MARK) + r"([\d,]+)\s*원")
+# 납부 주기가 금액 앞에 온다("회비는 1인당 월 20,000원") — 숫자가 아닌 말은 건너뛴다
+_DUES_IN_RULE = re.compile(re.escape(DUES_MARK) + r"[^\d]*([\d,]+)\s*원")
 _DUES_IN_NOTE = re.compile(re.escape(_DUES_NOTE_MARK) + r"([\d,]+)\s*원")
 
 

@@ -10,6 +10,8 @@ from app.graphs.writers.policy_draft import (
     ExtraRule,
     ExtraRules,
     drop_vague_rules,
+    round_bylaw_amount,
+    unknown_amounts_in,
     vague_terms_in,
     MAX_EXTRA_RULES,
     _mock_extra_rules,
@@ -270,11 +272,61 @@ async def test_approval_threshold_appears_as_a_real_amount():
 
 
 async def test_bylaw_separates_insufficient_balance_from_over_limit():
-    """잔액 부족(반려)과 항목 한도 초과(특별 승인)를 회칙이 구분한다 — 가드레일 동작과 일치."""
+    """잔액 부족(반려)과 항목 한도 초과(예외 승인)를 회칙이 구분한다 — 가드레일 동작과 일치.
+
+    특별 승인 절차는 '예외 승인' 조로 일원화했다(2026-08-11 밤) — 예산 조와 예외 승인
+    조에 같은 내용이 겹쳐 있었다.
+    """
     draft = await _draft_for()
     budget_rule = next(r for r in draft.rules if "예산 집행 원칙" in r)
-    assert "보유 잔액이 부족한 지출은 승인하지 아니한다" in budget_rule
-    assert "전체 잔액이 충분한" in budget_rule
+    assert "보유 잔액이 부족한 지출은 금액과 관계없이 승인하지 아니한다" in budget_rule
+    assert "전체 잔액이 충분한" not in budget_rule  # 예외 승인 조로 옮겼다
+
+    exception_rule = next(r for r in draft.rules if "예외 승인" in r)
+    assert "전체 잔액이 충분한" in exception_rule
+    # 예외 승인으로도 허용하지 않는 것이 명시돼야 한다
+    assert "예외 승인의 대상이 되지 아니한다" in exception_rule
+
+
+async def test_bylaw_escalates_regardless_of_amount_on_ambiguity():
+    """금액이 작아도 해석 불명확·증빙 불충분·중복 의심이면 관리자 확인 — 가드레일 동작과 일치."""
+    for team_type in TEAM_TYPES:
+        joined = "\n".join((await _draft_for(team_type=team_type)).rules)
+        assert "금액과 관계없이 회칙 해석이 불명확한 경우" in joined or \
+               "금액과 관계없이 회칙 해석이 불명확" in joined, team_type
+        assert "중복 청구가 의심되는 경우에는 관리자 확인을 거친다" in joined, team_type
+
+
+async def test_evidence_article_does_not_accept_a_note_alone():
+    """증빙 없이 사유서만으로는 인정하지 않고, 확인될 때까지 보류한다."""
+    for team_type in TEAM_TYPES:
+        joined = "\n".join((await _draft_for(team_type=team_type)).rules)
+        assert "확인될 때까지 승인을 보류한다" in joined, team_type
+        assert "사유서만으로는 지출을 인정하지 아니한다" in joined, team_type
+
+
+async def test_dues_article_states_a_payment_period():
+    """'1인당 15,000원'만으로는 언제 내는지 알 수 없다 — 주기를 함께 적는다."""
+    draft = await _draft_for(team_type="동아리/학생회", dues=15_000)
+    dues_rule = next(r for r in draft.rules if "회비는 1인당 " in r)
+    assert "학기당" in dues_rule and "15,000원" in dues_rule
+
+
+def test_bylaw_amounts_are_rounded_to_readable_units():
+    """19,000·48,000·320,000처럼 어중간한 금액은 사람이 쓴 규정처럼 보이지 않는다."""
+    assert round_bylaw_amount(19_000) == 20_000
+    assert round_bylaw_amount(48_000) == 50_000
+    assert round_bylaw_amount(320_000) == 300_000
+    assert round_bylaw_amount(12_000) == 10_000    # 5,000원 단위
+    assert round_bylaw_amount(125_000) == 120_000  # 10,000원 단위
+    assert round_bylaw_amount(280_000) == 300_000  # 50,000원 단위
+
+
+def test_unknown_amounts_are_detected():
+    """한도 표에 없는 금액을 쓴 LLM 조항은 걸러진다."""
+    allowed = {50_000, 240_000}
+    assert unknown_amounts_in("건당 240,000원 이내로 인정한다", allowed) == []
+    assert unknown_amounts_in("건당 777,000원 이내로 인정한다", allowed) == [777_000]
 
 
 async def test_bylaw_forbids_duplicate_split_and_false_claims():

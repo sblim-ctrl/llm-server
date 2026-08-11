@@ -57,7 +57,7 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 16,
+        "rules_count": 17,
         "categories_count": 9
       }
     },
@@ -74,7 +74,7 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 16,
+        "rules_count": 17,
         "categories_count": 9
       }
     },
@@ -91,7 +91,7 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 15,
+        "rules_count": 16,
         "categories_count": 9,
         "rules_contain": [
           "90,000원"
@@ -152,7 +152,7 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 17,
+        "rules_count": 18,
         "rules_contain": [
           "안전장비"
         ]
