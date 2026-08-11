@@ -163,7 +163,7 @@ async def _audit_by_default_policy(
             auditor="rule",
             verdict="pass",
             summary=f"'{claim.category}' 지출 — 등록된 회칙이 없어 유형별 기본 정책 기준으로 봤고 "
-            f"어긋나는 점 없음 (mock)",
+            f"어긋나는 점 없음",
             evidence=list(rules),
         ),
         mask_with=members,
@@ -229,7 +229,7 @@ async def rule_auditor(state: ReviewState) -> dict:
             mock_response=Opinion(
                 auditor="rule",
                 verdict="pass",
-                summary=f"'{claim.category}' 카테고리 지출로 회칙상 금지 항목에 해당하지 않음 (mock)",
+                summary=f"'{claim.category}' 카테고리 지출로 회칙상 금지 항목에 해당하지 않음",
                 evidence=[c["text"] for c in chunks],
             ),
             mask_with=members,

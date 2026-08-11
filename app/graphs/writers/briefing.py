@@ -97,7 +97,7 @@ def _mock_briefing_text(f: BriefingFigures) -> BriefingText:
     """목 모드 결정적 문구 — 기존 하드코딩 문장과 동일."""
     summary = (
         f"누적 판정 {f.total_precedents}건 — AI 자동 {f.agent_decisions}건 / "
-        f"관리자 {f.admin_decisions}건, override {f.override_count}건, "
+        f"관리자 {f.admin_decisions}건, AI 추천 번복 {f.override_count}건, "
         f"에스컬레이션 {f.escalated_count}건."
     )
     return BriefingText(summary=summary)
@@ -108,7 +108,7 @@ def _handover_notes(f: BriefingFigures) -> list[str]:
     notes: list[str] = []
     if f.override_count:
         notes.append(
-            f"관리자가 AI 추천을 뒤집은 override가 {f.override_count}건 있습니다 — "
+            f"관리자가 AI 추천을 뒤집은 결정이 {f.override_count}건 있습니다 — "
             "해당 판례가 이후 유사 건 심사에 자동 반영되고 있으니 기준 변경 시 판례 정리를 먼저 하세요."
         )
     if f.gap_categories:

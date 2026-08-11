@@ -1,10 +1,12 @@
 """callback — 백엔드에 결과 전문 통보 (§7.2 콜백 스키마)."""
 
+import re
 import time
 from typing import Any
 
 from app.graphs.review.state import ReviewState
 from app.schemas.callback import CallbackPayload
+from app.schemas.common import Opinion
 from app.tools.backend_client import send_callback
 
 
@@ -64,6 +66,46 @@ def ordered_opinions(opinions: dict[str, Any]) -> list:
     return known + extra
 
 
+# 판례 인용 접두 "(결정/결정주체[, override])" → 한국어 (2026-08-11).
+#
+# **왜 여기서 치환하는가.** precedent_auditor._precedent_lines가 LLM 입력에 이
+# 표기를 쓰는 것과 precedent_auditor/v5.yaml이 similar_cases에 "입력 표기 그대로"
+# 인용하도록 강제하는 것은 그대로 둔다 — "ADMIN 판례만 근거" 규칙이 이 표기에
+# 의존하고(precedent_auditor.py _precedent_lines 참조), 입력 표기 그대로 인용해야
+# 충실성(환각 여부)을 원문 대조로 검증할 수 있다. 대신 사용자에게 나가는 마지막
+# 지점(콜백 페이로드 조립)에서만 코드가 결정적으로 옮긴다 — LLM에게 번역을
+# 시키면 의역 드리프트·환각 표면이 새로 생긴다.
+_CITATION_PREFIX_RE = re.compile(r"^\((approve|reject|escalate)/(ADMIN|AGENT)(, override)?\)\s*")
+_CITATION_DECISION_LABELS = {"approve": "승인", "reject": "반려", "escalate": "보류"}
+_CITATION_ACTOR_LABELS = {"ADMIN": "관리자", "AGENT": "AI 자동"}
+
+
+def _translate_precedent_citation(citation: str) -> str:
+    """판례 인용 문자열의 시스템 표기 접두만 한국어로 옮긴다 (순수 함수).
+
+    접두 뒤 본문("사유: ..." 포함)은 관리자가 원래 남긴 자유 텍스트이므로 그대로
+    둔다. 접두가 이 형식이 아니면(향후 표기 변경 등) 원문을 그대로 반환한다 —
+    숨기면 새 표기가 조용히 새어 나간다(escalate.describe_rules의 미등록 규칙
+    폴백과 같은 원칙).
+    """
+    match = _CITATION_PREFIX_RE.match(citation)
+    if not match:
+        return citation
+    decision, actor, override = match.groups()
+    label = f"({_CITATION_ACTOR_LABELS[actor]} {_CITATION_DECISION_LABELS[decision]}"
+    if override:
+        label += "·AI 추천 번복"
+    return label + ") " + citation[match.end() :]
+
+
+def _translate_opinion_citations(opinion: Opinion) -> Opinion:
+    if not opinion.similar_cases:
+        return opinion
+    return opinion.model_copy(
+        update={"similar_cases": [_translate_precedent_citation(c) for c in opinion.similar_cases]}
+    )
+
+
 def build_callback_payload(state: ReviewState) -> CallbackPayload:
     verdict = state.get("verdict") or "escalate"
     return CallbackPayload(
@@ -78,7 +120,9 @@ def build_callback_payload(state: ReviewState) -> CallbackPayload:
         suggested_category=state["claim"].category or None,
         processed_by=resolve_processed_by(verdict, state.get("admin_decision")),
         confidence=state.get("confidence"),
-        opinions=ordered_opinions(state.get("opinions", {})),
+        opinions=[
+            _translate_opinion_citations(o) for o in ordered_opinions(state.get("opinions", {}))
+        ],
         mismatch=state.get("mismatch", []),
         reasons=state.get("reasons"),
     )

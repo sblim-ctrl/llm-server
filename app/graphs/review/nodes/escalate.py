@@ -10,8 +10,10 @@ HITL(사람 개입, 강의 06-02): 데모·관측 경로(hitl_enabled=True, 체�
 AI는 여전히 실행 주체가 아니다 — 결정은 사람이 내리고, 그래프는 그 결정을
 기록·전달할 뿐이다 (C2 추천만 원칙과 정합).
 """
+
 from langgraph.types import interrupt
 
+from app.graphs.review.nodes.mismatch_gate import FIELD_LABELS
 from app.graphs.review.state import ReviewState
 from app.schemas.common import Reasons
 
@@ -71,7 +73,9 @@ def _escalation_detail(state: ReviewState) -> str:
     mismatch = state.get("mismatch", [])
     if mismatch:
         return "영수증-청구 불일치: " + ", ".join(
-            f"{m.field}(청구 {m.claimed} / 영수증 {m.receipt})" for m in mismatch)
+            f"{FIELD_LABELS.get(m.field, m.field)}(청구 {m.claimed} / 영수증 {m.receipt})"
+            for m in mismatch
+        )
     if gate is not None and gate.triggered_rules:
         return "가드레일: " + describe_rules(gate.triggered_rules)
     return "판정 신뢰도 미달 또는 심사 실패"
@@ -105,19 +109,22 @@ async def escalate(state: ReviewState) -> dict:
     if state.get("hitl_enabled"):
         claim = state.get("claim")
         # 그래프가 여기서 멈춘다 — 재개 시 interrupt()가 관리자 결정을 반환
-        decision = interrupt({
-            "reason": detail,
-            "claim": {"title": claim.title, "amount": claim.amount,
-                      "category": claim.category} if claim else None,
-            "confidence": state.get("confidence"),
-            "opinions": {k: {"verdict": o.verdict, "summary": o.summary}
-                         for k, o in (state.get("opinions") or {}).items()},
-        })
-        d = (str(decision.get("decision", "")).lower()
-             if isinstance(decision, dict) else "")
+        decision = interrupt(
+            {
+                "reason": detail,
+                "claim": {"title": claim.title, "amount": claim.amount, "category": claim.category}
+                if claim
+                else None,
+                "confidence": state.get("confidence"),
+                "opinions": {
+                    k: {"verdict": o.verdict, "summary": o.summary}
+                    for k, o in (state.get("opinions") or {}).items()
+                },
+            }
+        )
+        d = str(decision.get("decision", "")).lower() if isinstance(decision, dict) else ""
         if d in ("approve", "reject"):
-            note = (str(decision.get("reason") or "").strip()
-                    if isinstance(decision, dict) else "")
+            note = str(decision.get("reason") or "").strip() if isinstance(decision, dict) else ""
             label = "승인" if d == "approve" else "반려"
             return {
                 "verdict": d,
@@ -126,7 +133,7 @@ async def escalate(state: ReviewState) -> dict:
                     # 요청자용엔 관리자 메모를 싣지 않는다 — 내부 수치 노출 방지 (§3.3)
                     requester=f"관리자 검토 결과 {label}되었습니다.",
                     admin=f"관리자 직접 결정({label}) — 사유: {note or '기재 없음'}"
-                          f" / 원 에스컬레이션: {detail}",
+                    f" / 원 에스컬레이션: {detail}",
                 ),
             }
         # 이상값(승인/반려 아님) → 안전 방향: 보류 유지 (§8)

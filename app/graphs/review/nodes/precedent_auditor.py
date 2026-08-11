@@ -53,7 +53,7 @@ def _mock_opinion(cases: list[dict]) -> Opinion:
         return Opinion(
             auditor="precedent",
             verdict="warn",
-            summary=f"유사 사안에 대한 반려/override 판례 {len(risky)}건 발견 — 관리자 확인 권고",
+            summary=f"유사 사안에 대한 관리자 반려·AI 추천 번복 판례 {len(risky)}건 발견 — 관리자 확인 권고",
             similar_cases=citations,
         )
 
@@ -71,14 +71,11 @@ def _mock_opinion(cases: list[dict]) -> Opinion:
         auditor="precedent",
         verdict="pass",
         summary=(
-            (
-                f"동일 사안 관리자 승인 판례 {len(support)}건 — 승인 근거로 인용"
-                if support
-                else "유사 판례 있음, 위험 신호 없음"
-                if cases
-                else "유사 판례 없음"
-            )
-            + " (mock)"
+            f"동일 사안 관리자 승인 판례 {len(support)}건 — 승인 근거로 인용"
+            if support
+            else "유사 판례 있음, 위험 신호 없음"
+            if cases
+            else "유사 판례 없음"
         ),
         similar_cases=citations,
         figures={"admin_approve_support": len(support)},

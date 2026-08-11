@@ -64,7 +64,10 @@ def _mock_result(state: ReviewState) -> AdjudicationResult:
             verdict="reject",
             confidence=0.95,
             reason_requester="예산 잔액이 부족하여 승인이 어렵습니다.",
-            reason_admin=f"예산 잔액 부족: {figures} (가드레일 reject 후보를 LLM이 확정, mock)",
+            reason_admin=(
+                f"예산 잔액 부족 — 잔액 {figures.get('remaining', 0):,}원, "
+                f"청구 {claim.amount:,}원 (가드레일 반려 후보를 LLM이 확정)"
+            ),
         )
     return AdjudicationResult(
         verdict="approve",
@@ -72,7 +75,7 @@ def _mock_result(state: ReviewState) -> AdjudicationResult:
         reason_requester=f"'{claim.title}' 지출이 회칙과 예산 기준을 충족하여 승인되었습니다.",
         reason_admin=(
             f"3개 심사관 전원 통과. 금액 {claim.amount:,}원, "
-            f"승인 후 잔액 {figures.get('remaining_after', '?')}원 (mock)"
+            f"승인 후 잔액 {figures.get('remaining_after', '?')}원"
         ),
     )
 

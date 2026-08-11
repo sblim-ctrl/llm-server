@@ -9,6 +9,7 @@
 llm-postgres는 떠 있어야 한다 (docker compose up -d llm-postgres).
 TODO(4주차): LangSmith Dataset 업로드·Experiment 연동, GitHub Actions CI 게이트로 편입.
 """
+
 import asyncio
 import sys
 from pathlib import Path
@@ -37,35 +38,50 @@ async def main() -> int:
     print(f"골든셋 {summary['version']} ({label}) — {summary['total']}건 평가 시작\n")
     for r in summary["results"]:
         mark = "O" if r["correct"] else "X"
-        line = (f" [{mark}] {r['id']:28s} 기대={VERDICT_LABELS[r['expected']]:2s} "
-                f"실제={VERDICT_LABELS.get(r['actual'], r['actual']):2s}")
+        line = (
+            f" [{mark}] {r['id']:28s} 기대={VERDICT_LABELS[r['expected']]:2s} "
+            f"실제={VERDICT_LABELS.get(r['actual'], r['actual']):2s}"
+        )
         if not r["correct"]:
             line += f"  gate={r['gate']}"
         print(line)
 
-    print(f"\n정확도: {summary['correct']}/{summary['total']} = {summary['accuracy']:.1%} "
-          f"(기준 ≥ {summary['accuracy_threshold']:.0%})")
+    print(
+        f"\n정확도: {summary['correct']}/{summary['total']} = {summary['accuracy']:.1%} "
+        f"(기준 ≥ {summary['accuracy_threshold']:.0%})"
+    )
     print(f"오승인(false-approve): {summary['false_approve_count']}건 (기준 = 0건, 하드 게이트)")
+    print(
+        f"사용자 노출 문구 금지 용어 위반: {summary['term_violation_count']}건 "
+        f"(기준 = 0건, 하드 게이트)"
+    )
     if summary["trajectory_total"]:
-        print(f"Trajectory(가드레일 발동 일치): {summary['trajectory_correct']}"
-              f"/{summary['trajectory_total']} = {summary['trajectory_accuracy']:.1%}")
+        print(
+            f"Trajectory(가드레일 발동 일치): {summary['trajectory_correct']}"
+            f"/{summary['trajectory_total']} = {summary['trajectory_accuracy']:.1%}"
+        )
 
     m = summary["metrics"]
+
     def _pct(v: float | None) -> str:
         return "N/A" if v is None else f"{v:.0%}"
+
     print(f"\n자동 처리율: {m['automation_rate']:.0%} (승인·반려로 자동 종결)")
     print("판정별 Precision/Recall/F1:")
     for label in ("approve", "reject", "escalate"):
         p = m["per_class"][label]
-        print(f"  {VERDICT_LABELS[label]:2s}(n={p['support']:2d}): "
-              f"P={_pct(p['precision'])} R={_pct(p['recall'])} F1={_pct(p['f1'])}")
-    print(f"  → 에스컬레이션 Recall(놓침 없음) = {_pct(m['escalation_recall'])} "
-          "(안전 핵심 지표)")
+        print(
+            f"  {VERDICT_LABELS[label]:2s}(n={p['support']:2d}): "
+            f"P={_pct(p['precision'])} R={_pct(p['recall'])} F1={_pct(p['f1'])}"
+        )
+    print(f"  → 에스컬레이션 Recall(놓침 없음) = {_pct(m['escalation_recall'])} (안전 핵심 지표)")
 
     # 분류 정확도 — 판정과 독립된 관측 지표. 게이트가 아니다(아래 주석 참조).
     if summary["category_total"]:
-        print(f"\n분류 정확도: {summary['category_correct']}/{summary['category_total']} "
-              f"= {summary['category_accuracy']:.1%}  (관측 지표 — 게이트 아님)")
+        print(
+            f"\n분류 정확도: {summary['category_correct']}/{summary['category_total']} "
+            f"= {summary['category_accuracy']:.1%}  (관측 지표 — 게이트 아님)"
+        )
         if summary["category_misses"]:
             print("  오분류:")
             for miss in summary["category_misses"]:
@@ -80,6 +96,11 @@ async def main() -> int:
     if summary["false_approve_count"]:
         print("\n!! 오승인 발생 — 절대 머지 불가 케이스:")
         for case_id in summary["false_approve_ids"]:
+            print(f"   - {case_id}")
+        return 1
+    if summary["term_violation_count"]:
+        print("\n!! 사용자 노출 문구에 금지 용어 발생 — 절대 머지 불가 케이스:")
+        for case_id in summary["term_violation_ids"]:
             print(f"   - {case_id}")
         return 1
     if summary["accuracy"] < summary["accuracy_threshold"]:

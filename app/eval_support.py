@@ -5,17 +5,58 @@ app 패키지 안에 둬야 Docker 이미지에도 포함되고, /ui 대시보�
 
 import csv
 import json
+import re
 from pathlib import Path
 from typing import Any
 
 from app.eval_metrics import category_metrics, score_category, verdict_metrics
 from app.graphs.review.graph import review_graph
+from app.graphs.review.nodes.callback import build_callback_payload
 from app.schemas.analyze import AnalyzeRequest
+from app.schemas.callback import CallbackPayload
 
 ACCURACY_THRESHOLD = 0.90
 DEFAULT_GOLDEN_PATH = Path(__file__).resolve().parents[1] / "eval" / "golden" / "golden_v1.json"
 RESULTS_DIR = Path(__file__).resolve().parents[1] / "eval" / "results"
 VERDICT_LABELS = {"approve": "승인", "reject": "반려", "escalate": "보류"}
+
+# 사용자 노출 문구(콜백 reasons·opinions)에 섞이면 안 되는 내부 표기 — 관리자를
+# "admin"으로 지칭하는 등 일반 사용자가 이해하기 어려운 표현을 막기 위한 회귀 그물
+# (2026-08-11). ADMIN/AGENT/override는 판례 인용 시스템 표기가 few_shot을 통해
+# 그대로 복제되던 결함, 나머지는 mock 문구·수치 키 이름이 새던 자리다.
+BANNED_USER_FACING_PATTERNS: dict[str, re.Pattern[str]] = {
+    "mock_suffix": re.compile(r"\(mock\)"),
+    "override": re.compile(r"\boverride\b", re.IGNORECASE),
+    "admin_tag": re.compile(r"\bADMIN\b"),
+    "agent_tag": re.compile(r"\bAGENT\b"),
+    "fail_safe": re.compile(r"\bfail-safe\b", re.IGNORECASE),
+    "admin_approve_support": re.compile(r"\badmin_approve_support\b"),
+    "total_budget_key": re.compile(r"\btotal_budget\b"),
+    "remaining_after_key": re.compile(r"\bremaining_after\b"),
+}
+
+
+def scan_banned_terms(*texts: str | None) -> list[str]:
+    """사용자 노출 문자열에서 금지 용어를 찾는다 (순수 함수) — 위반 없으면 빈 리스트."""
+    hits: list[str] = []
+    for text in texts:
+        if not text:
+            continue
+        for name, pattern in BANNED_USER_FACING_PATTERNS.items():
+            if pattern.search(text):
+                hits.append(f"{name} in {text!r}")
+    return hits
+
+
+def scan_callback_payload_terms(payload: CallbackPayload) -> list[str]:
+    """콜백 페이로드의 사용자 노출 텍스트(reasons·opinions) 전량 스캔."""
+    texts: list[str] = []
+    if payload.reasons:
+        texts += [payload.reasons.requester, payload.reasons.admin]
+    for op in payload.opinions:
+        texts.append(op.summary)
+        texts.extend(op.similar_cases)
+    return scan_banned_terms(*texts)
 
 
 async def run_case(case: dict[str, Any]) -> dict[str, Any]:
@@ -55,6 +96,11 @@ async def run_case(case: dict[str, Any]) -> dict[str, Any]:
     actual_category = claim.category if claim else None
     expected_category = case.get("expected_category")
 
+    # 콜백으로 나가는 그대로 스캔 — 이 함수가 조립해 시뮬레이션한 문구가 아니라
+    # 실제 발송 페이로드(callback.py build_callback_payload)를 대상으로 해야
+    # "테스트만 통과하고 실제로는 새는" 괴리가 생기지 않는다.
+    term_violations = scan_callback_payload_terms(build_callback_payload(final_state))
+
     return {
         "id": case["id"],
         "scenario": case.get("scenario", ""),
@@ -68,6 +114,7 @@ async def run_case(case: dict[str, Any]) -> dict[str, Any]:
         "expected_category": expected_category,
         "actual_category": actual_category,
         "category_ok": score_category(actual_category, expected_category),
+        "term_violations": term_violations,
     }
 
 
@@ -79,6 +126,7 @@ async def run_golden_set(golden_path: Path | None = None) -> dict[str, Any]:
     results = [await run_case(c) for c in cases]
     correct = sum(r["correct"] for r in results)
     false_approves = [r for r in results if r["false_approve"]]
+    term_violation_cases = [r for r in results if r["term_violations"]]
     accuracy = correct / len(results) if results else 0.0
 
     traj_cases = [r for r in results if r["trajectory_ok"] is not None]
@@ -112,7 +160,13 @@ async def run_golden_set(golden_path: Path | None = None) -> dict[str, Any]:
         **category_metrics(results),
         # §4 Sprint 2 — 판정 분포·에스컬레이션 P/R·자동 처리율 (순수 함수 계산)
         "metrics": verdict_metrics(results),
-        "passed": not false_approves and accuracy >= ACCURACY_THRESHOLD,
+        # 사용자 노출 문구 금지 용어 위반 — false_approve와 같은 급의 하드 게이트
+        # (2026-08-11, admin/override 등 비직관 용어 노출 방지)
+        "term_violation_count": len(term_violation_cases),
+        "term_violation_ids": [r["id"] for r in term_violation_cases],
+        "passed": (
+            not false_approves and not term_violation_cases and accuracy >= ACCURACY_THRESHOLD
+        ),
         "results": results,
     }
     summary["csv_path"] = str(export_results_csv(results))
@@ -139,6 +193,7 @@ def export_results_csv(results: list[dict[str, Any]]) -> Path:
                 "expected_category",
                 "actual_category",
                 "category_ok",
+                "term_violations",
             ]
         )
         for r in results:
@@ -156,6 +211,7 @@ def export_results_csv(results: list[dict[str, Any]]) -> Path:
                     r["expected_category"] or "",
                     r["actual_category"] or "",
                     "" if r["category_ok"] is None else r["category_ok"],
+                    "|".join(r["term_violations"]),
                 ]
             )
     return path

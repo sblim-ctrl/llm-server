@@ -1,6 +1,10 @@
 """판정 지표 순수 함수 테스트 (§4 Sprint 2)."""
+
 from app.eval_metrics import (
-    automation_rate, confusion_matrix, per_class_prf, verdict_metrics,
+    automation_rate,
+    confusion_matrix,
+    per_class_prf,
+    verdict_metrics,
 )
 
 
@@ -11,9 +15,14 @@ def _r(expected, actual):
 # 시나리오: approve 3건(2정답·1을 escalate로 흘림), reject 2건(정답),
 #           escalate 3건(2정답·1을 approve로 오판 = 위험한 오분류)
 RESULTS = [
-    _r("approve", "approve"), _r("approve", "approve"), _r("approve", "escalate"),
-    _r("reject", "reject"), _r("reject", "reject"),
-    _r("escalate", "escalate"), _r("escalate", "escalate"), _r("escalate", "approve"),
+    _r("approve", "approve"),
+    _r("approve", "approve"),
+    _r("approve", "escalate"),
+    _r("reject", "reject"),
+    _r("reject", "reject"),
+    _r("escalate", "escalate"),
+    _r("escalate", "escalate"),
+    _r("escalate", "approve"),
 ]
 
 
@@ -22,7 +31,7 @@ def test_confusion_matrix_counts():
     assert cm["approve"]["approve"] == 2
     assert cm["approve"]["escalate"] == 1
     assert cm["escalate"]["escalate"] == 2
-    assert cm["escalate"]["approve"] == 1     # 위험한 오분류 1건 포착
+    assert cm["escalate"]["approve"] == 1  # 위험한 오분류 1건 포착
     assert cm["reject"]["reject"] == 2
 
 
@@ -47,7 +56,7 @@ def test_approve_precision_recall():
 
 def test_perfect_class_is_one():
     prf = per_class_prf(RESULTS)
-    rej = prf["reject"]                       # reject는 완벽
+    rej = prf["reject"]  # reject는 완벽
     assert rej["precision"] == 1.0 and rej["recall"] == 1.0 and rej["f1"] == 1.0
 
 
@@ -59,15 +68,15 @@ def test_automation_rate():
 def test_empty_results_safe():
     assert automation_rate([]) == 0.0
     prf = per_class_prf([])
-    assert prf["approve"]["precision"] is None   # 예측·정답 0 → 정의 안 됨(N/A)
+    assert prf["approve"]["precision"] is None  # 예측·정답 0 → 정의 안 됨(N/A)
     assert prf["approve"]["support"] == 0
 
 
 def test_no_prediction_precision_is_none():
     """어떤 라벨로도 판정하지 않으면 그 라벨 precision은 None(0으로 왜곡 안 함)."""
     prf = per_class_prf([_r("approve", "approve")])
-    assert prf["escalate"]["precision"] is None   # escalate 판정 0건
-    assert prf["escalate"]["recall"] is None       # escalate 기대 0건
+    assert prf["escalate"]["precision"] is None  # escalate 판정 0건
+    assert prf["escalate"]["recall"] is None  # escalate 기대 0건
 
 
 def test_verdict_metrics_bundle():
@@ -143,8 +152,8 @@ def test_accuracy_denominator_excludes_unscored_cases():
     """
     results = [
         _c("a", "식비", "식비"),
-        _c("b", "교통", "교육"),      # 오답
-        _c("c", None, "비품"),        # 채점 제외
+        _c("b", "교통", "교육"),  # 오답
+        _c("c", None, "비품"),  # 채점 제외
     ]
     m = category_metrics(results)
     assert m["category_total"] == 2, "채점 제외 케이스가 분모에 들어갔다"
@@ -181,10 +190,19 @@ def test_csv_carries_the_category_columns():
     from app.eval_support import export_results_csv
 
     row = {
-        "id": "case-1", "scenario": "", "expected": "approve", "actual": "approve",
-        "correct": True, "false_approve": False, "gate": [], "expected_gate": [],
-        "trajectory_ok": None, "expected_category": "식비", "actual_category": "교통",
+        "id": "case-1",
+        "scenario": "",
+        "expected": "approve",
+        "actual": "approve",
+        "correct": True,
+        "false_approve": False,
+        "gate": [],
+        "expected_gate": [],
+        "trajectory_ok": None,
+        "expected_category": "식비",
+        "actual_category": "교통",
         "category_ok": False,
+        "term_violations": [],
     }
     path = export_results_csv([row])
     with path.open(encoding="utf-8-sig") as f:
