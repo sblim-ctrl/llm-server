@@ -12,6 +12,7 @@
 import pytest
 
 from app.graphs.review.nodes.rule_auditor import _audit_by_default_policy
+from app.llm.prompts import load_prompt
 from app.schemas.common import ExpenseClaim
 from app.tools.policy_defaults import (
     FALLBACK_TEAM_TYPE,
@@ -101,10 +102,14 @@ async def test_default_policy_never_rejects():
 
 
 async def test_default_policy_records_llm_meta():
-    """비용·버전 계측 대상 — 새 경로도 llm_meta에 남아야 한다."""
+    """비용·버전 계측 대상 — 새 경로도 llm_meta에 남아야 한다.
+
+    버전을 하드코딩하지 않는다 — 승격 때마다 이 테스트가 깨지면 계측이 남는지가
+    아니라 상수 동기화를 검사하는 꼴이 된다. 버전 값 자체는 test_prompts가 본다.
+    """
     out = await _audit_by_default_policy({"team_type": "스터디"}, CLAIM, members=[])
     meta = out["llm_meta"]["default_policy"]
-    assert meta.prompt_version == "default_policy/v2"
+    assert meta.prompt_version == load_prompt("default_policy").version
 
 
 async def test_missing_team_type_does_not_crash():
