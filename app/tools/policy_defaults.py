@@ -25,9 +25,14 @@ templates/policy_templates.yaml의 유형별 기본 조항을 심사 근거로 �
 
 ## 금액 조항을 가려내는 방법
 
-템플릿 placeholder 유무로 가른다. 한도가 든 조항은 전부 `{auto_approve_limit}`·
-`{per_meal_limit}` 치환을 쓰기 때문에 정확히 갈린다 (5유형 전수 확인 — 성격 15건 /
-금액 9건). 템플릿에 새 조항을 추가할 때 금액을 넣는다면 반드시 placeholder를 쓸 것.
+템플릿 placeholder **유무**로 가른다 — 구현은 `"{" not in r` 한 줄이라 placeholder
+이름이 바뀌어도 따라간다. 금액이 든 조항은 전부 치환을 쓰기 때문에 정확히 갈린다.
+템플릿에 새 조항을 추가할 때 금액을 넣는다면 반드시 placeholder를 쓸 것.
+
+현재 쓰이는 이름은 `{auto_approve_limit}`·`{meal}`·`{venue}`·`{supplies}`·
+`{transport}`·`{education}`·`{event}`·`{gift}`·`{travel}`·`{dues}`·`{dues_period}`다.
+2026-08-11 회칙 개편으로 유형별 한도가 도입되며 구 `{per_meal_limit}`은 사라졌는데
+이 문단이 그 이름을 근거로 들고 있었다 (PR #65 리뷰 N3으로 정정).
 
 ## 영수증 조항을 가려내는 방법
 

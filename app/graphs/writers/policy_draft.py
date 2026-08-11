@@ -33,16 +33,35 @@ from app.tools.search_references import search_references
 logger = logging.getLogger(__name__)
 
 # 추가 조항 상한 — 천장이지 목표가 아니다(프롬프트가 "빠짐없이, 단 중복·일반론 금지"로
-# 실제 개수를 조절). base_rules 4~5개와 합쳐 총 10~12개 = 모바일 카드 한 장 분량.
+# 실제 개수를 조절). 2026-08-11 회칙 개편으로 기본 조가 유형당 16~18개가 되면서
+# 상한도 7 → 10으로 올렸다. 합치면 유형별 총 26~28조 = 실제 회칙 문서 분량이다
+# (개편 전에는 기본 4~5개 + 추가 7개로 모바일 카드 한 장을 노렸다).
 #
-# 프롬프트가 이 상한을 실제로 쓰는 것은 **v3부터**다. v1·v2는 본문에 "0~3개"·"최대 3개"로
-# 적혀 있어 실효 상한이 3이었고, 이 주석도 "v2가 0~7개를 사용한다"로 사실과 달랐다
-# (PR #9 리뷰 D6 지적). v3가 "0~7개"로 맞췄다.
-MAX_EXTRA_RULES = 7
+# **이 주석의 숫자는 MAX_EXTRA_RULES·템플릿과 함께 고쳐야 한다.** 상한만 7→10으로
+# 바꾸고 주석을 두고 온 적이 있고(PR #65 리뷰 N2), 그전에도 같은 계열의 지적이
+# 있었다(PR #9 리뷰 D6 — "v2가 0~7개"라는 사실과 다른 서술).
+# 프롬프트가 이 상한을 실제로 쓰는 것은 v3부터다 — v1·v2는 본문이 "최대 3개"라
+# 실효 상한이 3이었다. 현재 기본은 v6.
+MAX_EXTRA_RULES = 10
+
+
+class ExtraRule(BaseModel):
+    """LLM이 제안하는 추가 조 하나 — 기본 조항과 같은 형식으로 렌더링하기 위해 제목을 분리한다.
+
+    외부 계약(`PolicyDraft.rules: list[str]`)은 그대로다 — 이 구조는 조립 과정에서만
+    쓰이고 화면에는 "제N조(제목) 본문" 한 줄로 나간다.
+    """
+
+    title: str
+    text: str
+
+    def rendered(self) -> str:
+        """조 번호를 뺀 "(제목) 본문" — 번호는 기본 조항 개수에 이어 조립부가 붙인다."""
+        return f"({self.title.strip()}) {self.text.strip()}"
 
 
 class ExtraRules(BaseModel):
-    extra_rules: list[str] = []
+    extra_rules: list[ExtraRule] = []
 
 
 def normalize_rule(rule: str) -> str:
@@ -71,12 +90,159 @@ def dedupe_rules(base: list[str], extra: list[str]) -> list[str]:
     return out
 
 
-PER_MEAL_LIMIT = 30_000  # 1인당 식비 기본 한도 — 추후 팀 규모 기반 조정
-# 회비가 입력된 경우에만 붙는 조항 (유형 무관이라 템플릿이 아닌 코드 상수).
-DUES_RULE = "회비는 1인당 {dues}원으로 하며, 회비 수입 범위 내에서 지출을 집행한다."
-# notes의 회비 표기. verify가 이 접두사로 '회비가 반영됐는지'를 판별하므로 조각을 상수로 둔다
+# notes의 회비 표기. verify가 이 조각으로 '회비가 조항과 정합한지'를 판별하므로 상수로 둔다
 # — 단순히 notes에 '회비'가 있는지 보면 모임 이름('무회비 동아리' 등)에 걸려 오탐한다.
 DUES_NOTE = " · 회비 {dues}원"
+# 회비 조항을 식별하는 문구. 템플릿(bylaw_articles)의 회비 조 본문이 이 말로 시작한다.
+DUES_MARK = "회비는 1인당 "
+
+
+#: 회칙에 쓰면 안 되는 **금액·정도의 모호어**. 심사관이 판단할 수 없는 말이라 조항이
+#: 기준으로 기능하지 못한다("소액 선물은 인정한다" → 얼마까지가 소액인가?).
+#:
+#: v5 프롬프트가 이미 금지하지만 LLM이 지키지 않는 것을 실측으로 확인했다(2026-08-11:
+#: 친목 초안에 "소액 선물" 조항이 나왔고, 그것도 템플릿의 경조사비 조와 내용이 겹쳤다).
+#: 프롬프트만으로는 못 막는 계열이라 코드에서 한 번 더 거른다 — 이 프로젝트에서 반복된
+#: "규칙보다 예시가 세다"의 다른 얼굴이다.
+#:
+#: **의도적으로 좁게 잡았다.** "충분한"(잔액이 충분한 = 잔액 ≥ 청구액, 사실 조건)과
+#: "필요한 경우"(절차 조건)는 우리 템플릿이 정당하게 쓰고 있어 넣지 않는다. 금액이
+#: 들어갈 자리를 형용사로 때우는 말만 막는다.
+VAGUE_AMOUNT_TERMS = (
+    "소액", "고액", "고가", "적절한", "적절히", "적당한", "적당히",
+    "상당한", "과도한", "알맞은", "합리적인", "저렴한", "소정의",
+)
+
+
+#: limits 키 → 회칙에 쓰는 항목 이름. LLM에게 한도 표를 보여줄 때 쓴다.
+LIMIT_LABELS = {
+    "meal": "식비(1인 1회)", "venue": "장소 대관비(회당)", "supplies": "비품비(분기)",
+    "transport": "교통비(1인당)", "education": "교육비(1인당)",
+    "event": "행사·활동비(건당)", "gift": "경조사비(1건)", "travel": "여행·숙박(1인 1박)",
+}
+
+
+def unknown_amounts_in(text: str, allowed: set[int]) -> list[int]:
+    """조항이 인용한 금액 중 허용 목록(회칙 한도·승인 기준)에 없는 것.
+
+    LLM이 한도를 지어내면 회칙 안에서 숫자가 갈린다. 프롬프트로 금지하고 한도 표까지
+    주지만, 실측에서 프롬프트만으로는 안 지켜지는 계열임이 반복 확인돼(모호어와 같은
+    유형) 조립 단계에서 한 번 더 거른다.
+    """
+    return [a for a in _amounts_in(text) if a not in allowed]
+
+
+def vague_terms_in(text: str) -> list[str]:
+    """조항에 들어간 금액 모호어 목록 (없으면 빈 목록)."""
+    return [w for w in VAGUE_AMOUNT_TERMS if w in text]
+
+
+def drop_vague_rules(rules: list[str]) -> tuple[list[str], list[str]]:
+    """모호어가 든 조항을 떨어뜨린다. (남길 것, 버린 것) 반환.
+
+    초안 전체를 불통과시키지 않고 해당 조만 버리는 이유: 이 API는 마법사가 동기로
+    부르는 자리라 검증 실패가 5xx가 된다(모듈 docstring 참조). 기본 조항은 우리가
+    쓴 것이라 이미 깨끗하고(테스트로 고정), 위험한 것은 LLM 조항뿐이므로 그것만
+    버리면 초안은 여전히 완결된 회칙으로 남는다.
+    """
+    keep, dropped = [], []
+    for rule in rules:
+        (dropped if vague_terms_in(rule) else keep).append(rule)
+    return keep, dropped
+
+
+def _article_applies(article: dict, dues: int) -> bool:
+    """`requires_dues: true`인 조는 회비 입력이 없으면 통째로 뺀다.
+
+    회비 조뿐 아니라 '회비를 기한 내 납부한다', '잔여 회비를 이월한다'처럼 **회비가
+    있다는 것을 전제하는 의무 조항**이 여기 해당한다. 회비를 정한 적 없는 모임에
+    그런 조항을 만들어 주면 회칙이 사실과 다른 의무를 부과하게 된다(2026-08-11).
+    템플릿에 플래그로 표시하는 이유는 문구 검색으로 걸러면 표현이 바뀔 때마다
+    조용히 새는 자리이기 때문이다.
+    """
+    return dues > 0 or not article.get("requires_dues")
+
+
+def _round_to(amount: float, unit: int = 1_000) -> int:
+    """단위 반올림 (하한은 unit)."""
+    return max(unit, int(round(amount / unit)) * unit)
+
+
+def _bylaw_unit(amount: float) -> int:
+    """round_bylaw_amount가 쓰는 반올림 단위 — 하한 올림에서도 같은 단위를 써야 한다."""
+    if amount < 50_000:
+        return 5_000
+    if amount < 200_000:
+        return 10_000
+    return 50_000
+
+
+def round_bylaw_amount_up(amount: float) -> int:
+    """같은 단위로 **올림** — 선언한 하한을 반올림이 깎지 않도록 쓰는 짝 함수.
+
+    `round_bylaw_amount`는 가까운 쪽으로 붙이므로 12,000원처럼 단위의 배수가 아닌
+    값은 10,000원으로 내려간다. 한도의 `min`은 "이보다 낮게는 주지 않는다"는 선언이라
+    내림이 적용되면 안 된다 (PR #65 리뷰 N1).
+    """
+    unit = _bylaw_unit(amount)
+    return max(unit, -(-int(amount) // unit) * unit)
+
+
+def round_bylaw_amount(amount: float) -> int:
+    """회칙에 적을 금액으로 반올림 — **금액 크기에 따라 단위를 키운다**.
+
+    사람이 쓴 규정은 19,000원·48,000원·320,000원처럼 적지 않는다. 자릿수가 올라갈수록
+    끝자리가 둥글어지는 것이 자연스럽다(2026-08-11 지적):
+        5만 미만   → 5,000원 단위   (19,000 → 20,000)
+        20만 미만  → 10,000원 단위  (48,000 → 50,000)
+        20만 이상  → 50,000원 단위  (320,000 → 300,000)
+    """
+    return _round_to(amount, _bylaw_unit(amount))
+
+
+def suggested_limits(template: dict, initial_budget: int, member_count: int | None) -> dict[str, str]:
+    """카테고리별 한도 앵커를 예산·인원에서 산출 (결정적 — LLM 아님).
+
+    종전에는 `PER_MEAL_LIMIT = 30_000` 상수 하나가 유형·예산·인원과 무관하게 쓰였다.
+    예산 30만원 모임과 1,000만원 모임에 같은 한도가 나가던 자리다.
+
+    비율·상하한은 유형별로 `templates/policy_templates.yaml`의 `limits`에 있다 —
+    §12 원칙(유형 조정은 YAML만 고친다)을 지키기 위해 코드에 숫자를 두지 않는다.
+    basis=per_person이면 1인당 예산 기준, total이면 총예산 기준이다.
+    """
+    n = max(member_count or 1, 1)
+    per_person = initial_budget / n
+    out: dict[str, str] = {}
+    for key, cfg in (template.get("limits") or {}).items():
+        basis = per_person if cfg.get("basis") == "per_person" else initial_budget
+        raw = basis * float(cfg.get("ratio", 0))
+        clamped = min(max(raw, cfg.get("min", 0)), cfg.get("max", raw or 0))
+        # 반올림이 상한을 넘지 않게 상한도 같은 규칙으로 둥글린 값과 비교한다
+        rounded = min(round_bylaw_amount(clamped), round_bylaw_amount(cfg.get("max", clamped)))
+        # 반올림이 **하한을 깎는 것**은 막는다 — min은 "이보다 낮게는 주지 않는다"는
+        # 선언이라 내림이 적용되면 안 된다. 예: meal.min=12,000이 5,000 단위 반올림으로
+        # 10,000이 되던 자리(동아리·동호회, PR #65 리뷰 N1). 하한만 올림으로 맞춘다.
+        if (floor := cfg.get("min")) and rounded < floor:
+            rounded = round_bylaw_amount_up(floor)
+        out[key] = f"{rounded:,}"
+    return out
+
+
+def effective_dues(req_dues: int | None) -> int:
+    """회칙에 적을 회비 — **사용자 입력이 유일한 원천**이다. 입력이 없으면 회비 조를 뺀다.
+
+    한때(2026-08-11 오전) 입력이 없으면 유형별 기본값을 인원·예산으로 보정해 제안했다.
+    같은 날 되돌렸다. 이유는 두 가지다.
+
+    ① **관리자가 정한 적 없는 금액을 회칙이 단정하게 된다.** 관리자가 화면에서 그 값을
+       입력하지 않는 한 실제 설정에는 반영되지 않으므로, 회칙 문서와 시스템 설정이
+       처음부터 어긋난 채로 시작한다.
+    ② 확정된 회칙은 인덱싱되어 rule_auditor의 판정 근거가 된다 — 지어낸 금액이 심사
+       근거로 굳는 경로다.
+
+    승인 기준 금액도 같은 이유로 회칙 조항에서 숫자를 뺐다(templates 참조).
+    """
+    return req_dues or 0
 
 
 class DraftState(TypedDict, total=False):
@@ -112,22 +278,27 @@ async def retrieve_references(state: DraftState) -> dict:
     return {"references": refs}
 
 
-def _mock_extra_rules(description: str) -> list[str]:
+def _mock_extra_rules(description: str) -> list[ExtraRule]:
     """목 모드 휴리스틱 — 소개 문구 키워드 기반 추가 조항 제안. 소개 없으면 빈 목록."""
     if not description:
         return []
     text = description.lower()
-    rules: list[str] = []
+    rules: list[ExtraRule] = []
     if any(k in text for k in ("등산", "캠핑", "액티비티", "레저", "운동")):
-        rules.append(
-            "야외·활동성 행사에 필요한 안전장비(구급용품 등) 구입은 활동 안전을 위한 지출로 우선 인정한다."
-        )
+        rules.append(ExtraRule(
+            title="안전 장비",
+            text="야외·활동성 행사에 필요한 안전장비(구급용품 등) 구입은 활동 안전을 위한 지출로 우선 인정한다.",
+        ))
     if any(k in text for k in ("스터디", "개발", "코딩", "프로젝트", "실습")):
-        rules.append(
-            "실습에 필요한 서버·도메인·구독형 개발 도구 비용은 스터디 기간 내 결제분만 인정한다."
-        )
+        rules.append(ExtraRule(
+            title="실습 인프라",
+            text="실습에 필요한 서버·도메인·구독형 개발 도구 비용은 스터디 기간 내 결제분만 인정한다.",
+        ))
     if any(k in text for k in ("신입", "모집", "홍보", "리크루팅")):
-        rules.append("신입 모집 관련 홍보물 제작비는 모집 기간 내 집행 건에 한해 인정한다.")
+        rules.append(ExtraRule(
+            title="모집 홍보",
+            text="신입 모집 관련 홍보물 제작비는 모집 기간 내 집행 건에 한해 인정한다.",
+        ))
     return rules[:MAX_EXTRA_RULES]
 
 
@@ -166,16 +337,20 @@ async def generate_draft(state: DraftState) -> dict:
     # {auto_approve_limit}지만 넣는 값은 요청의 force_escalation_amount다 —
     # 백엔드가 auto_approve_limit = escalation_threshold = 기준금액으로 저장하므로
     # (개정안 §1-3 저장 규약) 두 이름은 같은 금액을 가리킨다.
-    base_rules = [
-        r.format(
-            auto_approve_limit=f"{req.force_escalation_amount:,}",
-            per_meal_limit=f"{PER_MEAL_LIMIT:,}",
-        )
-        for r in template["base_rules"]
-    ]
-    # 마법사 1단계 회비 — 입력됐을 때만 조항 1개 추가 ('없음'은 None·0 둘 다)
-    if req.dues:
-        base_rules.append(DUES_RULE.format(dues=f"{req.dues:,}"))
+    limits = suggested_limits(template, req.initial_budget, req.member_count)
+    dues = effective_dues(req.dues)
+    fmt = {
+        "auto_approve_limit": f"{req.force_escalation_amount:,}",
+        "dues": f"{dues:,}",
+        "dues_period": template.get("dues_period", ""),
+        **limits,
+    }
+    # 회칙 초안은 bylaw_articles를 쓴다 — base_rules는 심사용(회칙 미등록 팀의 기본
+    # 정책 모드)이라 짧게 유지된다. 두 용도를 한 목록으로 쓰던 것을 2026-08-11에
+    # 분리했다: 초안을 실제 회칙처럼 늘리면 심사 근거까지 같이 늘어나던 구조였다.
+    articles = [a for a in template["bylaw_articles"] if _article_applies(a, dues)]
+    base_rules = [f"제{i}조({a['title']}) {a['text'].format(**fmt)}"
+                  for i, a in enumerate(articles, start=1)]
 
     extra_rules: list[str] = []
     if req.description:
@@ -187,18 +362,66 @@ async def generate_draft(state: DraftState) -> dict:
                 agent="policy_drafter",
                 system=spec.system_with_few_shot(),
                 user=f"모임 유형: {req.team_type}\n모임 이름: {req.team_name}\n"
-                f"모임 소개: {req.description}\n\n"
-                f"참고 규정(다른 모임 사례 — 그대로 베끼지 말고 참고만):\n{ref_text}",
+                f"모임 소개: {req.description}\n"
+                f"회원 수: {req.member_count or '미입력'}\n"
+                f"총예산: {req.initial_budget:,}원\n"
+                f"관리자 승인 기준 금액: {req.force_escalation_amount:,}원\n\n"
+                # 한도 표를 그대로 준다 — 종전에는 LLM이 금액을 몰라 "회칙이 정한 한도
+                # 범위에서"처럼 실제 한도가 불분명한 문구를 썼다(2026-08-11 지적).
+                # 이제 이 표의 금액만 인용하게 하고, 그 밖의 금액은 조립부가 걸러낸다.
+                + "이 회칙이 정한 한도 (조항에 금액을 쓸 때는 이 값만 그대로 인용하세요):\n"
+                + "\n".join(f"- {LIMIT_LABELS.get(k, k)}: {v}원" for k, v in limits.items())
+                + "\n\n이미 작성된 기본 조항 (같은 내용을 반복하지 마세요):\n"
+                + "\n".join(f"- {r}" for r in base_rules)
+                + f"\n\n참고 규정(다른 모임 사례 — 그대로 베끼지 말고 참고만):\n{ref_text}",
                 schema=ExtraRules,
                 mock_response=ExtraRules(extra_rules=_mock_extra_rules(req.description)),
                 prompt_version=spec.version,
             )
             # 중복 제거를 상한 적용보다 먼저 — 그래야 겹친 조항이 상한 자리를 차지하지 않는다
-            extra_rules = dedupe_rules(base_rules, result.extra_rules)[:MAX_EXTRA_RULES]
+            fresh = dedupe_rules(base_rules, [r.rendered() for r in result.extra_rules])
+            fresh, vague = drop_vague_rules(fresh)
+            if vague:
+                logger.info(
+                    "모호어 조항 %d개 제외 — %s",
+                    len(vague), [f"{vague_terms_in(v)}: {v[:40]}" for v in vague],
+                )
+            # 회칙이 정한 한도·승인 기준 밖의 금액을 쓴 조항도 뺀다.
+            # 회비도 이 회칙이 정한 금액이다 — 빼두면 기본 조항의 회비를 정당하게
+            # 인용한 LLM 조항이 통째로 버려진다 (PR #65 리뷰 N4).
+            allowed = {req.force_escalation_amount} | {
+                int(v.replace(",", "")) for v in limits.values()
+            }
+            if dues:
+                allowed.add(dues)
+            kept = [r for r in fresh if not unknown_amounts_in(r, allowed)]
+            if len(kept) != len(fresh):
+                logger.info(
+                    "한도 밖 금액 조항 %d개 제외 — %s", len(fresh) - len(kept),
+                    [r[:50] for r in fresh if unknown_amounts_in(r, allowed)],
+                )
+            fresh = kept
+            extra_rules = [
+                # 기본 조항 뒤에 조 번호를 이어 붙인다 — 한 문서로 읽혀야 한다
+                f"제{len(base_rules) + i}조{r}"
+                for i, r in enumerate(fresh[:MAX_EXTRA_RULES], start=1)
+            ]
         except Exception:
             logger.exception("policy_drafter 추가 조항 생성 실패 — 기본 조항만 사용")
 
-    dues_note = DUES_NOTE.format(dues=f"{req.dues:,}") if req.dues else ""
+    # notes의 회비 표기는 **실제로 회비 조가 실렸을 때만** 붙인다 — 회사 유형처럼
+    # 회비 조 자체가 없는 템플릿에서는 사용자가 회비를 입력해도 조항이 생기지 않으므로,
+    # 입력값만 보고 notes에 적으면 verify의 '조항 ↔ notes 금액 일치' 검사에 걸린다.
+    has_dues_rule = any(DUES_MARK in r for r in base_rules)
+    if dues and not has_dues_rule:
+        # 회사 유형에는 회비 조가 없다 — 입력을 받아도 조항·notes 어디에도 안 남는다.
+        # 의도된 동작이지만 화면 입력이 흔적 없이 사라지는 자리라 로그로 남긴다
+        # (PR #65 리뷰 N6). 계약·문구는 바꾸지 않는다.
+        logger.info(
+            "회비 %s원 입력이 초안에 반영되지 않음 — '%s' 유형에 회비 조가 없다",
+            f"{dues:,}", req.team_type,
+        )
+    dues_note = DUES_NOTE.format(dues=f"{dues:,}") if has_dues_rule else ""
     draft = PolicyDraft(
         rules=base_rules + extra_rules,
         recommended_categories=all_categories(),  # 전역 고정 9종 (신규 생성 없음)
@@ -214,18 +437,34 @@ async def generate_draft(state: DraftState) -> dict:
 # 기존 조항 28개(5유형 base + 회비 + 목 추가조항) 전수 확인 결과 헛경보 0건.
 _AUTO_RULE_HINT = re.compile(r"자동\s*(?:심사|승인)|관리자.{0,4}(?:승인|확인)")
 _AMOUNT_RE = re.compile(r"([\d,]+)\s*원")
+# '3만원'·'20만 원' 같은 한글 단위 표기 — 숫자 표기만 보면 필터를 우회한다(N5).
+# 위 정규식과 겹치지 않는다: '3만원'은 숫자 뒤가 '만'이라 `[\d,]+\s*원`에 안 걸린다.
+_MAN_AMOUNT_RE = re.compile(r"([\d,]+)\s*만\s*원")
 # DUES_RULE·DUES_NOTE에서 placeholder 앞부분만 — 문구를 고쳐도 따라간다
-_DUES_PREFIX = DUES_RULE.split("{")[0]
 _DUES_NOTE_MARK = DUES_NOTE.split("{")[0]
+# 회비 조항 안의 금액을 뽑는다 — notes 표기와 같은 값인지 대조하기 위해서다.
+# 납부 주기가 금액 앞에 온다("회비는 1인당 월 20,000원") — 숫자가 아닌 말은 건너뛴다
+_DUES_IN_RULE = re.compile(re.escape(DUES_MARK) + r"[^\d]*([\d,]+)\s*원")
+_DUES_IN_NOTE = re.compile(re.escape(_DUES_NOTE_MARK) + r"([\d,]+)\s*원")
 
 
 def _amounts_in(text: str) -> list[int]:
-    """조항 문장에 등장하는 '12,000원' 형태의 금액을 모두 정수로."""
+    """조항 문장에 등장하는 금액을 모두 정수로 — '12,000원'과 '3만원' 둘 다.
+
+    한글 단위 표기를 함께 잡는 이유: 이 함수 결과가 한도 밖 금액 필터
+    (`unknown_amounts_in`)와 자동 심사 조항 검사의 입력이다. 숫자 표기만 보면
+    LLM이 "3만원"이라고 쓰는 순간 두 검사를 조용히 우회한다 (PR #65 리뷰 N5).
+    '3만원'과 '30,000원'은 같은 값으로 환산하므로 한도 표와 그대로 대조된다.
+    """
     out: list[int] = []
     for raw in _AMOUNT_RE.findall(text):
         digits = raw.replace(",", "")
         if digits.isdigit():
             out.append(int(digits))
+    for raw in _MAN_AMOUNT_RE.findall(text):
+        digits = raw.replace(",", "")
+        if digits.isdigit():
+            out.append(int(digits) * 10_000)
     return out
 
 
@@ -266,6 +505,13 @@ def verify_draft_pure(
     if len(keys) != len(set(keys)):
         return "중복 조항 존재"
 
+    # 금액 모호어 — LLM 조항은 조립 단계(drop_vague_rules)에서 이미 걸러지므로, 여기까지
+    # 오는 것은 **템플릿에 모호어가 들어간 경우**뿐이다. 그건 우리 쪽 결함이라 조용히
+    # 넘기지 않고 불통과시킨다(테스트가 CI에서 먼저 잡지만 이중으로 막는다).
+    for rule in draft.rules:
+        if found := vague_terms_in(rule):
+            return f"금액 모호어 사용: {found[0]} — 금액이나 조건으로 바꿔야 한다"
+
     # 환각 방어 — 자동 심사를 말하는 조항의 금액은 요청의 기준 금액 하나뿐이어야 한다
     for rule in draft.rules:
         if not _AUTO_RULE_HINT.search(rule):
@@ -277,9 +523,13 @@ def verify_draft_pure(
                 f"(설정 {force_escalation_amount:,}원)"
             )
 
-    # 회비 조항과 notes 표기는 같은 입력(req.dues)에서 나온다 — 한쪽만 있으면 조립 버그
-    if any(r.startswith(_DUES_PREFIX) for r in draft.rules) != (_DUES_NOTE_MARK in draft.notes):
-        return "회비 조항과 notes 표기 불일치"
+    # 회비 조항과 notes 표기는 같은 값에서 나온다 — 한쪽만 있거나 금액이 다르면 조립 버그다.
+    # (2026-08-11: 종전엔 '둘 다 있나/없나'만 봤다. 회비가 제안값으로도 들어오게 되면서
+    #  존재 여부만으로는 부족해져 **금액 일치**까지 본다.)
+    in_rule = next((m.group(1) for r in draft.rules if (m := _DUES_IN_RULE.search(r))), None)
+    in_note = (m.group(1) if (m := _DUES_IN_NOTE.search(draft.notes)) else None)
+    if in_rule != in_note:
+        return f"회비 조항과 notes 표기 불일치: 조항 {in_rule or '없음'} / notes {in_note or '없음'}"
     return None
 
 

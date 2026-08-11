@@ -4,7 +4,7 @@
   "policy_draft_cases": [
     {
       "id": "pd-club-base",
-      "scenario": "동아리/학생회 기본 — 기준 금액 5만이 조항에 그대로 반영 (LLM-005 개정: 추천 계산 없음)",
+      "scenario": "동아리/학생회 기본 — 승인 기준이 금액 숫자로 적히고 placeholder는 모두 치환된다",
       "input": {
         "team_id": 9001,
         "team_type": "동아리/학생회",
@@ -15,20 +15,23 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 5,
+        "rules_count": 15,
         "categories_count": 9,
         "rules_contain": [
-          "50,000원"
+          "50,000원",
+          "AI가 자동 심사한다"
         ],
         "rules_not_contain": [
           "{auto_approve_limit}",
-          "{per_meal_limit}"
+          "{meal}",
+          "{dues}",
+          "{dues_period}"
         ]
       }
     },
     {
       "id": "pd-study-base",
-      "scenario": "스터디 기본 — 기본 조항 5개",
+      "scenario": "스터디 기본 — 유형별 회칙 조항 전체 (2026-08-11 개편: 조 번호·항 구조)",
       "input": {
         "team_id": 9001,
         "team_type": "스터디",
@@ -39,13 +42,13 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 5,
+        "rules_count": 16,
         "categories_count": 9
       }
     },
     {
       "id": "pd-social-base",
-      "scenario": "친목 기본 — 기본 조항 4개",
+      "scenario": "친목 기본 — 유형별 회칙 조항 전체",
       "input": {
         "team_id": 9001,
         "team_type": "친목",
@@ -56,13 +59,13 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 4,
+        "rules_count": 17,
         "categories_count": 9
       }
     },
     {
       "id": "pd-hobby-base",
-      "scenario": "동호회 기본 — 기본 조항 5개",
+      "scenario": "동호회 기본 — 유형별 회칙 조항 전체",
       "input": {
         "team_id": 9001,
         "team_type": "동호회",
@@ -73,13 +76,13 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 5,
+        "rules_count": 17,
         "categories_count": 9
       }
     },
     {
       "id": "pd-company-base",
-      "scenario": "회사 기본 — 기준 금액 9만이 조항에 그대로 반영",
+      "scenario": "회사 기본 — 승인 기준이 금액 숫자로 적히고, 회비 개념이 없어 회비 조는 빠진다",
       "input": {
         "team_id": 9001,
         "team_type": "회사",
@@ -90,7 +93,7 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 5,
+        "rules_count": 16,
         "categories_count": 9,
         "rules_contain": [
           "90,000원"
@@ -99,7 +102,7 @@
     },
     {
       "id": "pd-amount-passthrough",
-      "scenario": "개정 — 사용자 입력 기준 금액(7만)이 추천 계산 없이 그대로 회칙에 들어간다 (구 pd-floor 대체 — 최소 5만 보장은 화면 몫으로 이관)",
+      "scenario": "사용자 입력 기준 금액(7만)이 추천 계산 없이 그대로 회칙 조항에 들어간다",
       "input": {
         "team_id": 9001,
         "team_type": "동아리/학생회",
@@ -110,8 +113,13 @@
       },
       "expect": {
         "verified": true,
+        "rules_count": 15,
         "rules_contain": [
-          "70,000원"
+          "70,000원",
+          "AI가 자동 심사한다"
+        ],
+        "rules_not_contain": [
+          "{auto_approve_limit}"
         ]
       }
     },
@@ -134,7 +142,7 @@
     },
     {
       "id": "pd-desc-hiking",
-      "scenario": "소개 반영 — 등산 모임이면 안전장비 조항 추가 (기본 5 + 추가 1)",
+      "scenario": "소개 반영 — 등산 모임이면 안전장비 조 1개 추가",
       "input": {
         "team_id": 9001,
         "team_type": "동호회",
@@ -146,7 +154,7 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 6,
+        "rules_count": 18,
         "rules_contain": [
           "안전장비"
         ]
@@ -154,7 +162,7 @@
     },
     {
       "id": "pd-desc-study",
-      "scenario": "소개 반영 — 개발 실습 스터디면 서버·구독 도구 조항 추가",
+      "scenario": "소개 반영 — 개발 실습 스터디면 실습 인프라 조 1개 추가",
       "input": {
         "team_id": 9001,
         "team_type": "스터디",
@@ -166,7 +174,7 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 6,
+        "rules_count": 17,
         "rules_contain": [
           "서버"
         ]
@@ -174,7 +182,7 @@
     },
     {
       "id": "pd-desc-recruit",
-      "scenario": "소개 반영 — 신입 모집 중심이면 홍보물 조항 추가",
+      "scenario": "소개 반영 — 신입 모집 중심이면 모집 홍보 조 1개 추가",
       "input": {
         "team_id": 9001,
         "team_type": "동아리/학생회",
@@ -186,7 +194,7 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 6,
+        "rules_count": 16,
         "rules_contain": [
           "홍보물"
         ]
@@ -194,7 +202,7 @@
     },
     {
       "id": "pd-desc-multi",
-      "scenario": "상한 — 키워드 3그룹 모두 해당해도 추가 조항은 최대 3개 (5+3=8)",
+      "scenario": "상한 — 키워드 3그룹 모두 해당하면 추가 조 3개",
       "input": {
         "team_id": 9001,
         "team_type": "스터디",
@@ -206,7 +214,7 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 8,
+        "rules_count": 19,
         "rules_contain": [
           "안전장비",
           "서버",
@@ -216,7 +224,7 @@
     },
     {
       "id": "pd-desc-two-groups",
-      "scenario": "소개 반영 — 캠핑+개발 키워드 2그룹만 겹침(신입 모집 언급 없음) → 추가 조항 정확히 2개(5+2=7)",
+      "scenario": "소개 반영 — 캠핑+개발 2그룹만 겹침(신입 모집 없음) → 추가 조 정확히 2개",
       "input": {
         "team_id": 9001,
         "team_type": "스터디",
@@ -228,7 +236,7 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 7,
+        "rules_count": 18,
         "rules_contain": [
           "안전장비",
           "서버"
@@ -885,7 +893,9 @@
       "expect": {
         "verified": true,
         "reason": null,
-        "cluster_counts": [4],
+        "cluster_counts": [
+          4
+        ],
         "proposals_count": 1,
         "amendment_contain": [
           "심야 야식 배달",

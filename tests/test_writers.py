@@ -1,11 +1,20 @@
 """문서 생성 에이전트 순수 함수 테스트 — 검증(Generator-Evaluator)·집계."""
 
+import re
 from unittest.mock import AsyncMock, patch
 
 import pytest
 from pydantic import ValidationError
 
 from app.graphs.writers.policy_draft import (
+    ExtraRule,
+    ExtraRules,
+    drop_vague_rules,
+    round_bylaw_amount,
+    round_bylaw_amount_up,
+    suggested_limits,
+    unknown_amounts_in,
+    vague_terms_in,
     MAX_EXTRA_RULES,
     _mock_extra_rules,
     generate_draft,
@@ -160,7 +169,8 @@ def test_no_description_adds_no_extra_rules():
 def test_hiking_description_adds_safety_rule():
     rules = _mock_extra_rules("매주 등산을 가는 모임입니다")
     assert len(rules) == 1
-    assert "안전장비" in rules[0]
+    assert "안전장비" in rules[0].text
+    assert rules[0].title  # 조 제목이 비면 "제N조() …"가 된다
 
 
 def test_multiple_keywords_still_capped_at_max():
@@ -178,13 +188,20 @@ async def test_generate_draft_appends_extra_rules_without_touching_base():
     state = await load_template({"request": req})
     result = await generate_draft({"request": req, "template": state["template"]})
     draft = result["draft"]
-    base_count = len(load_templates()["동호회"]["base_rules"])
-    assert len(draft.rules) == base_count + 1  # 기본 6개 + 추가 1개
+    # 회비 미입력이라 회비 조는 빠진다 (2026-08-11: 제안값을 만들지 않는다)
+    articles = load_templates()["동호회"]["bylaw_articles"]
+    base_count = len(articles) - sum(1 for a in articles if "회비는 1인당 " in a["text"])
+    assert len(draft.rules) == base_count + 1
     assert "안전장비" in draft.rules[-1]
     assert _verify(draft, force=50_000) is None  # placeholder 없이 정상 치환
 
 
-async def test_generate_draft_without_description_matches_old_behavior():
+async def test_generate_draft_without_description_uses_bylaw_articles_only():
+    """소개가 없으면 LLM을 부르지 않고 유형별 회칙 조항만 나온다.
+
+    회사 유형은 dues_default=0이라 회비 조가 빠진다 — '회비 1인당 0원' 조항은
+    회칙으로 성립하지 않기 때문이다.
+    """
     req = PolicyDraftRequest(
         **{**BASE_KW, "team_type": "회사", "team_name": "테스트팀", "initial_budget": 1_000_000},
         rule_source="ai",
@@ -192,7 +209,43 @@ async def test_generate_draft_without_description_matches_old_behavior():
     state = await load_template({"request": req})
     result = await generate_draft({"request": req, "template": state["template"]})
     draft = result["draft"]
-    assert len(draft.rules) == len(load_templates()["회사"]["base_rules"])
+    articles = load_templates()["회사"]["bylaw_articles"]
+    dues_articles = sum(1 for a in articles if "회비는 1인당 " in a["text"])
+    assert len(draft.rules) == len(articles) - dues_articles
+
+
+# ── 회칙 초안 형식 · 예산 연동 (2026-08-11 개편) ──────────
+
+
+async def test_articles_are_numbered_and_titled():
+    """조 번호와 제목이 붙어야 회칙 문서로 읽힌다 — 종전엔 번호 없는 단문 목록이었다."""
+    draft = await _draft_for(initial_budget=600_000, dues=20_000)
+    assert draft.rules[0].startswith("제1조(")
+    assert draft.rules[1].startswith("제2조(")
+    # 조 번호는 끊기지 않고 이어져야 한다
+    for i, rule in enumerate(draft.rules, start=1):
+        assert rule.startswith(f"제{i}조("), rule[:20]
+
+
+async def test_limits_scale_with_budget():
+    """한도가 예산에 따라 달라져야 한다 — 종전엔 PER_MEAL_LIMIT 상수 하나였다."""
+    small = await _draft_for(initial_budget=300_000, member_count=10, dues=20_000)
+    large = await _draft_for(initial_budget=10_000_000, member_count=10, dues=20_000)
+
+    def meal_of(draft):
+        rule = next(r for r in draft.rules if "1인 1회" in r)
+        return max(int(a.replace(",", "")) for a in re.findall(r"([\d,]+)\s*원", rule))
+
+    assert meal_of(small) < meal_of(large)
+
+
+async def test_no_bylaw_article_uses_a_non_catalog_category_word():
+    """'다과비'처럼 카탈로그에 없는 분류명을 쓰면 회원이 고를 수 있는 분류와 어긋난다."""
+    templates = load_templates()
+    for team_type, tpl in templates.items():
+        blob = " ".join(a["text"] for a in tpl["bylaw_articles"]) + " ".join(tpl["base_rules"])
+        assert "다과비" not in blob, team_type
+        assert "간식비" not in blob, team_type
 
 
 # ── 마법사 2단계 기준 금액 · 1단계 회비 ───────────────────
@@ -204,31 +257,167 @@ async def _draft_for(**kwargs):
     return (await generate_draft({"request": req, "template": state["template"]}))["draft"]
 
 
-async def test_ai_draft_uses_the_requested_amount_in_rules():
-    """사용자가 입력한 기준 금액이 그대로 회칙 조항에 들어간다 — 추천 계산은 폐기됐다."""
+async def test_approval_threshold_appears_as_a_real_amount():
+    """승인 기준 금액은 화면 입력값이 **숫자 그대로** 회칙에 들어간다 (2026-08-11 저녁).
+
+    한때 숫자를 빼고 "관리자가 설정한 기준 금액"으로만 적었으나 되돌렸다 — 회칙은
+    숫자로 말해야 규범으로 기능하고, 레퍼런스 회칙들도 모두 금액을 명시한다.
+    생성 시점의 정합성은 verify_draft_pure가 보장한다(설정 금액 외의 금액을 막는다).
+    관리자가 나중에 설정을 바꾸면 회칙 숫자가 낡는데, 그것은 회칙 개정으로 다룰 일이다.
+    """
     draft = await _draft_for(force_escalation_amount=70_000)
-    joined = "\n".join(draft.rules)
-    assert "70,000원" in joined
-    assert "{" not in joined
+    approval = next(r for r in draft.rules if "관리자 승인" in r)
+    assert "70,000원" in approval
+    assert "AI가 자동 심사한다" in approval  # 근거를 밝힌 표현 — "AI가 승인한다"가 아니다
+    assert "{" not in "\n".join(draft.rules)
     assert _verify(draft, force=70_000) is None
 
 
-async def test_dues_adds_one_rule_and_appears_in_notes():
-    base = len(load_templates()["스터디"]["base_rules"])
+async def test_bylaw_separates_insufficient_balance_from_over_limit():
+    """잔액 부족(반려)과 항목 한도 초과(예외 승인)를 회칙이 구분한다 — 가드레일 동작과 일치.
+
+    특별 승인 절차는 '예외 승인' 조로 일원화했다(2026-08-11 밤) — 예산 조와 예외 승인
+    조에 같은 내용이 겹쳐 있었다.
+    """
+    draft = await _draft_for()
+    budget_rule = next(r for r in draft.rules if "예산 집행 원칙" in r)
+    assert "보유 잔액이 부족한 지출은 금액과 관계없이 승인하지 아니한다" in budget_rule
+    assert "전체 잔액이 충분한" not in budget_rule  # 예외 승인 조로 옮겼다
+
+    exception_rule = next(r for r in draft.rules if "예외 승인" in r)
+    assert "전체 잔액이 충분한" in exception_rule
+    # 예외 승인으로도 허용하지 않는 것이 명시돼야 한다
+    assert "예외 승인의 대상이 되지 아니한다" in exception_rule
+
+
+async def test_bylaw_escalates_regardless_of_amount_on_ambiguity():
+    """금액이 작아도 해석 불명확·증빙 불충분·중복 의심이면 관리자 확인 — 가드레일 동작과 일치."""
+    for team_type in TEAM_TYPES:
+        joined = "\n".join((await _draft_for(team_type=team_type)).rules)
+        assert "금액과 관계없이 회칙 해석이 불명확한 경우" in joined or \
+               "금액과 관계없이 회칙 해석이 불명확" in joined, team_type
+        assert "중복 청구가 의심되는 경우에는 관리자 확인을 거친다" in joined, team_type
+
+
+async def test_evidence_article_does_not_accept_a_note_alone():
+    """증빙 없이 사유서만으로는 인정하지 않고, 확인될 때까지 보류한다."""
+    for team_type in TEAM_TYPES:
+        joined = "\n".join((await _draft_for(team_type=team_type)).rules)
+        assert "확인될 때까지 승인을 보류한다" in joined, team_type
+        assert "사유서만으로는 지출을 인정하지 아니한다" in joined, team_type
+
+
+async def test_dues_article_states_a_payment_period():
+    """'1인당 15,000원'만으로는 언제 내는지 알 수 없다 — 주기를 함께 적는다."""
+    draft = await _draft_for(team_type="동아리/학생회", dues=15_000)
+    dues_rule = next(r for r in draft.rules if "회비는 1인당 " in r)
+    assert "학기당" in dues_rule and "15,000원" in dues_rule
+
+
+def test_bylaw_amounts_are_rounded_to_readable_units():
+    """19,000·48,000·320,000처럼 어중간한 금액은 사람이 쓴 규정처럼 보이지 않는다."""
+    assert round_bylaw_amount(19_000) == 20_000
+    assert round_bylaw_amount(48_000) == 50_000
+    assert round_bylaw_amount(320_000) == 300_000
+    assert round_bylaw_amount(12_000) == 10_000    # 5,000원 단위
+    assert round_bylaw_amount(125_000) == 120_000  # 10,000원 단위
+    assert round_bylaw_amount(280_000) == 300_000  # 50,000원 단위
+
+
+def test_bylaw_amount_rounding_never_lowers_declared_floor():
+    """반올림이 한도의 하한(min)을 깎으면 안 된다 (PR #65 리뷰 N1).
+
+    `round_bylaw_amount`는 가까운 쪽으로 붙이는 범용 반올림이라 12,000 → 10,000이
+    맞다. 문제는 그것을 **하한에 그대로 쓰던 것**이었다 — min은 "이보다 낮게는 주지
+    않는다"는 선언이므로 올림으로 맞춘다. 예산이 아무리 작아도 선언한 하한 미만은
+    나오지 않는지 유형 전수로 고정한다.
+    """
+    assert round_bylaw_amount(12_000) == 10_000      # 범용 반올림은 그대로
+    assert round_bylaw_amount_up(12_000) == 15_000   # 하한은 올림
+
+    for team_type, template in load_templates().items():
+        # 예산·인원을 최소로 줘서 모든 항목이 하한에 걸리게 만든다
+        limits = suggested_limits(template, initial_budget=1, member_count=1)
+        for key, cfg in (template.get("limits") or {}).items():
+            floor = cfg.get("min")
+            if not floor:
+                continue
+            got = int(limits[key].replace(",", ""))
+            assert got >= floor, (
+                f"{team_type}/{key}: 선언한 하한 {floor:,}보다 낮은 {got:,}이 나왔다"
+            )
+
+
+def test_unknown_amounts_are_detected():
+    """한도 표에 없는 금액을 쓴 LLM 조항은 걸러진다."""
+    allowed = {50_000, 240_000}
+    assert unknown_amounts_in("건당 240,000원 이내로 인정한다", allowed) == []
+    assert unknown_amounts_in("건당 777,000원 이내로 인정한다", allowed) == [777_000]
+
+
+def test_unknown_amounts_catch_korean_man_notation():
+    """'3만원' 같은 한글 단위 표기도 잡는다 — 숫자 표기만 보면 필터를 우회한다 (N5)."""
+    allowed = {30_000, 50_000}
+    assert unknown_amounts_in("1인 1회 3만원 이내로 집행한다", allowed) == []
+    assert unknown_amounts_in("1인 1회 7만원 이내로 집행한다", allowed) == [70_000]
+    # 숫자 표기와 같은 값으로 환산되어 한도 표와 그대로 대조된다
+    assert unknown_amounts_in("20만 원 이내", {200_000}) == []
+
+
+async def test_bylaw_forbids_duplicate_split_and_false_claims():
+    """중복·분할·허위 청구 금지는 전 유형 공통 조항이다."""
+    for team_type in TEAM_TYPES:
+        draft = await _draft_for(team_type=team_type)
+        joined = "\n".join(draft.rules)
+        assert "다시 청구하지 아니한다" in joined, team_type
+        assert "나누어 청구하지 아니한다" in joined, team_type
+        assert "실제 거래와 다른" in joined, team_type
+
+
+async def test_bylaw_uses_human_wording_not_system_identifiers():
+    """회칙에는 시스템 내부 표기 대신 사람이 쓰는 말을 쓴다 (장소_대관 → 장소 대관비)."""
+    for team_type in TEAM_TYPES:
+        joined = "\n".join((await _draft_for(team_type=team_type)).rules)
+        for token in ("장소_대관", "행사_활동", "IT_인프라"):
+            assert token not in joined, f"{team_type}: {token}"
+
+
+async def test_bylaw_avoids_vague_amount_words():
+    """'소액'·'고가'·'적절한' 같은 말은 심사 기준이 되지 못한다."""
+    for team_type in TEAM_TYPES:
+        joined = "\n".join((await _draft_for(team_type=team_type)).rules)
+        for word in ("소액", "적절한", "과도한", "상당한"):
+            assert word not in joined, f"{team_type}: {word}"
+
+
+async def test_dues_input_wins_over_suggestion():
+    """사용자가 입력한 회비가 원천이다 — 제안값으로 덮어쓰지 않는다."""
     draft = await _draft_for(initial_budget=600_000, dues=20_000)
-    assert len(draft.rules) == base + 1
-    assert "20,000원" in draft.rules[-1]
+    dues_rule = next(r for r in draft.rules if "회비는 1인당 " in r)
+    assert "20,000원" in dues_rule
     assert "회비 20,000원" in draft.notes
+    assert "제안값" not in draft.notes
     assert _verify(draft, force=50_000) is None
 
 
-async def test_no_dues_adds_no_rule():
-    """화면의 '없음' 체크 — None·0 둘 다 조항을 만들지 않는다."""
-    base = len(load_templates()["스터디"]["base_rules"])
+async def test_no_dues_means_no_dues_article():
+    """회비를 입력하지 않으면 회칙에 회비 조를 만들지 않는다 (2026-08-11).
+
+    한때 유형별 기본값으로 제안했으나 되돌렸다 — 관리자가 정한 적 없는 금액을
+    회칙이 단정하게 되고, 확정된 회칙은 심사 근거로 인덱싱되기 때문이다.
+    """
     for dues in (None, 0):
         draft = await _draft_for(initial_budget=600_000, dues=dues)
-        assert len(draft.rules) == base
+        assert not any("회비는 1인당 " in r for r in draft.rules)
         assert "회비" not in draft.notes
+        assert _verify(draft, force=50_000) is None
+
+
+async def test_dues_amount_matches_between_rule_and_notes():
+    """조항과 notes가 다른 금액을 말하면 조립 버그 — verify가 잡아야 한다."""
+    draft = await _draft_for(initial_budget=600_000, dues=20_000)
+    broken = draft.model_copy(update={"notes": draft.notes.replace("20,000원", "99,000원")})
+    assert _verify(broken, force=50_000) is not None
 
 
 # ── LLM-005 통합 요청 계약 (전면 개정 2026-08-05, 개정안 §1) ──
@@ -462,3 +651,53 @@ def test_mock_report_text_passes_its_own_verifier():
         figures=f, summary=_mock_report_text(f).summary, recommendations=[], verified=False
     )
     assert verify_report_pure(fallback, f) is True
+
+
+# ── 금액 모호어 필터 (2026-08-11 저녁) ────────────────────
+#
+# v5 프롬프트가 "소액"·"고가" 같은 말을 금지하지만 LLM이 지키지 않는 것을 실측으로
+# 확인했다(친목 초안에 "소액 선물" 조항이 나왔다). 프롬프트만으로는 못 막는 계열이라
+# 조립 단계에서 해당 조를 떨어뜨리고, 템플릿에 섞이면 검증이 잡는다.
+
+
+def test_vague_terms_are_detected():
+    assert vague_terms_in("소액 선물은 인정한다") == ["소액"]
+    assert vague_terms_in("적절한 범위에서 집행한다") == ["적절한"]
+    assert vague_terms_in("1건 30,000원 이내로 인정한다") == []
+
+
+def test_vague_terms_do_not_flag_legitimate_wording():
+    """우리 템플릿이 정당하게 쓰는 표현은 걸리지 않아야 한다 — 좁게 잡은 이유."""
+    assert vague_terms_in("전체 잔액이 충분한 지출은 특별 승인할 수 있다") == []
+    assert vague_terms_in("필요한 경우 참가 인원을 제한한다") == []
+
+
+def test_drop_vague_rules_keeps_the_rest():
+    keep, dropped = drop_vague_rules([
+        "(경조사) 1건 50,000원 이내로 인정한다.",
+        "(선물) 소액 선물은 회비로 지출할 수 있다.",
+        "(여행) 재적 회원 과반의 찬성을 얻어 집행한다.",
+    ])
+    assert len(keep) == 2 and len(dropped) == 1
+    assert "소액" in dropped[0]
+
+
+async def test_llm_clause_with_vague_wording_is_dropped_from_the_draft():
+    """LLM이 모호어 조항을 내놓아도 초안에는 실리지 않는다 — 초안 전체는 살린다."""
+    vague = ExtraRules(extra_rules=[
+        ExtraRule(title="선물", text="소액 선물은 회비로 지출할 수 있다."),
+        ExtraRule(title="장비", text="공용 장비는 사용 후 지정된 장소에 보관한다."),
+    ])
+    with patch("app.graphs.writers.policy_draft.chat_structured",
+               AsyncMock(return_value=(vague, None))):
+        draft = await _draft_for(description="선물과 장비를 다루는 모임")
+    joined = "\n".join(draft.rules)
+    assert "소액" not in joined
+    assert "공용 장비는 사용 후" in joined      # 멀쩡한 조항은 남는다
+    assert _verify(draft, force=50_000) is None
+
+
+def test_verify_catches_vague_wording_in_rules():
+    """템플릿에 모호어가 섞이면(우리 쪽 결함) 검증이 불통과시킨다."""
+    err = _verify(_draft(rules=["제1조(선물) 소액 선물은 인정한다."]))
+    assert err is not None and "모호어" in err
