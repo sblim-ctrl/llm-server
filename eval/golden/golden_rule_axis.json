@@ -1,0 +1,84 @@
+{
+  "version": "rule-axis-draft-1",
+  "description": "회칙 축이 유일한 방어선인 구간 — 2026-08-11 팀장 리뷰 결정 4 초안. ★ 확정은 팀장. 목적: 'rule 축이 막지 않으면 자동 승인되는' 구간을 처음으로 측정한다. 기존 golden_v1 73건에는 expected_gate_includes에 rule_violation·rule_ambiguous를 기대하는 케이스가 0건이었다(2026-08-11 집계). 모든 케이스가 auto_approve ON · 금액 < 한도(50,000) · 예산 충분(잔액 2,356,000) · 영수증 정상 · 판례 이상 없음이라, 회칙 축 말고는 막을 것이 없다. ⚠️ 실모드 전용 — 목 모드(run_eval)에서는 rule_auditor가 mock_response 고정 pass라 rule 축 판정을 표현할 수 없다. CI 게이트(golden_v1)는 건드리지 않는다. 실행: MOCK_LLM=false python eval/run_eval_real.py eval/golden/golden_rule_axis.json",
+  "cases": [
+    {
+      "id": "ruleonly-personal-001",
+      "scenario": "회칙 명시 금지(제3조 개인 용도 물품) — 금액·예산·영수증 전부 정상이라 회칙 축만이 막을 수 있다",
+      "team_type": "동아리/학생회",
+      "input": {
+        "jobId": "job-ruleonly-personal-001",
+        "expenseId": 90101,
+        "organizationId": 9001,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "file://eval/golden/receipts/ruleonly-personal-001.png"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "비품",
+      "must_not_approve": true,
+      "expected_gate_includes": ["rule_violation"]
+    },
+    {
+      "id": "ruleonly-percap-002",
+      "scenario": "회칙 수치 한도 위반(제2조 1인당 회식비 3만원) — 총액은 자동승인 한도 미만이라 금액 게이트가 못 잡는다",
+      "team_type": "동아리/학생회",
+      "input": {
+        "jobId": "job-ruleonly-percap-002",
+        "expenseId": 90102,
+        "organizationId": 9001,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "file://eval/golden/receipts/ruleonly-percap-002.png"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": ["rule_violation"]
+    },
+    {
+      "id": "ruleonly-ambiguous-003",
+      "scenario": "조항은 있으나 해석이 갈리는 경우(제3조 개인 용도 vs 제4조 도서 인정) — 조항 부재 pass와 구분되는지 본다",
+      "team_type": "동아리/학생회",
+      "input": {
+        "jobId": "job-ruleonly-ambiguous-003",
+        "expenseId": 90103,
+        "organizationId": 9001,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "file://eval/golden/receipts/ruleonly-ambiguous-003.png"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": ["rule_ambiguous"]
+    },
+    {
+      "id": "ruleonly-negative-004",
+      "scenario": "대조군 — 회칙이 명시적으로 인정하는 지출(제5조 공동 비품). 위 셋을 넣은 뒤 회칙 축이 과잉 차단으로 기울지 않는지 확인한다",
+      "team_type": "동아리/학생회",
+      "input": {
+        "jobId": "job-ruleonly-negative-004",
+        "expenseId": 90104,
+        "organizationId": 9001,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "file://eval/golden/receipts/ruleonly-negative-004.png"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "비품",
+      "must_not_approve": false
+    },
+    {
+      "id": "ruleonly-noclause-005",
+      "scenario": "대조군 — 회칙이 다루지 않는 지출(택배 발송비). 이번 수정 1번이 노린 바로 그 케이스가 실제로 통과하는지 고정한다",
+      "team_type": "동아리/학생회",
+      "input": {
+        "jobId": "job-ruleonly-noclause-005",
+        "expenseId": 90105,
+        "organizationId": 9001,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "file://eval/golden/receipts/ruleonly-noclause-005.png"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교통",
+      "must_not_approve": false
+    }
+  ]
+}
