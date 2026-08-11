@@ -61,8 +61,8 @@ SCENARIOS = [
         "https://example.com/r2",
         "escalate",
     ),
-    # 잔액(mock 18.2만원) 초과라 reject를 기대했던 건이지만, 금액 가드레일에 먼저
-    # 걸려서 reject 경로까지 가지 않는다.
+    # 잔액(mock 18.2만원) 초과 — 예산 부족이 금액 임계값을 이겨(#64 정책) 자동 반려로
+    # 확정된다. #64 이전에는 금액 가드레일에 먼저 걸려 escalate였다.
     (
         "고액 지출 — 금액 가드레일 두 규칙 동시 발동",
         ExpenseClaim(
@@ -73,7 +73,7 @@ SCENARIOS = [
             description="종강 회식",
         ),
         "https://example.com/r3",
-        "escalate",
+        "reject",
     ),
     (
         "영수증 미첨부",
