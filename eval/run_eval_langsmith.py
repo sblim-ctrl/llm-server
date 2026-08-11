@@ -56,6 +56,60 @@ def no_false_approve(run, example) -> dict:
     return {"key": "no_false_approve", "score": 0 if (mna and actual == "approve") else 1}
 
 
+def category_correct(run, example) -> dict:
+    """분류(카테고리)가 기대와 일치하는가 — run_eval_real.py의 분류 축과 동일.
+
+    v7 회귀 4건(2026-08-10)이 정확히 이 축에서 났다 — verdict만 보면 안 보이는
+    지표라 Experiment에도 별도 열로 남긴다. 기대값 없는 케이스는 분모에서 제외
+    (score=None — run_eval_real의 '0점 처리하지 않는다'와 같은 규약).
+    """
+    expected = (example.outputs or {}).get("expected_category") or ""
+    if not expected:
+        return {"key": "category_correct", "score": None}
+    actual = (run.outputs or {}).get("category") or ""
+    return {"key": "category_correct", "score": int(actual == expected)}
+
+
+def gate_includes_hit(run, example) -> dict:
+    """기대 가드레일 규칙이 전부 발동됐는가 (기대값 있는 50건만 채점, 없으면 제외).
+
+    verdict가 맞아도 '왜 막혔는지'가 다르면 회귀다 — budget_insufficient로 막혀야
+    할 건이 rule_ambiguous로 막히는 종류의 미끄러짐을 이 축이 잡는다.
+    """
+    expected = (example.outputs or {}).get("expected_gate_includes") or []
+    if not expected:
+        return {"key": "gate_includes_hit", "score": None}
+    triggered = set((run.outputs or {}).get("gate") or [])
+    return {"key": "gate_includes_hit", "score": int(set(expected) <= triggered)}
+
+
+async def judge_quality(run, example) -> dict:
+    """사유 품질 — LLM-as-judge(run_eval_judge.py와 동일 rubric·게이트)를 5번째 축으로.
+
+    approve/reject(사유가 실제 생성된 건)만 채점하고 escalate는 제외(score=None —
+    fail-safe 문구라 품질 채점이 무의미). 채점 기준은 passes(): 요청자 정중·내부
+    미노출 + 관리자 근거 보유 + 인용 수치 실재(faithfulness, judge/v3) + 점수≥0.7.
+    비용: judge gpt-4o 호출이 승인·반려 건수만큼 추가된다(회당 ≈ $0.01).
+    """
+    from app.eval_judge import judge_reasons, passes
+    from app.llm.prompts import load_prompt
+    from app.schemas.common import Opinion
+
+    out = run.outputs or {}
+    verdict = out.get("verdict")
+    if verdict not in ("approve", "reject") or not out.get("reason_requester"):
+        return {"key": "judge_quality", "score": None}
+
+    # judge v3(근거 충실성)부터 소견을 대조 자료로 — run_eval_judge.py와 같은 분기
+    use_opinions = load_prompt("judge").version not in ("judge/v1", "judge/v2")
+    ops = {d["auditor"]: Opinion.model_validate(d) for d in out.get("opinions") or []}
+    result, _meta = await judge_reasons(
+        verdict, out["reason_requester"], out.get("reason_admin") or "",
+        opinions=ops if (use_opinions and ops) else None)
+    return {"key": "judge_quality", "score": int(passes(result)),
+            "comment": result.notes or ""}
+
+
 async def main() -> int:
     s = get_settings()
     if s.mock_llm or not s.openai_api_key:
@@ -89,7 +143,10 @@ async def main() -> int:
         await clean_golden_teams()
         for t in teams:
             await indexing_graph.ainvoke({"team_id": t, "doc_type": "rule"})
-        versions = {a: load_prompt(a).version for a in ("rule_auditor", "adjudicator")}
+        # classifier 포함 — category_correct 축을 채점하므로 어떤 분류기 버전으로
+        # 측정했는지가 experiment 이름·메타데이터에 남아야 한다 (v7→v8 교체 전례)
+        versions = {a: load_prompt(a).version
+                    for a in ("rule_auditor", "adjudicator", "classifier")}
         print(f"골든 팀 {len(teams)}개 회칙 실인덱싱 완료 — 프롬프트 {versions}")
 
         async def target(inputs: dict) -> dict:
@@ -104,9 +161,16 @@ async def main() -> int:
                 }
             )
             gate = final.get("gate_result")
+            claim = final.get("claim")  # 분류 결과 추출 — run_eval_real.py와 동일 규약
+            reasons = final.get("reasons")  # judge_quality 채점 재료 (escalate면 None)
             return {
                 "verdict": final.get("verdict") or "escalate",
                 "gate": gate.triggered_rules if gate else [],
+                "category": (claim.category if claim else "") or "",
+                "reason_requester": reasons.requester if reasons else None,
+                "reason_admin": reasons.admin if reasons else None,
+                # 소견은 judge faithfulness 대조 자료 — 웹 트레이스에서도 보인다
+                "opinions": [op.model_dump() for op in (final.get("opinions") or {}).values()],
             }
 
         prefix = "golden-" + "-".join(v.replace("/", "") for v in versions.values())
@@ -117,7 +181,8 @@ async def main() -> int:
         results = await aevaluate(
             target,
             data=DATASET_NAME,
-            evaluators=[verdict_correct, no_false_approve],
+            evaluators=[verdict_correct, no_false_approve, category_correct,
+                        gate_includes_hit, judge_quality],
             experiment_prefix=prefix,
             metadata={"prompt_versions": versions, "harness": "run_eval_langsmith"},
             max_concurrency=1,

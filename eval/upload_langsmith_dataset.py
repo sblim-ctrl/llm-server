@@ -58,7 +58,9 @@ def main() -> int:
                 for c in cases],
         outputs=[{"expected_verdict": c["expected_verdict"],
                   "must_not_approve": bool(c.get("must_not_approve")),
-                  "expected_gate_includes": c.get("expected_gate_includes", [])}
+                  "expected_gate_includes": c.get("expected_gate_includes", []),
+                  # 분류 채점 기준 — run_eval_real.py와 같은 축. 없으면 채점 제외(None)
+                  "expected_category": c.get("expected_category", "")}
                  for c in cases],
         metadata=[{"case_id": c["id"], "scenario": c.get("scenario", ""),
                    "team_type": c.get("team_type", "")} for c in cases],
