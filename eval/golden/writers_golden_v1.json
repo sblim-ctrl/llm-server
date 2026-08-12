@@ -1,6 +1,6 @@
 {
   "version": "writers-v1",
-  "description": "문서 생성 에이전트 3종 시나리오 골든셋 (PROGRESS §6-4). 심사 골든셋(golden_v1.json)과 동일 철학 — 목 모드에서 결정적으로 재현 가능해야 한다. report의 team_id는 eval/fixtures/mock_backend.json의 organizations[id].expense_history를 참조한다(9022=none/빈 이력, 9023=balanced/균형 지출, 9021=default/기본 8건 — T9, 옛 noexpense/balanced 문자열 단서는 폐기). briefing은 각 케이스의 precedents를 실행 전 DB에 시드(멱등 — 팀 단위 삭제 후 재삽입, team_id는 BIGINT라 9031~9035 정수 사용— T9). expect 규칙: *_contain=부분 문자열 포함, *_not_contain=미포함, 그 외 키=동등 비교. verified=false는 건수와 무관하게 하드 게이트 실패. v2 보강: pd-desc-two-groups(키워드 2그룹만 겹치는 조합), rp-standard-categories(저활용 카테고리 개별 명시 확인), bf-scattered(에스컬레이션이 여러 카테고리에 분산되어 회칙 갭 없이도 판정 다수인 경우) 3건 추가 — 총 20건. v3(2026-08-06, LLM-005 전면 개정): pd 케이스를 통합 요청 스키마(team_id·force_escalation_amount·rule_source)로 이행, 정책 제안 기대값(auto_approve_limit·force_escalation_amount) 제거, 카테고리 9종 정정, pd-floor→pd-amount-passthrough 재목적화, pd-skip-empty 추가 — 총 21건. v4(2026-08-07): rp-standard-categories가 기본 이력에 다른 period 이름표만 붙인 중복이라 기간 필터 도입으로 드러났다 — 실제 5월 데이터 팀(9024)으로 옮겼다. rp-period-isolates-month 신설: 같은 팀의 다른 달이 섞이지 않는지 본다. 총 22건. v5(2026-08-07): digest·budget_proposal·dashboard 3종을 편입했다(각 2건, 총 28건). 종전에는 policy_draft·report·briefing 3종만 채점해 라이터 7종 중 절반 이상이 출력 품질 그물 밖에 있었다. digest 케이스는 판례에 `date`를 실어 그 주에 심는다. v6(2026-08-07): rule_amendment 편입으로 라이터 7종 전부가 골든셋에 들어왔다(3건, 총 31건). 군집 탐지는 목 해시 임베딩의 '동일 문자열만 distance 0' 성질에 의존하므로(detect_repeated_overrides [C10]) 한 군집이 될 판례는 category·title·amount를 바이트 단위로 같게 심는다(team_id 9041~9043). 개정안 생성 경로가 pgvector <=> 연산자를 포함해 평가에서 처음 실제 DB를 지난다. 임계 미달 정상 종료는 verified가 null로 남아 하드 게이트에 걸리지 않는 것까지 본다. v7(2026-08-09): briefing 케이스의 9종 밖 라벨 12건을 교정했다(도서→교육·다과→식비·행사→행사_활동, 매핑 근거는 templates/category_catalog.yaml). 전역 9종 확정(2026-08-04) 이전 어휘가 남아 있었고, 특히 bf-gap이 `gap_categories: [\"행사\"]`를 기대해 **관리자 인수인계 노트에 존재하지 않는 카테고리가 회칙 보완 후보로 뜨는 동작**을 고정하고 있었다. title·description은 사용자 자유 텍스트라 그대로 뒀다 — 어휘 계약은 category 필드에만 걸린다.",
+  "description": "문서 생성 에이전트 3종 시나리오 골든셋 (PROGRESS §6-4). 심사 골든셋(golden_v1.json)과 동일 철학 — 목 모드에서 결정적으로 재현 가능해야 한다. report의 team_id는 eval/fixtures/mock_backend.json의 organizations[id].expense_history를 참조한다(9022=none/빈 이력, 9023=balanced/균형 지출, 9021=default/기본 8건 — T9, 옛 noexpense/balanced 문자열 단서는 폐기). briefing은 각 케이스의 precedents를 실행 전 DB에 시드(멱등 — 팀 단위 삭제 후 재삽입, team_id는 BIGINT라 9031~9035 정수 사용— T9). expect 규칙: *_contain=부분 문자열 포함, *_not_contain=미포함, 그 외 키=동등 비교. verified=false는 건수와 무관하게 하드 게이트 실패. v2 보강: pd-desc-two-groups(키워드 2그룹만 겹치는 조합), rp-standard-categories(저활용 카테고리 개별 명시 확인), bf-scattered(에스컬레이션이 여러 카테고리에 분산되어 회칙 갭 없이도 판정 다수인 경우) 3건 추가 — 총 20건. v3(2026-08-06, LLM-005 전면 개정): pd 케이스를 통합 요청 스키마(team_id·force_escalation_amount·rule_source)로 이행, 정책 제안 기대값(auto_approve_limit·force_escalation_amount) 제거, 카테고리 9종 정정, pd-floor→pd-amount-passthrough 재목적화, pd-skip-empty 추가 — 총 21건. v4(2026-08-07): rp-standard-categories가 기본 이력에 다른 period 이름표만 붙인 중복이라 기간 필터 도입으로 드러났다 — 실제 5월 데이터 팀(9024)으로 옮겼다. rp-period-isolates-month 신설: 같은 팀의 다른 달이 섞이지 않는지 본다. 총 22건. v5(2026-08-07): digest·budget_proposal·dashboard 3종을 편입했다(각 2건, 총 28건). 종전에는 policy_draft·report·briefing 3종만 채점해 라이터 7종 중 절반 이상이 출력 품질 그물 밖에 있었다. digest 케이스는 판례에 `date`를 실어 그 주에 심는다. v6(2026-08-07): rule_amendment 편입으로 라이터 7종 전부가 골든셋에 들어왔다(3건, 총 31건). 군집 탐지는 목 해시 임베딩의 '동일 문자열만 distance 0' 성질에 의존하므로(detect_repeated_overrides [C10]) 한 군집이 될 판례는 category·title·amount를 바이트 단위로 같게 심는다(team_id 9041~9043). 개정안 생성 경로가 pgvector <=> 연산자를 포함해 평가에서 처음 실제 DB를 지난다. 임계 미달 정상 종료는 verified가 null로 남아 하드 게이트에 걸리지 않는 것까지 본다. v7(2026-08-09): briefing 케이스의 9종 밖 라벨 12건을 교정했다(도서→교육·다과→식비·행사→행사_활동, 매핑 근거는 templates/category_catalog.yaml). 전역 9종 확정(2026-08-04) 이전 어휘가 남아 있었고, 특히 bf-gap이 `gap_categories: [\"행사\"]`를 기대해 **관리자 인수인계 노트에 존재하지 않는 카테고리가 회칙 보완 후보로 뜨는 동작**을 고정하고 있었다. title·description은 사용자 자유 텍스트라 그대로 뒀다 — 어휘 계약은 category 필드에만 걸린다. v8(2026-08-12): policy_draft 6종(pd-club/study/social/hobby/company-base·pd-amount-passthrough)의 rules_contain에 카테고리별 한도 금액(식비·장소·비품·교통·교육·행사·경조사·여행)을 렌더된 문자열로 고정했다. 종전 채점축은 rules_count·categories_count와 승인 기준 금액뿐이라 한도 값 회귀를 못 잡았다 — PR #80이 max 한도를 다수 바꿨는데도 전건 통과했다(이슈 #92). 5개 유형 전부 + 최소 예산(min 하한 상향, pd-amount-passthrough)·회사(max 포화, pd-company-base)까지 덮어 suggested_limits의 ratio·min·max 산출값을 rules 텍스트에서 직접 대조한다. 한도가 정책적으로 바뀌면 이 골든도 함께 고쳐야 한다. 핀은 맨몸 금액이 아니라 **라벨+단위+금액**을 렌더 원문 그대로 잘라 쓴다(예: `비품비: 분기 50,000원`) — rules_contain이 rules_text 전체에 대한 부분 문자열 검사라 맨몸 금액은 두 겹으로 죽는다(PR #101 리뷰). ① 다른 한도에 삼켜짐: `50,000원`은 `150,000원`·`250,000원`의 부분 문자열이라 스터디 비품 핀이 발화하지 못했고, 친목 장소 `20,000원`도 교통 `120,000원`에 죽었다. ② 앞자리-획득: 80,000→180,000 류 회귀는 `80,000원`이 `180,000원`에 포함돼 맨몸 핀으로는 못 잡는다. 라벨 앵커는 금액의 왼쪽 경계를 고정해 두 구멍을 함께 막고, 카테고리 한도를 승인 기준(`1건 50,000원 미만`)과도 문구로 구분한다. 같은 이유로 한 금액이 두 카테고리에 겹치던 자리(동아리 식비·비품 80,000 등)도 카테고리별로 쪼개 전수 고정했다. 조문 문구가 바뀌면 앵커도 함께 고쳐야 한다.",
   "policy_draft_cases": [
     {
       "id": "pd-club-base",
@@ -18,8 +18,15 @@
         "rules_count": 8,
         "categories_count": 9,
         "rules_contain": [
-          "50,000원",
-          "AI가 자동 심사하고"
+          "1건 50,000원 미만",
+          "AI가 자동 심사하고",
+          "식비: 1인 1회 80,000원",
+          "장소 대관비: 회당 30,000원",
+          "비품비: 분기 80,000원",
+          "교통비: 대외 활동은 1인당 200,000원",
+          "교육비: 교재·강의·세미나는 1인당 300,000원",
+          "행사·활동비: 정기 행사·신입 모집·홍보물은 건당 100,000원",
+          "대외 활동 참가비: 외부 대회·공모전 등록비는 건당 100,000원"
         ],
         "rules_not_contain": [
           "{auto_approve_limit}",
@@ -43,7 +50,16 @@
       "expect": {
         "verified": true,
         "rules_count": 7,
-        "categories_count": 9
+        "categories_count": 9,
+        "rules_contain": [
+          "1건 50,000원 미만",
+          "교육비: 주제 관련 교재·강의·세미나는 1인당 250,000원",
+          "장소 대관비: 스터디룸은 회당 20,000원",
+          "비품비: 분기 50,000원",
+          "식비: 1인 1회 60,000원",
+          "교통비: 외부 대회·행사는 1인당 150,000원",
+          "대외 활동 참가비: 외부 대회·공모전·컨퍼런스 등록비는 건당 30,000원"
+        ]
       }
     },
     {
@@ -60,7 +76,18 @@
       "expect": {
         "verified": true,
         "rules_count": 6,
-        "categories_count": 9
+        "categories_count": 9,
+        "rules_contain": [
+          "1건 50,000원 미만",
+          "식비: 1인 1회 90,000원",
+          "장소 대관비: 회당 20,000원",
+          "행사·활동비: 건당 80,000원",
+          "경조사비: 1건 40,000원",
+          "대외 활동 참가비: 외부 행사 등록비는 건당 80,000원",
+          "교통비: 공동 이동은 1인당 120,000원",
+          "비품비: 공동 사용 물품은 분기 25,000원",
+          "여행·숙박: 사전에 재적 회원 과반의 찬성을 얻은 경우에 한해 1인 1박 250,000원"
+        ]
       }
     },
     {
@@ -77,7 +104,17 @@
       "expect": {
         "verified": true,
         "rules_count": 8,
-        "categories_count": 9
+        "categories_count": 9,
+        "rules_contain": [
+          "1건 50,000원 미만",
+          "식비: 1인 1회 80,000원",
+          "장소 대관비: 정기 일정은 회당 50,000원",
+          "교통비: 원정·외부 행사는 1인당 120,000원",
+          "교육비: 종목 강습·자격 과정은 1인당 100,000원",
+          "행사·활동비: 정기 행사·친선 교류는 건당 50,000원",
+          "여행·숙박: 1인 1박 200,000원",
+          "대외 활동 참가비: 외부 대회·리그·정기전 등록비는 건당 50,000원"
+        ]
       }
     },
     {
@@ -96,7 +133,16 @@
         "rules_count": 11,
         "categories_count": 9,
         "rules_contain": [
-          "90,000원"
+          "1건 90,000원 미만",
+          "식비: 업무 관련 회식·간식은 1인 1회 120,000원",
+          "비품비: 공동 사용 사무 물품은 분기 250,000원",
+          "교통비: 업무 목적 이동은 1인당 250,000원",
+          "장소 대관비: 외부 회의·행사 공간은 회당 120,000원",
+          "출장 숙박: 1인 1박 500,000원",
+          "교육비: 업무 관련 교재·강의·세미나 참가비는 1인당 1,000,000원",
+          "행사·활동비: 팀 워크숍·행사는 건당 250,000원",
+          "대외 활동 참가비: 외부 행사·컨퍼런스 등록비는 건당 250,000원",
+          "경조사비는 1건 90,000원"
         ]
       }
     },
@@ -115,8 +161,15 @@
         "verified": true,
         "rules_count": 8,
         "rules_contain": [
-          "70,000원",
-          "AI가 자동 심사하고"
+          "1건 70,000원 미만",
+          "AI가 자동 심사하고",
+          "식비: 1인 1회 15,000원",
+          "장소 대관비: 회당 20,000원",
+          "비품비: 분기 30,000원",
+          "교통비: 대외 활동은 1인당 25,000원",
+          "교육비: 교재·강의·세미나는 1인당 30,000원",
+          "행사·활동비: 정기 행사·신입 모집·홍보물은 건당 50,000원",
+          "대외 활동 참가비: 외부 대회·공모전 등록비는 건당 50,000원"
         ],
         "rules_not_contain": [
           "{auto_approve_limit}"
