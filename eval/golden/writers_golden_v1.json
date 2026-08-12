@@ -19,7 +19,7 @@
         "categories_count": 9,
         "rules_contain": [
           "50,000원",
-          "AI가 자동 심사"
+          "AI가 자동 심사하고"
         ],
         "rules_not_contain": [
           "{auto_approve_limit}",
@@ -116,7 +116,7 @@
         "rules_count": 8,
         "rules_contain": [
           "70,000원",
-          "AI가 자동 심사"
+          "AI가 자동 심사하고"
         ],
         "rules_not_contain": [
           "{auto_approve_limit}"
