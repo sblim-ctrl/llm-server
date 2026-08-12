@@ -232,6 +232,72 @@
         "spent": 1144000
       },
       "expense_history": "team_9001"
+    },
+    "9015": {
+      "label": "golden-social-noauto",
+      "team_type": "친목",
+      "auto_approve": false,
+      "auto_approve_limit": 50000,
+      "budget": {
+        "total_budget": 300000,
+        "spent": 118000
+      },
+      "expense_history": "default"
+    },
+    "9016": {
+      "label": "golden-hobby-noauto",
+      "team_type": "동호회",
+      "auto_approve": false,
+      "auto_approve_limit": 50000,
+      "budget": {
+        "total_budget": 300000,
+        "spent": 118000
+      },
+      "expense_history": "default"
+    },
+    "9017": {
+      "label": "golden-club-noauto-lowbudget",
+      "team_type": "동아리/학생회",
+      "auto_approve": false,
+      "auto_approve_limit": 50000,
+      "budget": {
+        "total_budget": 20000,
+        "spent": 19000
+      },
+      "expense_history": "default"
+    },
+    "9018": {
+      "label": "golden-study-noauto-lowbudget",
+      "team_type": "스터디",
+      "auto_approve": false,
+      "auto_approve_limit": 50000,
+      "budget": {
+        "total_budget": 20000,
+        "spent": 19000
+      },
+      "expense_history": "default"
+    },
+    "9019": {
+      "label": "golden-social-noauto-lowbudget",
+      "team_type": "친목",
+      "auto_approve": false,
+      "auto_approve_limit": 50000,
+      "budget": {
+        "total_budget": 20000,
+        "spent": 19000
+      },
+      "expense_history": "default"
+    },
+    "9020": {
+      "label": "golden-company-noauto-lowbudget",
+      "team_type": "회사",
+      "auto_approve": false,
+      "auto_approve_limit": 50000,
+      "budget": {
+        "total_budget": 20000,
+        "spent": 19000
+      },
+      "expense_history": "default"
     }
   },
   "expense_histories": {
@@ -3245,6 +3311,167 @@
       "amount": 18000,
       "date": "2026-07-18",
       "description": "우편 택배 발송 비용"
+    },
+    "90075": {
+      "label": "club-noauto-budget-001",
+      "title": "사무용품 구매",
+      "amount": 5000,
+      "date": "2026-07-15",
+      "description": "동아리 사무용품"
+    },
+    "90076": {
+      "label": "study-noauto-budget-001",
+      "title": "전공 서적 구입",
+      "amount": 15000,
+      "date": "2026-07-15",
+      "description": "스터디 전공 서적"
+    },
+    "90077": {
+      "label": "social-noauto-budget-001",
+      "title": "회식 식대",
+      "amount": 30000,
+      "date": "2026-07-15",
+      "description": "정기 회식 식대"
+    },
+    "90078": {
+      "label": "company-noauto-budget-001",
+      "title": "택시비 정산",
+      "amount": 25000,
+      "date": "2026-07-15",
+      "description": "야근 택시비"
+    },
+    "90079": {
+      "label": "club-noauto-budget-002",
+      "title": "체육관 대관료",
+      "amount": 80000,
+      "date": "2026-07-15",
+      "description": "체육관 대관료"
+    },
+    "90080": {
+      "label": "social-noauto-001",
+      "title": "회식 식대",
+      "amount": 20000,
+      "date": "2026-07-15",
+      "description": "친목 모임 회식 식대"
+    },
+    "90081": {
+      "label": "hobby-noauto-001",
+      "title": "체육대회 참가비",
+      "amount": 22000,
+      "date": "2026-07-15",
+      "description": "동호회 체육대회 참가비"
+    },
+    "90082": {
+      "label": "hobby-noauto-002",
+      "title": "체육관 대관료",
+      "amount": 70000,
+      "date": "2026-07-15",
+      "description": "체육관 대관료"
+    },
+    "90083": {
+      "label": "club-noreceipt-budget-001",
+      "title": "사무용품 구매",
+      "amount": 5000,
+      "date": "2026-07-15",
+      "description": "동아리 사무용품"
+    },
+    "90084": {
+      "label": "study-noreceipt-budget-001",
+      "title": "전공 서적 구입",
+      "amount": 15000,
+      "date": "2026-07-15",
+      "description": "스터디 전공 서적"
+    },
+    "90085": {
+      "label": "hobby-noreceipt-budget-001",
+      "title": "체육대회 참가비",
+      "amount": 45000,
+      "date": "2026-07-15",
+      "description": "동호회 체육대회 참가비"
+    },
+    "90086": {
+      "label": "club-mismatch-budget-001",
+      "title": "회식 식대",
+      "amount": 6000,
+      "date": "2026-07-15",
+      "description": "동아리 회식 식대"
+    },
+    "90087": {
+      "label": "club-limit-exact-001",
+      "title": "사무용품 구매",
+      "amount": 50000,
+      "date": "2026-07-15",
+      "description": "동아리 사무용품"
+    },
+    "90088": {
+      "label": "club-limit-under-001",
+      "title": "사무용품 구매",
+      "amount": 49999,
+      "date": "2026-07-15",
+      "description": "동아리 사무용품"
+    },
+    "90089": {
+      "label": "study-budget-short-by-one-001",
+      "title": "전공 서적 구입",
+      "amount": 1001,
+      "date": "2026-07-15",
+      "description": "스터디 전공 서적"
+    },
+    "90090": {
+      "label": "study-noauto-noreceipt-001",
+      "title": "전공 서적 구입",
+      "amount": 20000,
+      "date": "2026-07-15",
+      "description": "스터디 전공 서적"
+    },
+    "90091": {
+      "label": "club-approve-006",
+      "title": "협업 도구 구독료",
+      "amount": 12000,
+      "date": "2026-07-15",
+      "description": "협업 도구 월 구독료"
+    },
+    "90092": {
+      "label": "study-approve-005",
+      "title": "체육관 대관료",
+      "amount": 35000,
+      "date": "2026-07-15",
+      "description": "스터디 체육관 대관료"
+    },
+    "90093": {
+      "label": "social-approve-005",
+      "title": "택시비 정산",
+      "amount": 28000,
+      "date": "2026-07-15",
+      "description": "모임 이동 택시비"
+    },
+    "90094": {
+      "label": "hobby-approve-004",
+      "title": "사무용품 구매",
+      "amount": 44000,
+      "date": "2026-07-15",
+      "description": "동호회 사무용품"
+    },
+    "90095": {
+      "label": "company-approve-004",
+      "title": "회식 식대",
+      "amount": 9000,
+      "date": "2026-07-15",
+      "description": "팀 회식 식대"
+    },
+    "90096": {
+      "label": "study-budget-warn-001",
+      "title": "전공 서적 구입",
+      "amount": 900,
+      "date": "2026-07-15",
+      "description": "스터디 전공 서적"
+    },
+    "90097": {
+      "label": "company-budget-warn-001",
+      "title": "택시비 정산",
+      "amount": 950,
+      "date": "2026-07-15",
+      "description": "야근 택시비"
     }
   }
 }

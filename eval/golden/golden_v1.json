@@ -1,6 +1,6 @@
 {
   "version": "v1",
-  "description": "골든셋 73건 — sblim 60건(5개 모임 유형(실제 모임 생성 화면 기준) × 6개 시나리오, §9.2) + cowbro 전용 8건(브랜치 통합 2026-08-04: autoclassify 2·mismatch-002 3·gate-priority·boundary-003·budget-edge). 입력은 pull 모델 5필드(jobId/expenseId/organizationId/reviewGoal/receiptPath — bravo 설계서 TABLE 18): organizationId·expenseId는 eval/fixtures/mock_backend.json의 정수 키를 그대로 참조한다(T9 — 옛 문자열 규약, organizationId의 lowbudget/noauto 단서·expenseId의 ?title=&amount=&category=&date=&description= 쿼리는 폐기됐다). fixture의 organizations[id]가 조직별 잔액·auto_approve를 담고 있다 — lowbudget 계열은 잔액 부족(잔액 1,000원), noauto 계열은 auto_approve=False. receiptPath에는 여전히 mock://receipt?amount=&date=로 영수증 오버라이드를 건다. 기본 정책: 목 fixture가 auto_approve_limit=50000만 내려준다 — 2026-08-05 마법사 2단계 화면 개편(금액 칸 2개 → 1개)으로 백엔드가 escalation_threshold 컬럼을 삭제했고, 키가 없으면 force_escalation_amount는 auto_approve_limit과 같은 값이 된다(app/tools/policy_params.py). 금액 경계는 '이상'이다 — 50,000원은 자동 판정이 아니라 관리자 확인이고, 49,999원까지가 자동 판정 구간이다. | expected_gate_includes: Trajectory 검사 라벨(발동해야 할 가드레일 규칙)",
+  "description": "골든셋 97건 — 2026-08-12 가드레일 조합 23건 추가(예산 부족 × 비-override 조합·판정 권한 없음 유형 확장·금액/예산 경계·자동 승인 균형) + sblim 60건(5개 모임 유형(실제 모임 생성 화면 기준) × 6개 시나리오, §9.2) + cowbro 전용 8건(브랜치 통합 2026-08-04: autoclassify 2·mismatch-002 3·gate-priority·boundary-003·budget-edge). 입력은 pull 모델 5필드(jobId/expenseId/organizationId/reviewGoal/receiptPath — bravo 설계서 TABLE 18): organizationId·expenseId는 eval/fixtures/mock_backend.json의 정수 키를 그대로 참조한다(T9 — 옛 문자열 규약, organizationId의 lowbudget/noauto 단서·expenseId의 ?title=&amount=&category=&date=&description= 쿼리는 폐기됐다). fixture의 organizations[id]가 조직별 잔액·auto_approve를 담고 있다 — lowbudget 계열은 잔액 부족(잔액 1,000원), noauto 계열은 auto_approve=False. receiptPath에는 여전히 mock://receipt?amount=&date=로 영수증 오버라이드를 건다. 기본 정책: 목 fixture가 auto_approve_limit=50000만 내려준다 — 2026-08-05 마법사 2단계 화면 개편(금액 칸 2개 → 1개)으로 백엔드가 escalation_threshold 컬럼을 삭제했고, 키가 없으면 force_escalation_amount는 auto_approve_limit과 같은 값이 된다(app/tools/policy_params.py). 금액 경계는 '이상'이다 — 50,000원은 자동 판정이 아니라 관리자 확인이고, 49,999원까지가 자동 판정 구간이다. | expected_gate_includes: Trajectory 검사 라벨(발동해야 할 가드레일 규칙)",
   "cases": [
     {
       "id": "club-approve-001",
@@ -1265,6 +1265,402 @@
       "expected_gate_includes": [
         "over_force_escalation_amount"
       ]
+    },
+    {
+      "id": "club-noauto-budget-001",
+      "scenario": "판정 권한 없음 + 잔액 부족 — 반려도 판정이라 보류",
+      "team_type": "동아리/학생회",
+      "input": {
+        "jobId": "job-club-noauto-budget-001",
+        "expenseId": 90075,
+        "organizationId": 9017,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "비품",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "study-noauto-budget-001",
+      "scenario": "판정 권한 없음 + 잔액 부족 — 반려도 판정이라 보류",
+      "team_type": "스터디",
+      "input": {
+        "jobId": "job-study-noauto-budget-001",
+        "expenseId": 90076,
+        "organizationId": 9018,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "social-noauto-budget-001",
+      "scenario": "판정 권한 없음 + 잔액 부족 — 반려도 판정이라 보류",
+      "team_type": "친목",
+      "input": {
+        "jobId": "job-social-noauto-budget-001",
+        "expenseId": 90077,
+        "organizationId": 9019,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "company-noauto-budget-001",
+      "scenario": "판정 권한 없음 + 잔액 부족 — 반려도 판정이라 보류",
+      "team_type": "회사",
+      "input": {
+        "jobId": "job-company-noauto-budget-001",
+        "expenseId": 90078,
+        "organizationId": 9020,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교통",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "club-noauto-budget-002",
+      "scenario": "판정 권한 없음 + 잔액 부족 + 한도 초과 3중 — 금액 규칙이 이겨도 보류",
+      "team_type": "동아리/학생회",
+      "input": {
+        "jobId": "job-club-noauto-budget-002",
+        "expenseId": 90079,
+        "organizationId": 9017,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled",
+        "over_auto_approve_limit",
+        "over_force_escalation_amount"
+      ]
+    },
+    {
+      "id": "social-noauto-001",
+      "scenario": "판정 권한 없음 — 한도 내",
+      "team_type": "친목",
+      "input": {
+        "jobId": "job-social-noauto-001",
+        "expenseId": 90080,
+        "organizationId": 9015,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "hobby-noauto-001",
+      "scenario": "판정 권한 없음 — 한도 내",
+      "team_type": "동호회",
+      "input": {
+        "jobId": "job-hobby-noauto-001",
+        "expenseId": 90081,
+        "organizationId": 9016,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "행사_활동",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "hobby-noauto-002",
+      "scenario": "판정 권한 없음 + 한도 초과 — 잔액은 충분",
+      "team_type": "동호회",
+      "input": {
+        "jobId": "job-hobby-noauto-002",
+        "expenseId": 90082,
+        "organizationId": 9016,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled",
+        "over_auto_approve_limit",
+        "over_force_escalation_amount"
+      ]
+    },
+    {
+      "id": "club-noreceipt-budget-001",
+      "scenario": "잔액 부족 + 영수증 미첨부 — 청구액을 못 믿으면 반려도 못 한다",
+      "team_type": "동아리/학생회",
+      "input": {
+        "jobId": "job-club-noreceipt-budget-001",
+        "expenseId": 90083,
+        "organizationId": 9007,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "비품",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "study-noreceipt-budget-001",
+      "scenario": "잔액 부족 + 영수증 미첨부 — 청구액을 못 믿으면 반려도 못 한다",
+      "team_type": "스터디",
+      "input": {
+        "jobId": "job-study-noreceipt-budget-001",
+        "expenseId": 90084,
+        "organizationId": 9008,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "hobby-noreceipt-budget-001",
+      "scenario": "잔액 부족 + 영수증 미첨부 — 청구액을 못 믿으면 반려도 못 한다",
+      "team_type": "동호회",
+      "input": {
+        "jobId": "job-hobby-noreceipt-budget-001",
+        "expenseId": 90085,
+        "organizationId": 9010,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "행사_활동",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "club-mismatch-budget-001",
+      "scenario": "잔액 부족 + 영수증 금액 불일치 — 반려가 아니라 보류",
+      "team_type": "동아리/학생회",
+      "input": {
+        "jobId": "job-club-mismatch-budget-001",
+        "expenseId": 90086,
+        "organizationId": 9007,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=3000"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_mismatch"
+      ]
+    },
+    {
+      "id": "club-limit-exact-001",
+      "scenario": "한도와 같은 금액 — 경계는 '이상'이라 관리자 확인",
+      "team_type": "동아리/학생회",
+      "input": {
+        "jobId": "job-club-limit-exact-001",
+        "expenseId": 90087,
+        "organizationId": 9002,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "비품",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit",
+        "over_force_escalation_amount"
+      ]
+    },
+    {
+      "id": "club-limit-under-001",
+      "scenario": "한도보다 1원 낮음 — 자동 판정 구간의 상단",
+      "team_type": "동아리/학생회",
+      "input": {
+        "jobId": "job-club-limit-under-001",
+        "expenseId": 90088,
+        "organizationId": 9002,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "비품",
+      "must_not_approve": false
+    },
+    {
+      "id": "study-budget-short-by-one-001",
+      "scenario": "잔액보다 1원 많음 — 예산 부족 반려",
+      "team_type": "스터디",
+      "input": {
+        "jobId": "job-study-budget-short-by-one-001",
+        "expenseId": 90089,
+        "organizationId": 9008,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt"
+      },
+      "expected_verdict": "reject",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "budget_insufficient"
+      ]
+    },
+    {
+      "id": "study-noauto-noreceipt-001",
+      "scenario": "판정 권한 없음 + 영수증 미첨부 — 비-override 2종",
+      "team_type": "스터디",
+      "input": {
+        "jobId": "job-study-noauto-noreceipt-001",
+        "expenseId": 90090,
+        "organizationId": 9013,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled",
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "club-approve-006",
+      "scenario": "명백 승인 — 한도 내, 영수증 일치",
+      "team_type": "동아리/학생회",
+      "input": {
+        "jobId": "job-club-approve-006",
+        "expenseId": 90091,
+        "organizationId": 9002,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "IT_인프라",
+      "must_not_approve": false
+    },
+    {
+      "id": "study-approve-005",
+      "scenario": "명백 승인 — 한도 내, 영수증 일치",
+      "team_type": "스터디",
+      "input": {
+        "jobId": "job-study-approve-005",
+        "expenseId": 90092,
+        "organizationId": 9003,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "장소_대관",
+      "must_not_approve": false
+    },
+    {
+      "id": "social-approve-005",
+      "scenario": "명백 승인 — 한도 내, 영수증 일치",
+      "team_type": "친목",
+      "input": {
+        "jobId": "job-social-approve-005",
+        "expenseId": 90093,
+        "organizationId": 9004,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교통",
+      "must_not_approve": false
+    },
+    {
+      "id": "hobby-approve-004",
+      "scenario": "명백 승인 — 한도 내, 영수증 일치",
+      "team_type": "동호회",
+      "input": {
+        "jobId": "job-hobby-approve-004",
+        "expenseId": 90094,
+        "organizationId": 9005,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "비품",
+      "must_not_approve": false
+    },
+    {
+      "id": "company-approve-004",
+      "scenario": "명백 승인 — 한도 내, 영수증 일치",
+      "team_type": "회사",
+      "input": {
+        "jobId": "job-company-approve-004",
+        "expenseId": 90095,
+        "organizationId": 9006,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "식비",
+      "must_not_approve": false
+    },
+    {
+      "id": "study-budget-warn-001",
+      "scenario": "잔액 소진 임박 경고 — 한도 내라 자동 승인",
+      "team_type": "스터디",
+      "input": {
+        "jobId": "job-study-budget-warn-001",
+        "expenseId": 90096,
+        "organizationId": 9008,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교육",
+      "must_not_approve": false
+    },
+    {
+      "id": "company-budget-warn-001",
+      "scenario": "잔액 소진 임박 경고 — 한도 내라 자동 승인",
+      "team_type": "회사",
+      "input": {
+        "jobId": "job-company-budget-warn-001",
+        "expenseId": 90097,
+        "organizationId": 9011,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교통",
+      "must_not_approve": false
     }
   ]
 }
