@@ -110,7 +110,7 @@ def _escalation_detail(state: ReviewState) -> str:
 
 
 def _requester_message(state: ReviewState) -> str:
-    """요청자용 에스컬레이션 사유 — 트리거 종류별 4종. 내부 수치·LLM 원문은 담지 않는다
+    """요청자용 에스컬레이션 사유 — 트리거 종류별 5종. 내부 수치·LLM 원문은 담지 않는다
     (요청자에게 승인/반려로 오인될 수 있는 문구를 보이면 안 되므로 adjudicate의 LLM 원문은
     쓰지 않는다)."""
     if state.get("mismatch"):
@@ -120,6 +120,14 @@ def _requester_message(state: ReviewState) -> str:
         # 금액 규칙만 걸린 건은 금액이 유일한 사유이므로 그 사실을 밝힌다(수치는 담지 않음).
         # 다른 규칙과 섞이면 금액 문구가 그 사유를 가리므로 일반 문구를 유지한다.
         if set(gate.triggered_rules) <= _AMOUNT_RULES:
+            # 실효 한도가 0 이하인 팀은 금액과 무관하게 전건이 관리자 확인이라 '기준 이상'이
+            # 사유가 아니다. 관리자용 `_amount_context`가 같은 조건에서 팀 설정 안내를
+            # 붙이므로 요청자에게도 같은 이유를 들려준다. 설정을 못 읽었으면 금액 문구 유지.
+            policy = state.get("policy_params")
+            if policy is not None and effective_auto_approve_limit(policy) <= 0:
+                return (
+                    "팀 설정상 모든 지출이 관리자 확인 대상이라 이 건도 관리자 승인이 필요합니다."
+                )
             return "청구 금액이 팀에서 정한 자동 승인 기준 이상이라 관리자 승인이 필요한 건으로 분류되었습니다."
         return "회칙·예산 기준에 따라 관리자 확인이 필요한 건으로 분류되었습니다."
     return "판정 결과에 대한 추가 확인이 필요하여 관리자가 검토합니다."
