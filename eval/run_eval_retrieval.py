@@ -32,9 +32,16 @@
   조항 수'를 관측치로 출력해 노이즈 추이만 본다.
 
 비용: 케이스당 임베딩 1~2회(+1차 검색 실패 시 재작성 LLM 1회) — 5건 기준 $0.01 미만.
+영수증도 프로덕션 노드(intake_receipt)로 얻으므로(#89) **file:// PNG 케이스는 실모드에서
+케이스당 Vision 1회가 추가**된다(rule-axis 골든이 그렇다). mock://·미첨부는 추가 비용 0.
 절차는 run_eval_real.py와 같다(실행 전 골든 팀 정리 → 회칙 실인덱싱 → 실행 후 정리).
 
-**첫 기준선 (2026-08-12 · RELEVANCE_MAX_DISTANCE=0.65 · top_k=3)**: 조항 적중 2/4 ·
+⚠️ #89 이후 질의가 종전 기준선과 다르다: 골든 PNG는 품목=지출 제목 복사라(#87 참조)
+질의에 제목이 한 번 더 들어가고 상호도 붙는다 — 프로덕션(v7)과 같아진 것이지만,
+아래 "첫 기준선(2/4·62.5%)"과 수치를 직접 비교하면 안 된다. 실키로 재측정해 기준선을
+다시 잡아야 한다.
+
+**첫 기준선 (2026-08-12 · RELEVANCE_MAX_DISTANCE=0.65 · top_k=3) (무효 — #89 이전 측정)**: 조항 적중 2/4 ·
 조항 단위 평균 62.5% · 대조군 위반 1건. 같은 5건의 **판정은 전부 정답이었다** —
 즉 판정 정확도가 검색 품질을 보증하지 않는다는 것이 이 하니스의 첫 산출물이다.
 임계값만으로는 분리되지 않는다는 것도 함께 확인했다: 기대 조항의 최대 거리(0.739)와
@@ -85,6 +92,7 @@ async def main() -> int:
         return 2
 
     from app.graphs.indexing.graph import indexing_graph
+    from app.graphs.review.nodes.intake_receipt import intake_receipt
     from app.graphs.review.nodes.load_context import load_context
     # 프로덕션 검색 경로를 그대로 호출한다(모듈 docstring 참조) — 재구현 금지.
     from app.graphs.review.nodes.rule_auditor import _retrieve_with_correction
@@ -108,9 +116,19 @@ async def main() -> int:
                 "team_id": inp["organizationId"],
                 "review_goal": inp.get("reviewGoal", ""),
             })
+            # 영수증도 프로덕션 노드(intake_receipt)로 얻는다 (#89). rule_auditor v7부터
+            # 검색 질의에 증빙의 상호·품목이 들어가는데(#84 _search_text), 하니스가
+            # receipt를 안 넘기면 질의가 프로덕션과 갈라진다 — 이 파일 docstring이
+            # 금지한 바로 그 상태였다. rule-axis 골든은 file:// PNG라 질의가 실제로
+            # 달라진다(모듈 docstring ⚠️ 참조) — 기준선 재측정 필요.
+            intake = await intake_receipt({
+                "claim": ctx["claim"],
+                "receipt_path": inp.get("receiptPath"),
+            })
             chunks, grade, _meta = await _retrieve_with_correction(
                 inp["organizationId"], ctx["claim"], ctx["rule_version"],
                 ctx.get("team_members") or [],
+                receipt=intake.get("receipt_data"),
             )
             retrieved: set[str] = set()
             for c in chunks:
