@@ -180,3 +180,141 @@ async def test_mismatch_and_gate_triggers_use_escalation_detail_admin_message(mo
     expected = f"에스컬레이션 사유 — {esc_mod._escalation_detail(gate_state)}"
     assert out["reasons"].admin == expected
     assert "LLM 판단" not in out["reasons"].admin
+
+
+# ── 금액 게이트 사유의 화면 노출 (2026-08-12) ─────────────────────────────
+#
+# 심사관 전원 pass인데 청구 금액이 자동 승인 기준 이상이라 보류된 건에서, 사용자가
+# "왜 보류인지"를 화면에서 볼 수 있도록 사유 문구를 구체화한다. requester는 금액이
+# 원인임을 (수치 없이) 드러내고, admin(=배너 바인딩 대상)은 청구·기준액을 병기한다.
+
+from app.eval_support import scan_banned_terms  # noqa: E402
+from app.graphs.review.nodes.escalate import _escalation_detail  # noqa: E402
+from app.schemas.common import PolicyParams  # noqa: E402
+
+_POLICY_50K = PolicyParams(
+    auto_approve=True, auto_approve_limit=50_000, force_escalation_amount=200_000
+)
+
+
+def test_requester_message_amount_only_gate_names_the_amount():
+    """금액 규칙만 걸린 건은 금액이 원인임을 밝히는 전용 요청자 문구를 쓴다."""
+    msg = _requester_message(
+        _state(
+            gate_result=GateResult(decision="escalate", triggered_rules=["over_auto_approve_limit"])
+        )
+    )
+    assert "자동 승인 기준" in msg
+    assert "회칙·예산" not in msg
+
+
+def test_requester_message_zero_effective_limit_matches_admin_full_manual_mode():
+    """실효 한도 0(전건 수동 모드)에선 요청자도 '기준 이상'이 아니라 팀 설정을 이유로 듣는다 —
+    관리자용 사유와 같은 이유여야 한 팀에서 두 사람이 서로 다른 말을 듣지 않는다."""
+    state = _state(
+        policy_params=PolicyParams(
+            auto_approve=True, auto_approve_limit=0, force_escalation_amount=0
+        ),
+        gate_result=GateResult(decision="escalate", triggered_rules=["over_auto_approve_limit"]),
+    )
+    msg = _requester_message(state)
+    assert "모든 지출" in msg
+    assert "모든 지출" in _escalation_detail(state)
+    assert "자동 승인 기준" not in msg
+    assert "0원" not in msg
+    assert scan_banned_terms(msg) == []
+
+
+def test_requester_message_amount_mixed_with_other_rule_stays_general():
+    """금액 규칙이 다른 규칙과 섞이면 일반 문구를 유지한다 — 금액 문구가 다른 사유를 가리면 안 된다."""
+    msg = _requester_message(
+        _state(
+            gate_result=GateResult(
+                decision="escalate", triggered_rules=["over_auto_approve_limit", "rule_ambiguous"]
+            )
+        )
+    )
+    assert msg == "회칙·예산 기준에 따라 관리자 확인이 필요한 건으로 분류되었습니다."
+
+
+def test_requester_messages_are_four_distinct_triggers():
+    """mismatch / 금액-gate / 일반-gate / 기본 네 트리거가 서로 다른 문구를 낸다."""
+    mismatch = _requester_message(
+        _state(mismatch=[Mismatch(field="amount", claimed="1", receipt="2")])
+    )
+    amount_gate = _requester_message(
+        _state(
+            gate_result=GateResult(decision="escalate", triggered_rules=["over_auto_approve_limit"])
+        )
+    )
+    general_gate = _requester_message(
+        _state(gate_result=GateResult(decision="escalate", triggered_rules=["rule_ambiguous"]))
+    )
+    default = _requester_message(_state())
+    assert len({mismatch, amount_gate, general_gate, default}) == 4
+
+
+def test_escalation_detail_amount_gate_appends_claim_and_limit():
+    """관리자용 금액 사유엔 청구·기준액이 병기되고, '가드레일' 대신 사용자 친화 접두를 쓴다."""
+    detail = _escalation_detail(
+        _state(
+            claim=ExpenseClaim(
+                title="외부 강연료", amount=120_000, category="교육", date="2026-08-01"
+            ),
+            policy_params=_POLICY_50K,
+            gate_result=GateResult(
+                decision="escalate", triggered_rules=["over_auto_approve_limit"]
+            ),
+        )
+    )
+    assert "120,000원" in detail
+    assert "50,000원" in detail
+    assert "가드레일" not in detail
+    assert scan_banned_terms(detail) == []
+
+
+def test_escalation_detail_amount_mixed_appends_numbers_to_amount_label():
+    """금액 규칙이 다른 규칙과 함께 걸려도 금액 라벨 뒤에 수치가 붙는다."""
+    detail = _escalation_detail(
+        _state(
+            claim=ExpenseClaim(
+                title="외부 강연료", amount=120_000, category="교육", date="2026-08-01"
+            ),
+            policy_params=_POLICY_50K,
+            gate_result=GateResult(
+                decision="escalate", triggered_rules=["rule_ambiguous", "over_auto_approve_limit"]
+            ),
+        )
+    )
+    assert "회칙 해석이 애매함" in detail
+    assert "관리자 승인이 필요한 금액(청구 120,000원, 기준 50,000원 이상)" in detail
+
+
+def test_escalation_detail_zero_effective_limit_explains_full_manual_mode():
+    """실효 한도 0(전건 수동 모드)은 수치 대신 팀 설정 안내를 붙인다 — '0원 이상' 노출 방지."""
+    detail = _escalation_detail(
+        _state(
+            claim=ExpenseClaim(title="소액 다과", amount=3_000, category="회의", date="2026-08-01"),
+            policy_params=PolicyParams(
+                auto_approve=True, auto_approve_limit=0, force_escalation_amount=0
+            ),
+            gate_result=GateResult(
+                decision="escalate", triggered_rules=["over_auto_approve_limit"]
+            ),
+        )
+    )
+    assert "모든 지출" in detail
+    assert "0원" not in detail
+    assert scan_banned_terms(detail) == []
+
+
+def test_escalation_detail_non_amount_gate_has_no_numbers():
+    """금액 규칙이 없으면 청구·기준액을 붙이지 않는다."""
+    detail = _escalation_detail(
+        _state(
+            policy_params=_POLICY_50K,
+            gate_result=GateResult(decision="escalate", triggered_rules=["rule_ambiguous"]),
+        )
+    )
+    assert "원" not in detail
+    assert "회칙 해석이 애매함" in detail
