@@ -16,6 +16,7 @@ from langgraph.types import interrupt
 from app.graphs.review.nodes.mismatch_gate import FIELD_LABELS
 from app.graphs.review.state import ReviewState
 from app.schemas.common import Reasons
+from app.tools.policy_params import effective_auto_approve_limit
 
 
 # 가드레일 규칙 → 관리자 화면 문구.
@@ -47,6 +48,27 @@ _RULE_PREFIX_LABELS = {
 }
 _AUDITOR_LABELS = {"rule": "회칙", "budget": "예산", "precedent": "판례", "evidence": "증빙"}
 
+# 청구 금액이 자동 승인 기준 이상이라 걸리는 두 규칙. 이것만으로 보류된 건은
+# 회칙·예산 위반이 아니라 '금액이 커서'가 유일한 사유라, 사용자에게 그 사실을
+# 그대로 밝힌다(guardrail_gate에서 이 둘은 항상 마지막에 append되고 같은 라벨로 접힌다).
+_AMOUNT_RULES = frozenset({"over_auto_approve_limit", "over_force_escalation_amount"})
+
+
+def _amount_context(state: ReviewState) -> str:
+    """금액 규칙으로 걸린 건의 청구액·기준액을 관리자용 괄호 문구로 (순수 함수).
+
+    청구/설정 정보가 없으면 빈 문자열, 실효 한도가 0 이하(전건 수동 모드)면
+    '0원 이상' 대신 팀 설정 안내를 준다.
+    """
+    claim = state.get("claim")
+    policy = state.get("policy_params")
+    if claim is None or policy is None:
+        return ""
+    limit = effective_auto_approve_limit(policy)
+    if limit <= 0:
+        return "(팀 설정: 모든 지출 관리자 확인)"
+    return f"(청구 {claim.amount:,}원, 기준 {limit:,}원 이상)"
+
 
 def describe_rules(rules: list[str]) -> str:
     """가드레일 규칙 목록 → 관리자가 읽는 한 줄 (순수 함수).
@@ -77,18 +99,28 @@ def _escalation_detail(state: ReviewState) -> str:
             for m in mismatch
         )
     if gate is not None and gate.triggered_rules:
-        return "가드레일: " + describe_rules(gate.triggered_rules)
+        detail = describe_rules(gate.triggered_rules)
+        # 금액 규칙이 걸렸으면 그 라벨(둘은 같은 라벨로 접힘) 뒤에 청구·기준액을 병기해
+        # 관리자가 근거 금액을 바로 본다. 위치 의존 없이 라벨 문자열을 찾아 붙인다.
+        if _AMOUNT_RULES & set(gate.triggered_rules):
+            label = _RULE_LABELS["over_auto_approve_limit"]
+            detail = detail.replace(label, label + _amount_context(state), 1)
+        return "자동 심사 결과: " + detail
     return "판정 신뢰도 미달 또는 심사 실패"
 
 
 def _requester_message(state: ReviewState) -> str:
-    """요청자용 에스컬레이션 사유 — 트리거 종류별 3종. 내부 수치·LLM 원문은 담지 않는다
+    """요청자용 에스컬레이션 사유 — 트리거 종류별 4종. 내부 수치·LLM 원문은 담지 않는다
     (요청자에게 승인/반려로 오인될 수 있는 문구를 보이면 안 되므로 adjudicate의 LLM 원문은
     쓰지 않는다)."""
     if state.get("mismatch"):
         return "영수증과 신청 내용이 일치하지 않아 관리자가 다시 확인합니다."
     gate = state.get("gate_result")
     if gate is not None and gate.triggered_rules:
+        # 금액 규칙만 걸린 건은 금액이 유일한 사유이므로 그 사실을 밝힌다(수치는 담지 않음).
+        # 다른 규칙과 섞이면 금액 문구가 그 사유를 가리므로 일반 문구를 유지한다.
+        if set(gate.triggered_rules) <= _AMOUNT_RULES:
+            return "청구 금액이 팀에서 정한 자동 승인 기준 이상이라 관리자 승인이 필요한 건으로 분류되었습니다."
         return "회칙·예산 기준에 따라 관리자 확인이 필요한 건으로 분류되었습니다."
     return "판정 결과에 대한 추가 확인이 필요하여 관리자가 검토합니다."
 
