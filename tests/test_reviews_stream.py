@@ -201,6 +201,56 @@ async def test_resume_stream_failure_still_releases_lock(monkeypatch):
     assert conn.unlocked and conn.closed
 
 
+def _result_json(body: str) -> dict:
+    """SSE 본문에서 result 이벤트의 data JSON을 꺼낸다."""
+    import json as _json
+
+    lines = body.splitlines()
+    for i, line in enumerate(lines):
+        if line == "event: result":
+            return _json.loads(lines[i + 1].removeprefix("data: "))
+    raise AssertionError("result 이벤트가 없다")
+
+
+async def test_result_gate_rules_cover_receipt_mismatch_path(monkeypatch):
+    """영수증 불일치 escalate에서도 gateRules가 비지 않는다 (#94).
+
+    mismatch_gate는 guardrail_gate **앞에서** 보류 직행시키므로 gate_result가 없다 —
+    gate_result만 읽던 종전 조립은 이 경로의 gateRules를 빈 배열로 내보냈다(제품
+    관측 경로에서 관리자가 "왜 막혔는지"를 못 봄). eval 하니스와 같은 도출 규칙
+    (gate_rules_from_state)을 타는지 실제 result 이벤트로 고정한다.
+    """
+    conn = _FakeLockConn(grant=True)
+    _patch_lock_conn(monkeypatch, conn)
+    graph = _FakeGraph(
+        next_=("escalate",), interrupts=("fake-interrupt",),
+        values={"team_id": 9002, "mismatch": [{"field": "amount"}]})
+    monkeypatch.setattr(reviews_stream, "hitl_graph", graph)
+
+    resp = await reviews_stream.resume_review(
+        "job-6", DecisionRequest(decision="approve"))
+    body = "".join([chunk async for chunk in resp.body_iterator])
+
+    assert _result_json(body)["gateRules"] == ["receipt_mismatch"]
+
+
+async def test_result_gate_rules_keep_gate_result_when_present(monkeypatch):
+    """gate_result가 있으면 종전과 같은 값 — #94 수정이 기존 경로를 바꾸지 않는다."""
+    conn = _FakeLockConn(grant=True)
+    _patch_lock_conn(monkeypatch, conn)
+    graph = _FakeGraph(
+        next_=("escalate",), interrupts=("fake-interrupt",),
+        values={"team_id": 9002,
+                "gate_result": SimpleNamespace(triggered_rules=["budget_insufficient"])})
+    monkeypatch.setattr(reviews_stream, "hitl_graph", graph)
+
+    resp = await reviews_stream.resume_review(
+        "job-7", DecisionRequest(decision="approve"))
+    body = "".join([chunk async for chunk in resp.body_iterator])
+
+    assert _result_json(body)["gateRules"] == ["budget_insufficient"]
+
+
 def test_sse_format_and_korean_passthrough():
     out = _sse("node", {"label": "회칙 심사관", "ms": 3})
     assert out.startswith("event: node\ndata: ")
