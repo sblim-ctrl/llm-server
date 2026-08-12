@@ -15,6 +15,7 @@ from app.graphs.writers.policy_draft import (
     extra_rules_cap,
     drop_vague_rules,
     round_bylaw_amount,
+    round_bylaw_amount_down,
     round_bylaw_amount_up,
     suggested_limits,
     unknown_amounts_in,
@@ -491,6 +492,41 @@ def test_limits_and_articles_agree_both_ways(team_type):
     )
 
 
+#: 유형별로 반드시 정의돼 있어야 하는 한도 축 (#90, #83 리뷰 MEDIUM 후속).
+#:
+#: 위 both_ways 검사는 정의↔인용 **일치**만 보므로, 조항과 limits를 **함께** 지우면
+#: 전 테스트가 통과한다 — #83 초판에서 친목 supplies·transport·travel이 그렇게
+#: 소리 없이 빠졌다(리뷰 HIGH1). 이 상수는 그 경로를 막는다.
+#:
+#: **개수 규율이 아니다** (기존 결정: 한도 항목 개수를 유형별로 못박지 않는다).
+#: 검사는 ⊇(포함)만 보므로 **추가는 자유**고, 삭제할 때만 이 상수를 함께 고치게 되어
+#: 삭제가 diff에 정책 변경으로 드러난다. 상수를 고치는 PR은 "이 유형에서 이 한도
+#: 규범을 없앤다"는 팀 승인 대상이다.
+REQUIRED_LIMITS = {
+    "동아리/학생회": {"meal", "venue", "supplies", "transport", "education", "event"},
+    "스터디": {"meal", "venue", "supplies", "transport", "education", "event"},
+    "친목": {"meal", "venue", "supplies", "transport", "event", "gift", "travel"},
+    "동호회": {"meal", "venue", "supplies", "transport", "education", "event", "travel"},
+    "회사": {"meal", "venue", "supplies", "transport", "education", "event", "gift", "travel"},
+}
+
+
+@pytest.mark.parametrize("team_type", TEAM_TYPES)
+def test_required_limit_axes_stay_defined(team_type):
+    """합의된 한도 축을 지우면 테스트가 소리를 내야 한다 — 조항·limits 동반 삭제 방어.
+
+    both_ways와 짝이다: 저쪽이 '정의한 것은 인용한다'를, 여기가 '합의한 것은 정의돼
+    있다'를 지킨다. 둘이 함께 있어야 "조항만 삭제"(both_ways가 잡음)와 "조항+limits
+    동반 삭제"(여기가 잡음)가 모두 그물에 걸린다.
+    """
+    defined = set(load_templates()[team_type]["limits"])
+    missing = REQUIRED_LIMITS[team_type] - defined
+    assert not missing, (
+        f"[{team_type}] 필수 한도 축이 정의에서 빠졌다: {sorted(missing)} — 의도한 "
+        f"정책 변경이면 REQUIRED_LIMITS를 함께 고치고 PR 본문에 근거를 밝힐 것"
+    )
+
+
 async def test_no_bylaw_article_uses_a_non_catalog_category_word():
     """'다과비'처럼 카탈로그에 없는 분류명을 쓰면 회원이 고를 수 있는 분류와 어긋난다."""
     templates = load_templates()
@@ -649,6 +685,30 @@ def test_bylaw_amount_rounding_never_lowers_declared_floor():
             assert got >= floor, (
                 f"{team_type}/{key}: 선언한 하한 {floor:,}보다 낮은 {got:,}이 나왔다"
             )
+
+
+def test_bylaw_amount_rounding_never_raises_declared_cap():
+    """반올림이 한도의 상한(max)을 키우면 안 된다 — min 보호와 대칭 (#91, #80 리뷰 후속).
+
+    격자 밖 max(75,000)를 가까운 쪽 반올림에 태우면 80,000이 되어, "반올림이 상한을
+    넘지 않게" 두었던 가드가 오히려 상한을 키웠다(meal.max 사고). 상한은 내림으로
+    맞춘다. 격자 위 값은 내려가지 않아 동작 불변이다.
+
+    데이터 쪽 규율(test_limit_maxes_sit_on_the_rounding_grid — max는 격자 위의 값만)은
+    그대로 유지한다. 이 테스트는 그 규율이 뚫려 격자 밖 max가 들어와도 **코드가**
+    상한을 지키는지를 본다(이중 방어).
+    """
+    assert round_bylaw_amount(75_000) == 80_000        # 범용 반올림은 그대로
+    assert round_bylaw_amount_down(75_000) == 70_000   # 상한은 내림
+    assert round_bylaw_amount_down(80_000) == 80_000   # 격자 위 값은 불변
+    assert round_bylaw_amount_down(120_000) == 120_000
+    assert round_bylaw_amount_down(230_000) == 200_000  # 50,000원 단위 내림
+
+    # 격자 밖 max를 가진 합성 템플릿 — 포화 구간에서도 선언한 상한을 넘지 않아야 한다
+    synthetic = {"limits": {"meal": {"basis": "per_person", "ratio": 0.5, "min": 10_000, "max": 75_000}}}
+    got = int(suggested_limits(synthetic, initial_budget=10_000_000, member_count=2)["meal"].replace(",", ""))
+    assert got <= 75_000, f"선언한 상한 75,000을 넘는 {got:,}이 나왔다"
+    assert got == 70_000  # 내림 격자 위의 최대값
 
 
 def test_unknown_amounts_are_detected():
