@@ -9,6 +9,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from app.api.jobs import translate_result_terms
 from app.eval_metrics import category_metrics, score_category, verdict_metrics
 from app.graphs.review.graph import review_graph
 from app.graphs.review.nodes.callback import build_callback_payload
@@ -121,6 +122,21 @@ async def run_case(case: dict[str, Any]) -> dict[str, Any]:
     # 실제 발송 페이로드(callback.py build_callback_payload)를 대상으로 해야
     # "테스트만 통과하고 실제로는 새는" 괴리가 생기지 않는다.
     term_violations = scan_callback_payload_terms(build_callback_payload(final_state))
+    # 폴링 출구(§7.1)도 같은 게이트에 넣는다 (#71·#73). worker.py의 결과 조립부는
+    # 소유 경계상 이 PR에서 함수로 빼지 않아, 스캐너가 읽는 reasons·opinions 두 키만
+    # worker와 같은 직렬화(model_dump)로 재현하고 read_job이 적용하는 치환
+    # (translate_result_terms)까지 태워 "폴링 응답으로 나가는 그대로"를 스캔한다.
+    # 엔드포인트가 실제로 치환을 부르는지는 test_polling_terms.py가 배선 테스트로
+    # 보증하고, 여기는 치환을 거친 뒤에도 금지 용어가 남는 케이스를 골든셋 전량으로
+    # 잡는 그물이다.
+    reasons = final_state.get("reasons")
+    polled_result = translate_result_terms(
+        {
+            "reasons": reasons.model_dump() if reasons else None,
+            "opinions": [o.model_dump() for o in final_state.get("opinions", {}).values()],
+        }
+    )
+    term_violations += scan_job_result_terms(polled_result)
 
     return {
         "id": case["id"],

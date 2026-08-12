@@ -112,7 +112,7 @@ DEFAULT_VERSIONS = {
     #  "summary는 한국어로만, ADMIN/AGENT/override는 관리자·AI 자동·AI 추천
     #  번복으로 풀어 쓴다"는 규칙을 추가(few_shot은 이미 한국어라 교정 불요).
     #  similar_cases의 "입력 표기 그대로" 규칙은 유지 — 화면 노출 문구는
-    #  콜백 경계(callback.py _translate_precedent_citation)에서 옮긴다.
+    #  출구 경계(callback.py translate_precedent_citation — 콜백·폴링 공용)에서 옮긴다.
     "digest_writer": "v3",  # sblim v2 + advice 계약 복구 (PR #9 리뷰 D2). v2는 코드가
     #  필수로 요구하는 advice를 system·few_shot 어디에서도 언급하지
     #  않아, 목 모드에서만 _mock_advice로 가려지고 실모드에서

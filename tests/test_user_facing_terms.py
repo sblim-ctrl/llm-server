@@ -40,7 +40,7 @@ def test_scan_detects_each_banned_term():
 # ── callback.py: 판례 인용 접두 치환 ──────────────────────────────────────
 
 
-def testtranslate_precedent_citation_admin_reject_override():
+def test_translate_precedent_citation_admin_reject_override():
     out = translate_precedent_citation(
         "(reject/ADMIN, override) [식비] 야식비 — 52,000원. 심야 작업 야식 — 사유: 한도 초과"
     )
@@ -50,18 +50,18 @@ def testtranslate_precedent_citation_admin_reject_override():
     assert scan_banned_terms(out) == []
 
 
-def testtranslate_precedent_citation_admin_approve_no_override():
+def test_translate_precedent_citation_admin_approve_no_override():
     out = translate_precedent_citation("(approve/ADMIN) [행사_활동] 지역 리그 참가비 — 60,000원.")
     assert out == "(관리자 승인) [행사_활동] 지역 리그 참가비 — 60,000원."
 
 
-def testtranslate_precedent_citation_agent_no_override():
+def test_translate_precedent_citation_agent_no_override():
     out = translate_precedent_citation("(approve/AGENT) [식비] 정기 회식 — 88,000원.")
     assert out == "(AI 자동 승인) [식비] 정기 회식 — 88,000원."
     assert scan_banned_terms(out) == []
 
 
-def testtranslate_precedent_citation_unmatched_kept_as_is():
+def test_translate_precedent_citation_unmatched_kept_as_is():
     assert translate_precedent_citation("자유 텍스트 — 표기 없음") == "자유 텍스트 — 표기 없음"
 
 
