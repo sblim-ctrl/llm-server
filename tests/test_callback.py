@@ -133,12 +133,14 @@ def _op(auditor: str):
 
 
 def test_opinions_are_emitted_in_fixed_order():
-    """완료 순서가 어떻든 rule·budget·precedent·evidence 순으로 나간다."""
+    """완료 순서가 어떻든 증빙·예산·판례·회칙 순으로 나간다 (#86 정정 — 계약 문서
+    2026-08-11 갱신 블록의 제안 순서이자 실화면 순서. 종전 회칙-먼저는 PR #62가
+    리뷰 없이 넣은 값이었다)."""
     state = _state()
-    # evidence가 먼저 들어간 실제 순서(mismatch_gate가 fan-out 이전) + 뒤섞인 심사관
-    state["opinions"] = {k: _op(k) for k in ("evidence", "precedent", "rule", "budget")}
+    # 뒤섞인 삽입 순서 — 완료 순서와 무관하게 고정돼야 한다
+    state["opinions"] = {k: _op(k) for k in ("precedent", "rule", "evidence", "budget")}
     payload = build_callback_payload(state)
-    assert [o.auditor for o in payload.opinions] == ["rule", "budget", "precedent", "evidence"]
+    assert [o.auditor for o in payload.opinions] == ["evidence", "budget", "precedent", "rule"]
 
 
 def test_opinion_order_is_stable_across_completion_orders():
@@ -149,11 +151,11 @@ def test_opinion_order_is_stable_across_completion_orders():
         state = _state()
         state["opinions"] = {k: _op(k) for k in perm}
         outputs.add(tuple(o.auditor for o in build_callback_payload(state).opinions))
-    assert outputs == {("rule", "budget", "precedent", "evidence")}
+    assert outputs == {("evidence", "budget", "precedent", "rule")}
 
 
 def test_partial_opinions_keep_relative_order():
     """심사관이 일부만 있어도(에스컬레이션 경로) 상대 순서는 유지된다."""
     state = _state()
-    state["opinions"] = {k: _op(k) for k in ("evidence", "budget")}
-    assert [o.auditor for o in build_callback_payload(state).opinions] == ["budget", "evidence"]
+    state["opinions"] = {k: _op(k) for k in ("budget", "evidence")}
+    assert [o.auditor for o in build_callback_payload(state).opinions] == ["evidence", "budget"]
