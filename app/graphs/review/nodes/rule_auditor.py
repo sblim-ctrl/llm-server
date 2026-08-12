@@ -137,6 +137,12 @@ def receipt_facts_block(receipt: ReceiptData | None) -> str:
     return "증빙에서 읽은 사실:\n" + "\n".join(lines)
 
 
+#: 검색 질의에 붙이는 품목 수 상한 — intake/v3가 명문화한 추출 상한(최대 10개)과 같은
+#: 값이다. 코드에 상한이 없으면 그 계약이 바뀌거나 그래프 밖 호출이 긴 목록을 넘길 때
+#: 품목이 임베딩 질의를 지배해 제목·설명 신호가 희석된다 (#84 리뷰).
+_SEARCH_ITEMS_CAP = 10
+
+
 def _search_text(claim: ExpenseClaim, receipt: ReceiptData | None) -> str:
     """RAG 1차 검색 질의 — 제목·설명에 증빙의 상호·품목을 더한다.
 
@@ -146,7 +152,7 @@ def _search_text(claim: ExpenseClaim, receipt: ReceiptData | None) -> str:
     parts = [claim.title, claim.description]
     if receipt is not None and receipt.parse_ok:
         parts.append(receipt.merchant or "")
-        parts.extend(receipt.items or [])
+        parts.extend((receipt.items or [])[:_SEARCH_ITEMS_CAP])
     return " ".join(p for p in parts if p).strip()
 
 

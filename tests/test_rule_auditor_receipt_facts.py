@@ -21,6 +21,8 @@ import pytest
 
 from app.graphs.review.nodes.rule_auditor import (
     RELEVANCE_MAX_DISTANCE,
+    _SEARCH_ITEMS_CAP,
+    _search_text,
     receipt_facts_block,
     rule_auditor,
 )
@@ -148,6 +150,22 @@ async def test_search_query_includes_receipt_facts():
     assert "플레이박스 보드게임" in captured["query"], "검색 질의에 상호가 없다"
     assert "2시간 이용권 x6" in captured["query"], "검색 질의에 품목이 없다"
     assert CLAIM.title in captured["query"], "제목은 그대로 남아야 한다"
+
+
+def test_search_query_caps_receipt_items():
+    """품목은 intake 계약 상한(10개)까지만 질의에 붙는다 (#84 리뷰).
+
+    intake/v3가 최대 10개를 명문화하지만 코드에 상한이 없으면, 그 계약이 바뀌거나
+    그래프 밖 호출이 긴 목록을 넘길 때 품목이 임베딩 질의를 지배해 제목·설명 신호가
+    희석된다. 상한을 넘는 목록은 잘리고 제목은 항상 남아야 한다.
+    """
+    long_receipt = RECEIPT.model_copy(
+        update={"items": [f"품목{i}" for i in range(_SEARCH_ITEMS_CAP + 5)]}
+    )
+    query = _search_text(CLAIM, long_receipt)
+    assert f"품목{_SEARCH_ITEMS_CAP - 1}" in query, "상한 안의 품목이 빠졌다"
+    assert f"품목{_SEARCH_ITEMS_CAP}" not in query, "상한을 넘는 품목이 잘리지 않았다"
+    assert CLAIM.title in query
 
 
 async def test_default_policy_path_also_gets_facts():
