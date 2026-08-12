@@ -33,16 +33,30 @@ from app.tools.search_references import search_references
 logger = logging.getLogger(__name__)
 
 # 추가 조항 상한 — 천장이지 목표가 아니다(프롬프트가 "빠짐없이, 단 중복·일반론 금지"로
-# 실제 개수를 조절). 2026-08-11 회칙 개편으로 기본 조가 유형당 16~18개가 되면서
-# 상한도 7 → 10으로 올렸다. 합치면 유형별 총 26~28조 = 실제 회칙 문서 분량이다
-# (개편 전에는 기본 4~5개 + 추가 7개로 모바일 카드 한 장을 노렸다).
+# 실제 개수를 조절).
 #
-# **이 주석의 숫자는 MAX_EXTRA_RULES·템플릿과 함께 고쳐야 한다.** 상한만 7→10으로
-# 바꾸고 주석을 두고 온 적이 있고(PR #65 리뷰 N2), 그전에도 같은 계열의 지적이
-# 있었다(PR #9 리뷰 D6 — "v2가 0~7개"라는 사실과 다른 서술).
-# 프롬프트가 이 상한을 실제로 쓰는 것은 v3부터다 — v1·v2는 본문이 "최대 3개"라
-# 실효 상한이 3이었다. 현재 기본은 v6.
+# **2026-08-12부터 유형별로 다르다.** 값은 템플릿의 `max_extra_rules`에 있고
+# (`extra_rules_cap` 참조) 이 상수는 키가 없는 유형의 기본값일 뿐이다. 유형별로 나눈
+# 이유는 사용자 피드백이다 — "친목 같은 모임에 회사와 같은 분량의 회칙이 나올 필요가
+# 없다". 기본 조 수도 함께 줄여(친목 18→7 … 회사 16→11) 총 분량이 유형에 따라 갈린다:
+#
+#     친목 7+2=9 / 스터디 8+3=11 / 동아리 9+4=13 / 동호회 9+4=13 / 회사 11+4=15
+#
+# 종전에는 기본 16~18조 + 상한 10 공통이라 **어떤 유형이든 26~28조**가 나갈 수 있었다.
+#
+# **이 주석의 숫자는 템플릿과 함께 고쳐야 한다.** 상한만 바꾸고 주석을 두고 온 적이
+# 있고(PR #65 리뷰 N2), 그전에도 같은 계열의 지적이 있었다(PR #9 리뷰 D6).
+# 실제 조 수·글자 수는 `test_bylaw_length_by_team_type`이 지킨다.
 MAX_EXTRA_RULES = 10
+
+
+def extra_rules_cap(template: dict) -> int:
+    """이 유형의 AI 맞춤 조항 상한. 템플릿에 없으면 전역 기본값.
+
+    §12 원칙(유형 조정은 YAML만 고친다)을 지키려고 코드에 유형별 숫자를 두지 않는다 —
+    `suggested_limits`가 비율·상하한을 YAML에서 읽는 것과 같은 이유다.
+    """
+    return int(template.get("max_extra_rules", MAX_EXTRA_RULES))
 
 
 class ExtraRule(BaseModel):
@@ -151,6 +165,23 @@ def drop_vague_rules(rules: list[str]) -> tuple[list[str], list[str]]:
     return keep, dropped
 
 
+def article_text(article: dict, *, has_auto_range: bool) -> str:
+    """조 본문 — 자동 승인 구간이 없으면(기준 금액 0) `text_no_auto`를 우선 쓴다.
+
+    기준 금액 0은 화면의 '모든 지출을 직접 확인' 토글이다(schemas/writers 참조).
+    그때 기본 문구를 그대로 치환하면 "1건 0원 미만의 지출은 AI가 자동 심사한다"처럼
+    **존재할 수 없는 금액 구간**을 말하는 조가 된다. 확정된 회칙은 인덱싱되어 심사
+    근거가 되므로(effective_dues 참조) 공허한 조항을 남기지 않는다.
+
+    `requires_dues`처럼 YAML 플래그로 둔 이유도 같다 — 문구 검색으로 갈라내면 표현이
+    바뀔 때 조용히 새고, 유형마다 어미가 달라(회사는 '규정'·'책임자') 코드에서
+    문장을 만들면 유형별 어투가 깨진다.
+    """
+    if not has_auto_range and (alt := article.get("text_no_auto")):
+        return alt
+    return article["text"]
+
+
 def _article_applies(article: dict, dues: int) -> bool:
     """`requires_dues: true`인 조는 회비 입력이 없으면 통째로 뺀다.
 
@@ -188,6 +219,19 @@ def round_bylaw_amount_up(amount: float) -> int:
     return max(unit, -(-int(amount) // unit) * unit)
 
 
+def round_bylaw_amount_down(amount: float) -> int:
+    """같은 단위로 **내림** — 선언한 상한을 반올림이 키우지 않도록 쓰는 짝 함수.
+
+    `round_bylaw_amount_up`(min 보호)과 대칭이다. max가 격자 밖이면(예: 75,000)
+    가까운 쪽 반올림이 80,000으로 **올려** 회칙에 선언보다 큰 금액이 적혔다
+    (#80 리뷰 — meal.max 사고). 격자 위 max는 값이 그대로이므로 동작 불변이고,
+    격자 밖 max가 재유입돼도 코드가 상한을 넘기지 않는다 (#91). 데이터 규율은
+    test_limit_maxes_sit_on_the_rounding_grid가 따로 강제한다(이중 방어).
+    """
+    unit = _bylaw_unit(amount)
+    return max(unit, (int(amount) // unit) * unit)
+
+
 def round_bylaw_amount(amount: float) -> int:
     """회칙에 적을 금액으로 반올림 — **금액 크기에 따라 단위를 키운다**.
 
@@ -217,8 +261,10 @@ def suggested_limits(template: dict, initial_budget: int, member_count: int | No
         basis = per_person if cfg.get("basis") == "per_person" else initial_budget
         raw = basis * float(cfg.get("ratio", 0))
         clamped = min(max(raw, cfg.get("min", 0)), cfg.get("max", raw or 0))
-        # 반올림이 상한을 넘지 않게 상한도 같은 규칙으로 둥글린 값과 비교한다
-        rounded = min(round_bylaw_amount(clamped), round_bylaw_amount(cfg.get("max", clamped)))
+        # 반올림이 상한을 넘지 않게 — 상한은 **내림**으로 둥글린다. 가까운 쪽 반올림을
+        # 쓰면 격자 밖 max(75,000)가 80,000이 되어 이 가드가 오히려 상한을 키웠다
+        # (#80 리뷰). min 보호(round_bylaw_amount_up)와 대칭 (#91).
+        rounded = min(round_bylaw_amount(clamped), round_bylaw_amount_down(cfg.get("max", clamped)))
         # 반올림이 **하한을 깎는 것**은 막는다 — min은 "이보다 낮게는 주지 않는다"는
         # 선언이라 내림이 적용되면 안 된다. 예: meal.min=12,000이 5,000 단위 반올림으로
         # 10,000이 되던 자리(동아리·동호회, PR #65 리뷰 N1). 하한만 올림으로 맞춘다.
@@ -278,7 +324,7 @@ async def retrieve_references(state: DraftState) -> dict:
     return {"references": refs}
 
 
-def _mock_extra_rules(description: str) -> list[ExtraRule]:
+def _mock_extra_rules(description: str, cap: int = MAX_EXTRA_RULES) -> list[ExtraRule]:
     """목 모드 휴리스틱 — 소개 문구 키워드 기반 추가 조항 제안. 소개 없으면 빈 목록."""
     if not description:
         return []
@@ -299,7 +345,7 @@ def _mock_extra_rules(description: str) -> list[ExtraRule]:
             title="모집 홍보",
             text="신입 모집 관련 홍보물 제작비는 모집 기간 내 집행 건에 한해 인정한다.",
         ))
-    return rules[:MAX_EXTRA_RULES]
+    return rules[:cap]
 
 
 # rule_source별 notes 문구 — ai가 아니면 초안 없이 안내만 돌려준다.
@@ -319,7 +365,7 @@ async def generate_draft(state: DraftState) -> dict:
     검사와 맞는다 (회비 반영은 ai 초안 경로의 몫).
 
     ai 경로: 모임 소개가 있으면 LLM이 그 모임 특성에 맞는 추가 조항(최대
-    MAX_EXTRA_RULES개)을 제안한다. 소개가 없으면 LLM을 호출하지 않아 기본 조항만
+    유형별 `max_extra_rules`개)을 제안한다. 소개가 없으면 LLM을 호출하지 않아 기본 조항만
     남는다. 기본 조항은 LLM이 절대 건드리지 않음 — 필수 조항 보장은 코드 검증
     (verify_draft)의 책임으로 유지하기 위해서다.
     """
@@ -339,6 +385,9 @@ async def generate_draft(state: DraftState) -> dict:
     # (개정안 §1-3 저장 규약) 두 이름은 같은 금액을 가리킨다.
     limits = suggested_limits(template, req.initial_budget, req.member_count)
     dues = effective_dues(req.dues)
+    # 기준 금액 0 = 자동 승인 구간이 아예 없다(전건 관리자 확인). 조 문구도 프롬프트도
+    # 금액 구간을 말하면 안 된다 — article_text 참조.
+    has_auto_range = req.force_escalation_amount > 0
     fmt = {
         "auto_approve_limit": f"{req.force_escalation_amount:,}",
         "dues": f"{dues:,}",
@@ -349,10 +398,11 @@ async def generate_draft(state: DraftState) -> dict:
     # 정책 모드)이라 짧게 유지된다. 두 용도를 한 목록으로 쓰던 것을 2026-08-11에
     # 분리했다: 초안을 실제 회칙처럼 늘리면 심사 근거까지 같이 늘어나던 구조였다.
     articles = [a for a in template["bylaw_articles"] if _article_applies(a, dues)]
-    base_rules = [f"제{i}조({a['title']}) {a['text'].format(**fmt)}"
+    base_rules = [f"제{i}조({a['title']}) {article_text(a, has_auto_range=has_auto_range).format(**fmt)}"
                   for i, a in enumerate(articles, start=1)]
 
     extra_rules: list[str] = []
+    cap = extra_rules_cap(template)
     if req.description:
         refs = state.get("references") or []
         ref_text = "\n".join(f"- {r['text']}" for r in refs) or "(참고자료 없음)"
@@ -365,7 +415,15 @@ async def generate_draft(state: DraftState) -> dict:
                 f"모임 소개: {req.description}\n"
                 f"회원 수: {req.member_count or '미입력'}\n"
                 f"총예산: {req.initial_budget:,}원\n"
-                f"관리자 승인 기준 금액: {req.force_escalation_amount:,}원\n\n"
+                # 0원을 그대로 적으면 LLM이 "0원 이상은 관리자 승인" 같은 조를 쓴다 —
+                # 인용 가능한 기준 금액이 없다는 사실을 말로 알린다 (#75).
+                + (f"관리자 승인 기준 금액: {req.force_escalation_amount:,}원\n"
+                   if has_auto_range else
+                   "관리자 승인: 모든 지출이 금액과 관계없이 관리자 승인 대상입니다"
+                   " — 자동 승인 구간이 없으므로 승인 기준 금액을 조항에 쓰지 마세요.\n")
+                # 유형별 상한을 말로 알린다 — 실제 절단은 아래 `fresh[:cap]`이 하지만,
+                # 미리 알려주면 상한을 넘겨 만든 뒤 잘려나가는 낭비를 줄인다.
+                + f"추가할 수 있는 조항 수: 최대 {cap}개 (이 모임 유형의 상한)\n\n"
                 # 한도 표를 그대로 준다 — 종전에는 LLM이 금액을 몰라 "회칙이 정한 한도
                 # 범위에서"처럼 실제 한도가 불분명한 문구를 썼다(2026-08-11 지적).
                 # 이제 이 표의 금액만 인용하게 하고, 그 밖의 금액은 조립부가 걸러낸다.
@@ -375,7 +433,7 @@ async def generate_draft(state: DraftState) -> dict:
                 + "\n".join(f"- {r}" for r in base_rules)
                 + f"\n\n참고 규정(다른 모임 사례 — 그대로 베끼지 말고 참고만):\n{ref_text}",
                 schema=ExtraRules,
-                mock_response=ExtraRules(extra_rules=_mock_extra_rules(req.description)),
+                mock_response=ExtraRules(extra_rules=_mock_extra_rules(req.description, cap)),
                 prompt_version=spec.version,
             )
             # 중복 제거를 상한 적용보다 먼저 — 그래야 겹친 조항이 상한 자리를 차지하지 않는다
@@ -389,9 +447,9 @@ async def generate_draft(state: DraftState) -> dict:
             # 회칙이 정한 한도·승인 기준 밖의 금액을 쓴 조항도 뺀다.
             # 회비도 이 회칙이 정한 금액이다 — 빼두면 기본 조항의 회비를 정당하게
             # 인용한 LLM 조항이 통째로 버려진다 (PR #65 리뷰 N4).
-            allowed = {req.force_escalation_amount} | {
-                int(v.replace(",", "")) for v in limits.values()
-            }
+            allowed = {int(v.replace(",", "")) for v in limits.values()}
+            if has_auto_range:
+                allowed.add(req.force_escalation_amount)
             if dues:
                 allowed.add(dues)
             kept = [r for r in fresh if not unknown_amounts_in(r, allowed)]
@@ -404,7 +462,7 @@ async def generate_draft(state: DraftState) -> dict:
             extra_rules = [
                 # 기본 조항 뒤에 조 번호를 이어 붙인다 — 한 문서로 읽혀야 한다
                 f"제{len(base_rules) + i}조{r}"
-                for i, r in enumerate(fresh[:MAX_EXTRA_RULES], start=1)
+                for i, r in enumerate(fresh[:cap], start=1)
             ]
         except Exception:
             logger.exception("policy_drafter 추가 조항 생성 실패 — 기본 조항만 사용")
@@ -434,7 +492,10 @@ async def generate_draft(state: DraftState) -> dict:
 # 승인 기준선을 말하는 조항을 식별 — 이 조항의 금액은 요청의 기준 금액과 반드시 같아야 한다.
 # '자동 심사'뿐 아니라 '관리자 승인/확인'까지 보는 이유: 같은 기준을 "8만원 넘으면 관리자가
 # 확인한다"처럼 '자동'이라는 말 없이 쓸 수 있고, 그때도 회칙과 심사 기준은 똑같이 갈라진다.
-# 기존 조항 28개(5유형 base + 회비 + 목 추가조항) 전수 확인 결과 헛경보 0건.
+# 헛경보 없음을 주석으로 주장하지 않는다 — 종전에 "기존 조항 28개 전수 확인 결과 헛경보
+# 0건"이라 적혀 있었는데, 그 28개는 회칙 개편(#65) **이전의 base_rules**였다. 개편으로
+# 들어온 bylaw_articles에는 다시 확인한 적이 없었고 실제로 회사 유형이 걸려 있었다.
+# 전수 확인은 주석이 아니라 테스트가 한다 — `test_all_team_types_draft_verifies`.
 _AUTO_RULE_HINT = re.compile(r"자동\s*(?:심사|승인)|관리자.{0,4}(?:승인|확인)")
 _AMOUNT_RE = re.compile(r"([\d,]+)\s*원")
 # '3만원'·'20만 원' 같은 한글 단위 표기 — 숫자 표기만 보면 필터를 우회한다(N5).
@@ -512,11 +573,27 @@ def verify_draft_pure(
         if found := vague_terms_in(rule):
             return f"금액 모호어 사용: {found[0]} — 금액이나 조건으로 바꿔야 한다"
 
-    # 환각 방어 — 자동 심사를 말하는 조항의 금액은 요청의 기준 금액 하나뿐이어야 한다
+    # 환각 방어 — 자동 심사를 말하는 조항의 금액은 요청의 기준 금액 하나뿐이어야 한다.
+    #
+    # ⚠️ 이 검사는 **템플릿 조항도 함께 걸린다.** '자동 심사'·'관리자 승인/확인'이라는
+    # 말이 든 조에 한도 placeholder를 같이 쓰면 두 금액이 우연히 같지 않은 한 매번
+    # 불통과다 — 회사 유형 경조사비 조가 그렇게 초안 생성을 통째로 500으로 만들고
+    # 있었다(2026-08-12 발견, 템플릿에서 '자동 심사' 문구를 뺐다). 조항을 새로 쓸 때
+    # 이 조합을 만들지 말 것. `test_all_team_types_draft_verifies`가 5유형을 지킨다.
     for rule in draft.rules:
         if not _AUTO_RULE_HINT.search(rule):
             continue
-        bad = [a for a in _amounts_in(rule) if a != force_escalation_amount]
+        amounts = _amounts_in(rule)
+        if force_escalation_amount == 0:
+            # 자동 승인 구간이 없다 = 인용할 기준 금액 자체가 없다. "0원 미만"(공집합)도
+            # "0원 이상"(전체)도 규범으로 기능하지 않으므로 금액이 있다는 것만으로 잘못이다.
+            if amounts:
+                return (
+                    f"기준 금액이 0(전건 관리자 확인)인데 조항이 금액을 인용함: {amounts[0]:,}원 "
+                    "— 이때는 금액 없이 '모든 지출'로 써야 한다"
+                )
+            continue
+        bad = [a for a in amounts if a != force_escalation_amount]
         if bad:
             return (
                 f"자동 심사 한도 조항의 금액이 설정 금액과 불일치: {bad[0]:,}원 "

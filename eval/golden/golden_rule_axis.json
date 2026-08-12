@@ -16,7 +16,12 @@
       "expected_verdict": "escalate",
       "expected_category": "비품",
       "must_not_approve": true,
-      "expected_gate_includes": ["rule_violation"]
+      "expected_gate_includes": [
+        "rule_violation"
+      ],
+      "expected_rule_clauses": [
+        "제3조"
+      ]
     },
     {
       "id": "ruleonly-percap-002",
@@ -32,7 +37,12 @@
       "expected_verdict": "escalate",
       "expected_category": "식비",
       "must_not_approve": true,
-      "expected_gate_includes": ["rule_violation"]
+      "expected_gate_includes": [
+        "rule_violation"
+      ],
+      "expected_rule_clauses": [
+        "제2조"
+      ]
     },
     {
       "id": "ruleonly-ambiguous-003",
@@ -48,7 +58,13 @@
       "expected_verdict": "escalate",
       "expected_category": "교육",
       "must_not_approve": true,
-      "expected_gate_includes": ["rule_ambiguous"]
+      "expected_gate_includes": [
+        "rule_ambiguous"
+      ],
+      "expected_rule_clauses": [
+        "제3조",
+        "제4조"
+      ]
     },
     {
       "id": "ruleonly-negative-004",
@@ -63,7 +79,10 @@
       },
       "expected_verdict": "approve",
       "expected_category": "비품",
-      "must_not_approve": false
+      "must_not_approve": false,
+      "expected_rule_clauses": [
+        "제5조"
+      ]
     },
     {
       "id": "ruleonly-noclause-005",
@@ -78,7 +97,8 @@
       },
       "expected_verdict": "approve",
       "expected_category": "기타",
-      "must_not_approve": false
+      "must_not_approve": false,
+      "expected_rule_clauses": []
     }
   ]
 }

@@ -1,4 +1,4 @@
-"""골든셋 42건에서 가드레일이 실제로 무엇 때문에 발동하는지 집계.
+"""골든셋 전체에서 가드레일이 실제로 무엇 때문에 발동하는지 집계.
 
 'AI가 어디까지 판단하고 어디부터 사람에게 올리나'를 정하려면, 지금 무엇 때문에
 사람에게 올라가고 있는지부터 알아야 한다.
@@ -31,7 +31,10 @@ async def main() -> None:
     per_expected = Counter()
     for r in results:
         per_expected[r["expected"]] += 1
-        for rule in (r.get("triggered_rules") or []):
+        # run_case 결과의 키는 "gate"다 (eval_support.py run_case 반환 딕셔너리).
+        # 한때 "triggered_rules"(final_state 안 GateResult의 속성명)를 읽어 집계가
+        # 항상 0이었다 (#93) — 속성명과 결과 키를 혼동하지 말 것.
+        for rule in (r.get("gate") or []):
             rules[rule] += 1
 
     total = len(results)
@@ -49,13 +52,13 @@ async def main() -> None:
     # 금액 규칙만으로 올라간 건 = 다른 문제 없이 '금액이 커서'만인 경우
     only_amount = [
         r for r in results
-        if r.get("triggered_rules")
-        and set(r["triggered_rules"]) <= {"over_auto_approve_limit",
-                                          "over_force_escalation_amount"}
+        if r.get("gate")
+        and set(r["gate"]) <= {"over_auto_approve_limit",
+                               "over_force_escalation_amount"}
     ]
     print(f"\n금액 때문에만 올라간 건: {len(only_amount)}건")
     for r in only_amount:
-        print(f"  {r['id']:28} {','.join(r['triggered_rules'])}")
+        print(f"  {r['id']:28} {','.join(r['gate'])}")
 
 
 asyncio.run(main())

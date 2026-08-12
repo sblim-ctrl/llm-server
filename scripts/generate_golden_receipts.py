@@ -28,18 +28,41 @@ GOLDEN_PATH = ROOT / "eval" / "golden" / "golden_v1.json"
 FIXTURE_PATH = ROOT / "eval" / "fixtures" / "mock_backend.json"
 RECEIPTS_DIR = ROOT / "eval" / "golden" / "receipts"
 
+# 한글 렌더 가능한 폰트 후보 (mac → Linux → Windows).
+#
+# **Windows 경로가 없어서 사고가 났다** (#70): 후보에 못 찾으면 조용히
+# `load_default()`로 떨어졌고, 그 폰트는 한글을 두부(□)로 그린다. 결과물은 정상처럼
+# 저장돼(3.5KB) 그대로 커밋됐다 — 같은 스크립트·같은 레이아웃인데 생성한 사람의 OS에
+# 따라 판독 가능/불가가 갈렸다. 지금 저장소에 11개가 그 상태로 남아 있다.
 _FONT_CANDIDATES = [
     "/System/Library/Fonts/Supplemental/AppleGothic.ttf",
     "/System/Library/Fonts/AppleSDGothicNeo.ttc",
     "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+    "C:/Windows/Fonts/malgun.ttf",
+    "C:/Windows/Fonts/gulim.ttc",
 ]
 
 
+class KoreanFontNotFound(RuntimeError):
+    """한글 폰트를 못 찾음 — 두부 영수증을 만드느니 멈춘다."""
+
+
 def _load_font(size: int) -> ImageFont.FreeTypeFont:
+    """한글 폰트를 찾아 로드. **못 찾으면 예외** — 조용한 폴백을 두지 않는다.
+
+    종전에는 `ImageFont.load_default()`로 폴백했다. 그게 #70의 원인이다: 실패가
+    보이지 않으니 두부 이미지가 정상 산출물로 커밋됐다. 여기서 멈추면 폰트를 깔거나
+    후보 경로를 추가하라는 신호가 즉시 온다 — 골든 자산이 조용히 오염되는 것보다 낫다.
+    """
     for path in _FONT_CANDIDATES:
         if Path(path).exists():
             return ImageFont.truetype(path, size)
-    return ImageFont.load_default()
+    raise KoreanFontNotFound(
+        "한글 폰트를 찾지 못했습니다. 아래 중 하나를 설치하거나 _FONT_CANDIDATES에 "
+        "경로를 추가하세요:\n  " + "\n  ".join(_FONT_CANDIDATES)
+    )
 
 
 def _merchant_for(category: str) -> str:
@@ -98,15 +121,36 @@ def render_receipt(title: str, amount: int, date: str, category: str) -> Image.I
 
 
 def main() -> int:
+    """기본은 신규 생성(example.com 잔여분). `--ids a,b,c`면 **재생성 모드**.
+
+    재생성 모드가 따로 있는 이유: 이미 file://로 이관된 케이스는 기본 경로에서
+    건너뛰므로, 두부로 렌더된 기존 영수증을 다시 만들 방법이 없었다(#70). 재생성
+    모드는 골든셋 JSON을 **쓰지 않는다** — 경로가 이미 맞으므로 건드릴 이유가 없고,
+    전체를 다시 직렬화하면 손으로 정리한 포맷이 통째로 바뀐다.
+    """
+    regen_ids: set[str] = set()
+    if len(sys.argv) > 1 and sys.argv[1].startswith("--ids"):
+        raw = sys.argv[1].split("=", 1)[1] if "=" in sys.argv[1] else sys.argv[2]
+        regen_ids = {s.strip() for s in raw.split(",") if s.strip()}
+
     data = json.loads(GOLDEN_PATH.read_text(encoding="utf-8"))
     expenses = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))["expenses"]
     cases = data["cases"]
     RECEIPTS_DIR.mkdir(parents=True, exist_ok=True)
 
+    if regen_ids:
+        known = {c["id"] for c in cases}
+        if unknown := regen_ids - known:
+            print(f"골든셋에 없는 id: {sorted(unknown)}")
+            return 2
+
     generated = 0
     for case in cases:
         receipt_path = case["input"].get("receiptPath") or ""
-        if not receipt_path.startswith("https://example.com"):
+        if regen_ids:
+            if case["id"] not in regen_ids:
+                continue
+        elif not receipt_path.startswith("https://example.com"):
             continue  # mock://receipt(불일치 시나리오)·미첨부는 그대로 둔다
 
         expense = expenses[str(case["input"]["expenseId"])]
@@ -131,8 +175,14 @@ def main() -> int:
         case["input"]["receiptPath"] = f"file://{rel_path}"
         generated += 1
 
-    GOLDEN_PATH.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"이미지 생성: {generated}건 → {RECEIPTS_DIR}")
+    if regen_ids:
+        # 재생성 모드는 경로를 바꾸지 않는다 — 골든셋을 다시 직렬화하면 손으로 정리한
+        # 포맷이 통째로 바뀌어 diff가 파일 전체가 된다.
+        # 한글 콘솔(cp949)에서 깨지지 않도록 em dash 같은 문자는 쓰지 않는다
+        print("재생성 모드: golden_v1.json은 건드리지 않았다")
+        return 0
+    GOLDEN_PATH.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"golden_v1.json 갱신 완료 ({GOLDEN_PATH})")
     return 0
 
