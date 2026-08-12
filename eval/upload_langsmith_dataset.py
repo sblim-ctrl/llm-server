@@ -1,12 +1,19 @@
 """골든셋 → LangSmith Dataset 업로드 (Sprint 2 선행, 관측 트랙).
 
-실행:  uv run python eval/upload_langsmith_dataset.py [golden_path]
+실행:  uv run python eval/upload_langsmith_dataset.py [golden_path] [dataset_name]
        (.env의 LANGSMITH_API_KEY 필요 — LANGSMITH_TRACING은 무관)
 
-golden_v1.json의 케이스들을 LangSmith Dataset으로 올린다 — 웹 UI에서 케이스를
+       기본 골든(golden_v1.json)은 'budgetops-golden'으로 올라간다. 다른 골든
+       파일은 dataset_name 명시가 필수 — 회칙 축(실모드 전용, run_eval_real의
+       경로 인자 실행과 같은 분리 규약)은 별도 데이터셋으로:
+           uv run python eval/upload_langsmith_dataset.py \\
+               eval/golden/golden_rule_axis.json budgetops-golden-rule-axis
+
+골든 json의 케이스들을 LangSmith Dataset으로 올린다 — 웹 UI에서 케이스를
 탐색하고, 이후 Experiment(프롬프트 버전 간 비교 실행)를 데이터셋 기준으로 관리하는
 기반. 멱등: 같은 이름의 데이터셋이 있으면 지우고 현재 파일 기준으로 재생성한다
-(진실 원천은 항상 리포의 golden json — LangSmith는 뷰).
+(진실 원천은 항상 리포의 golden json — LangSmith는 뷰). 주의: 데이터셋을 지우면
+그 위의 기존 Experiment 기록도 함께 사라진다 — 남길 수치는 지우기 전에 기록할 것.
 
 example 구조:
 - inputs : 심사 그래프 초기 상태 재료 (pull 모델 5필드 + receipt_text 변환값)
@@ -33,8 +40,17 @@ def main() -> int:
         print("LANGSMITH_API_KEY가 없습니다 (.env) — 업로드 불가")
         return 2
 
-    golden_path = Path(sys.argv[1]) if len(sys.argv) > 1 else (
-        ROOT / "eval" / "golden" / "golden_v1.json")
+    default_golden = ROOT / "eval" / "golden" / "golden_v1.json"
+    golden_path = Path(sys.argv[1]) if len(sys.argv) > 1 else default_golden
+    if len(sys.argv) > 2:
+        dataset_name = sys.argv[2]
+    elif golden_path.resolve() == default_golden.resolve():
+        dataset_name = DATASET_NAME
+    else:
+        # 이름 생략 시 기본 데이터셋이 이 파일 내용으로 대체돼 버린다 — 명시 강제
+        print(f"기본 골든이 아닌 {golden_path.name} 업로드에는 dataset_name 인자가 "
+              f"필요합니다 (생략하면 '{DATASET_NAME}'을 덮어씁니다)")
+        return 2
     golden = json.loads(golden_path.read_text(encoding="utf-8"))
     cases = golden["cases"]
 
@@ -42,14 +58,14 @@ def main() -> int:
     client = Client(api_key=s.langsmith_api_key)
 
     # 멱등: 기존 동명 데이터셋 제거 후 재생성 (리포 json이 진실 원천)
-    if client.has_dataset(dataset_name=DATASET_NAME):
-        client.delete_dataset(dataset_name=DATASET_NAME)
-        print(f"기존 데이터셋 '{DATASET_NAME}' 제거")
+    if client.has_dataset(dataset_name=dataset_name):
+        client.delete_dataset(dataset_name=dataset_name)
+        print(f"기존 데이터셋 '{dataset_name}' 제거")
 
     dataset = client.create_dataset(
-        dataset_name=DATASET_NAME,
+        dataset_name=dataset_name,
         description=(f"BudgetOps 심사 골든셋 {golden['version']} ({len(cases)}건) — "
-                     "진실 원천은 리포 eval/golden/golden_v1.json (이 데이터셋은 뷰). "
+                     f"진실 원천은 리포 eval/golden/{golden_path.name} (이 데이터셋은 뷰). "
                      "실행 하니스: eval/run_eval_real.py"),
     )
     client.create_examples(
@@ -67,7 +83,7 @@ def main() -> int:
     )
 
     n = sum(1 for _ in client.list_examples(dataset_id=dataset.id))
-    print(f"업로드 완료: '{DATASET_NAME}' — {n}건 (골든셋 {golden['version']})")
+    print(f"업로드 완료: '{dataset_name}' — {n}건 (골든셋 {golden['version']})")
     print("LangSmith 웹 → Datasets에서 확인 가능")
     return 0 if n == len(cases) else 1
 
