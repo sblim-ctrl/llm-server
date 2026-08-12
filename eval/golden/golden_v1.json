@@ -1690,7 +1690,7 @@
     },
     {
       "id": "club-mismatch-budget-001",
-      "scenario": "잔액 부족 + 영수증 금액 불일치 — 반려가 아니라 보류",
+      "scenario": "영수증 금액 불일치 — 잔액 부족이어도 보류 직행 (§4.5 미경유: mismatch가 심사관·가드레일을 건너뛰므로 예산 반려로 자동 종결되지 않음을 고정)",
       "team_type": "동아리/학생회",
       "input": {
         "jobId": "job-club-mismatch-budget-001",
