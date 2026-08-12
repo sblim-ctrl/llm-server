@@ -33,16 +33,30 @@ from app.tools.search_references import search_references
 logger = logging.getLogger(__name__)
 
 # 추가 조항 상한 — 천장이지 목표가 아니다(프롬프트가 "빠짐없이, 단 중복·일반론 금지"로
-# 실제 개수를 조절). 2026-08-11 회칙 개편으로 기본 조가 유형당 16~18개가 되면서
-# 상한도 7 → 10으로 올렸다. 합치면 유형별 총 26~28조 = 실제 회칙 문서 분량이다
-# (개편 전에는 기본 4~5개 + 추가 7개로 모바일 카드 한 장을 노렸다).
+# 실제 개수를 조절).
 #
-# **이 주석의 숫자는 MAX_EXTRA_RULES·템플릿과 함께 고쳐야 한다.** 상한만 7→10으로
-# 바꾸고 주석을 두고 온 적이 있고(PR #65 리뷰 N2), 그전에도 같은 계열의 지적이
-# 있었다(PR #9 리뷰 D6 — "v2가 0~7개"라는 사실과 다른 서술).
-# 프롬프트가 이 상한을 실제로 쓰는 것은 v3부터다 — v1·v2는 본문이 "최대 3개"라
-# 실효 상한이 3이었다. 현재 기본은 v6.
+# **2026-08-12부터 유형별로 다르다.** 값은 템플릿의 `max_extra_rules`에 있고
+# (`extra_rules_cap` 참조) 이 상수는 키가 없는 유형의 기본값일 뿐이다. 유형별로 나눈
+# 이유는 사용자 피드백이다 — "친목 같은 모임에 회사와 같은 분량의 회칙이 나올 필요가
+# 없다". 기본 조 수도 함께 줄여(친목 18→7 … 회사 16→11) 총 분량이 유형에 따라 갈린다:
+#
+#     친목 7+2=9 / 스터디 8+3=11 / 동아리 9+4=13 / 동호회 9+4=13 / 회사 11+4=15
+#
+# 종전에는 기본 16~18조 + 상한 10 공통이라 **어떤 유형이든 26~28조**가 나갈 수 있었다.
+#
+# **이 주석의 숫자는 템플릿과 함께 고쳐야 한다.** 상한만 바꾸고 주석을 두고 온 적이
+# 있고(PR #65 리뷰 N2), 그전에도 같은 계열의 지적이 있었다(PR #9 리뷰 D6).
+# 실제 조 수·글자 수는 `test_bylaw_length_by_team_type`이 지킨다.
 MAX_EXTRA_RULES = 10
+
+
+def extra_rules_cap(template: dict) -> int:
+    """이 유형의 AI 맞춤 조항 상한. 템플릿에 없으면 전역 기본값.
+
+    §12 원칙(유형 조정은 YAML만 고친다)을 지키려고 코드에 유형별 숫자를 두지 않는다 —
+    `suggested_limits`가 비율·상하한을 YAML에서 읽는 것과 같은 이유다.
+    """
+    return int(template.get("max_extra_rules", MAX_EXTRA_RULES))
 
 
 class ExtraRule(BaseModel):
@@ -295,7 +309,7 @@ async def retrieve_references(state: DraftState) -> dict:
     return {"references": refs}
 
 
-def _mock_extra_rules(description: str) -> list[ExtraRule]:
+def _mock_extra_rules(description: str, cap: int = MAX_EXTRA_RULES) -> list[ExtraRule]:
     """목 모드 휴리스틱 — 소개 문구 키워드 기반 추가 조항 제안. 소개 없으면 빈 목록."""
     if not description:
         return []
@@ -316,7 +330,7 @@ def _mock_extra_rules(description: str) -> list[ExtraRule]:
             title="모집 홍보",
             text="신입 모집 관련 홍보물 제작비는 모집 기간 내 집행 건에 한해 인정한다.",
         ))
-    return rules[:MAX_EXTRA_RULES]
+    return rules[:cap]
 
 
 # rule_source별 notes 문구 — ai가 아니면 초안 없이 안내만 돌려준다.
@@ -336,7 +350,7 @@ async def generate_draft(state: DraftState) -> dict:
     검사와 맞는다 (회비 반영은 ai 초안 경로의 몫).
 
     ai 경로: 모임 소개가 있으면 LLM이 그 모임 특성에 맞는 추가 조항(최대
-    MAX_EXTRA_RULES개)을 제안한다. 소개가 없으면 LLM을 호출하지 않아 기본 조항만
+    유형별 `max_extra_rules`개)을 제안한다. 소개가 없으면 LLM을 호출하지 않아 기본 조항만
     남는다. 기본 조항은 LLM이 절대 건드리지 않음 — 필수 조항 보장은 코드 검증
     (verify_draft)의 책임으로 유지하기 위해서다.
     """
@@ -373,6 +387,7 @@ async def generate_draft(state: DraftState) -> dict:
                   for i, a in enumerate(articles, start=1)]
 
     extra_rules: list[str] = []
+    cap = extra_rules_cap(template)
     if req.description:
         refs = state.get("references") or []
         ref_text = "\n".join(f"- {r['text']}" for r in refs) or "(참고자료 없음)"
@@ -386,11 +401,14 @@ async def generate_draft(state: DraftState) -> dict:
                 f"회원 수: {req.member_count or '미입력'}\n"
                 f"총예산: {req.initial_budget:,}원\n"
                 # 0원을 그대로 적으면 LLM이 "0원 이상은 관리자 승인" 같은 조를 쓴다 —
-                # 인용 가능한 기준 금액이 없다는 사실을 말로 알린다.
-                + (f"관리자 승인 기준 금액: {req.force_escalation_amount:,}원\n\n"
+                # 인용 가능한 기준 금액이 없다는 사실을 말로 알린다 (#75).
+                + (f"관리자 승인 기준 금액: {req.force_escalation_amount:,}원\n"
                    if has_auto_range else
                    "관리자 승인: 모든 지출이 금액과 관계없이 관리자 승인 대상입니다"
-                   " — 자동 승인 구간이 없으므로 승인 기준 금액을 조항에 쓰지 마세요.\n\n")
+                   " — 자동 승인 구간이 없으므로 승인 기준 금액을 조항에 쓰지 마세요.\n")
+                # 유형별 상한을 말로 알린다 — 실제 절단은 아래 `fresh[:cap]`이 하지만,
+                # 미리 알려주면 상한을 넘겨 만든 뒤 잘려나가는 낭비를 줄인다.
+                + f"추가할 수 있는 조항 수: 최대 {cap}개 (이 모임 유형의 상한)\n\n"
                 # 한도 표를 그대로 준다 — 종전에는 LLM이 금액을 몰라 "회칙이 정한 한도
                 # 범위에서"처럼 실제 한도가 불분명한 문구를 썼다(2026-08-11 지적).
                 # 이제 이 표의 금액만 인용하게 하고, 그 밖의 금액은 조립부가 걸러낸다.
@@ -400,7 +418,7 @@ async def generate_draft(state: DraftState) -> dict:
                 + "\n".join(f"- {r}" for r in base_rules)
                 + f"\n\n참고 규정(다른 모임 사례 — 그대로 베끼지 말고 참고만):\n{ref_text}",
                 schema=ExtraRules,
-                mock_response=ExtraRules(extra_rules=_mock_extra_rules(req.description)),
+                mock_response=ExtraRules(extra_rules=_mock_extra_rules(req.description, cap)),
                 prompt_version=spec.version,
             )
             # 중복 제거를 상한 적용보다 먼저 — 그래야 겹친 조항이 상한 자리를 차지하지 않는다
@@ -429,7 +447,7 @@ async def generate_draft(state: DraftState) -> dict:
             extra_rules = [
                 # 기본 조항 뒤에 조 번호를 이어 붙인다 — 한 문서로 읽혀야 한다
                 f"제{len(base_rules) + i}조{r}"
-                for i, r in enumerate(fresh[:MAX_EXTRA_RULES], start=1)
+                for i, r in enumerate(fresh[:cap], start=1)
             ]
         except Exception:
             logger.exception("policy_drafter 추가 조항 생성 실패 — 기본 조항만 사용")

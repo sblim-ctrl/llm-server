@@ -11,6 +11,8 @@ from app.graphs.writers.policy_draft import (
     ExtraRules,
     _AUTO_RULE_HINT,
     article_text,
+    LIMIT_LABELS,
+    extra_rules_cap,
     drop_vague_rules,
     round_bylaw_amount,
     round_bylaw_amount_up,
@@ -256,6 +258,10 @@ def test_scale_limits_keep_growing_at_large_budgets(team_type, key):
     여기서 보는 것은 `basis: total`이면서 모임 규모를 반영하는 세 항목이다.
     """
     tpl = load_templates()[team_type]
+    if key not in tpl["limits"]:
+        # 2026-08-12부터 `limits`는 유형에 필요한 항목만 정의한다(유형에 없는 지출 축은
+        # 회칙이 인용하지도 않으므로 검사 대상이 아니다).
+        pytest.skip(f"{team_type}에는 {key} 한도가 없다")
     # 1,000만↔3,000만 — 실측 증상과 같은 구간이어야 그물이 된다. 500만을 쓰면
     # 동아리·스터디는 500만에서 아직 포화 전이라 종전 max로도 통과했다 (#80 리뷰).
     small = int(suggested_limits(tpl, 10_000_000, 20)[key].replace(",", ""))
@@ -309,6 +315,180 @@ def test_prohibition_clauses_are_not_open_ended_relevance_tests():
                     f"[{team_type}] '{article['title']}' 항이 목적 관련성만으로 금지한다 — "
                     f"개인성 등 확인 가능한 기준을 함께 둘 것: {clause.strip()[:70]}"
                 )
+
+
+# ── 유형별 회칙 분량 (2026-08-12 차등화) ─────────────────
+#
+# 사용자 피드백: "친목 같은 모임에 회사와 같은 분량의 회칙이 나올 필요가 없다."
+# 종전에는 5유형이 16~18조 · 2,032~2,111자로 **글자 수 편차가 3.9%뿐**이었고, 오히려
+# 친목이 가장 길었다. 아래 표가 새 기준이며, 이 표를 어기면 테스트가 실패한다.
+#
+#   유형          기본 조  AI 추가 상한  총 최대   글자 상한
+#   친목             7         2          9      1,180
+#   스터디            8         3         11      1,240
+#   동아리/학생회       9         4         13      1,380
+#   동호회            9         4         13      1,500
+#   회사             11         4         15      1,820
+#
+# **글자 상한은 규칙이 늘면 함께 올린다.** 처음 잡은 값(1,000/1,150/1,300/1,300/1,600)은
+# '대외 활동 참가비' 조항(PR #82 흡수)이 들어오기 전 기준이었다. 그 항이 유형당 약
+# 50~60자를 더하므로 상한도 그만큼 올렸다 — 상한을 고정한 채 두면 **새 규칙을 넣을 때
+# 멀쩡한 다른 규칙을 깎아내게** 된다. 줄일 것은 문장이지 규범이 아니다.
+# 친목 1,060→1,180 (#83 리뷰 HIGH1): 지웠던 교통비·비품·여행숙박 한도 규범을 항으로
+# 복원하며 +112자. 같은 원칙의 적용이다 — 서열(친목 < 스터디)은 유지된다.
+BYLAW_BUDGET = {
+    "친목": (7, 2, 1_180),
+    "스터디": (8, 3, 1_240),
+    "동아리/학생회": (9, 4, 1_380),
+    "동호회": (9, 4, 1_500),
+    "회사": (11, 4, 1_820),
+}
+#: 글자 수 허용 오차. 유형마다 고유 조항(동호회 장비·안전, 회사 사전 승인 등)이 있어
+#: 정확히 맞출 수 없다 — 방향(유형별로 갈린다)이 지켜지는지를 본다.
+LENGTH_TOLERANCE = 1.10
+
+
+@pytest.mark.parametrize("team_type", TEAM_TYPES)
+def test_bylaw_article_count_by_team_type(team_type):
+    """유형별 기본 조 수가 표와 일치해야 한다."""
+    expected, _, _ = BYLAW_BUDGET[team_type]
+    assert len(load_templates()[team_type]["bylaw_articles"]) == expected
+
+
+@pytest.mark.parametrize("team_type", TEAM_TYPES)
+def test_extra_rules_cap_by_team_type(team_type):
+    """AI 맞춤 조항 상한도 유형별이다 — 종전에는 전 유형 10개 공통이었다."""
+    _, expected, _ = BYLAW_BUDGET[team_type]
+    assert extra_rules_cap(load_templates()[team_type]) == expected
+
+
+@pytest.mark.parametrize("team_type", TEAM_TYPES)
+def test_total_article_ceiling_never_exceeds_18(team_type):
+    """기본 조 + AI 추가 상한이 18조를 넘지 않는다 (전 유형 공통 천장)."""
+    base, cap, _ = BYLAW_BUDGET[team_type]
+    assert base + cap <= 18
+
+
+def test_bylaw_length_ordering_is_preserved():
+    """친목 < 스터디 < 동아리 = 동호회 < 회사 서열이 유지돼야 한다.
+
+    유형을 고치다 서열이 뒤집히면 "유형에 따라 무게가 다르다"는 설계가 무너진다.
+    실제로 개편 전에는 **친목이 가장 길어** 의도와 정반대였다.
+    """
+    n = {t: len(load_templates()[t]["bylaw_articles"]) for t in TEAM_TYPES}
+    assert n["친목"] < n["스터디"] < n["동아리/학생회"] == n["동호회"] < n["회사"]
+
+
+@pytest.mark.parametrize("team_type", TEAM_TYPES)
+async def test_bylaw_length_by_team_type(team_type):
+    """생성된 회칙의 글자 수가 유형별 상한 안에 있어야 한다.
+
+    **조 수만 검사하면 못 잡는다.** 조를 합치기만 하고 문장을 안 줄이면 조 하나가
+    비대해져 체감 분량이 그대로다 — 실제로 통합 직후 친목이 1,293자였다(목표 1,000).
+    """
+    _, _, limit = BYLAW_BUDGET[team_type]
+    draft = await _draft_for(
+        team_type=team_type, initial_budget=3_000_000, member_count=15, dues=20_000
+    )
+    length = len("".join(draft.rules))
+    assert length <= limit * LENGTH_TOLERANCE, (
+        f"[{team_type}] {length}자 (상한 {limit}자, 허용 {int(limit * LENGTH_TOLERANCE)}자)"
+    )
+
+
+#: 심사에 쓰이는 조항 — 유형별로 조를 통합·삭제해도 **이 규범은 전 유형에 남아야** 한다.
+#: 각 항목은 가드레일 대응표(인수인계 §4)의 한 줄에 대응한다. 이게 없으면 회칙이
+#: 짧아지는 대신 심사 근거가 사라져 보류만 늘어난다.
+#:
+#: 형식: (규범 문구 대안, 같은 조에 함께 있어야 하는 귀결 문구 대안, no_auto 필수, 설명)
+#: · 귀결까지 보는 이유 (#83 리뷰): 조를 통합하며 "다시 청구하지 아니한다"가
+#:   "정산받은 지출"로 줄면 금지가 아니라 **화제어만** 검사하게 된다 — 규범(금지 동사·
+#:   귀결·한정)이 소실돼도 통과한다. 귀결이 문구 안에 이미 있으면 빈 튜플.
+#: · no_auto: 기준 금액 0원 렌더링(text_no_auto)에서도 살아야 하는 규범이면 True.
+#:   잔액 부족 반려가 0원 경로에서만 빠졌던 사고(#83 리뷰 HIGH2)를 막는 유일한 그물.
+#:   자동 심사·에스컬레이션 규범은 전건 관리자 확인 모드에서는 성립하지 않아 False.
+#:
+#: 표현이 여럿인 항목은 대안을 함께 둔다 — 회사 유형은 "회칙"이 아니라 "규정"을 쓰고
+#: (전편 일관), 청구의 진실성을 별도 조로 두어 문장이 길다. **문구가 아니라 규범이
+#: 살아 있는지**를 보는 검사다.
+AUDIT_CRITICAL_RULES = [
+    (("보유 잔액이 부족한 지출은",), ("승인하지 아니한다",), True, "잔액 부족 → 반려"),
+    (("AI가 자동 심사하고", "AI가 자동 심사한다"), (), False, "기준 금액 미만 → 자동 판정"),
+    (("관리자 승인을 받는다",), (), True, "기준 금액 이상 → 관리자 승인"),
+    (
+        ("금액과 관계없이 회칙 해석이 불명확", "금액과 관계없이 규정 해석이 불명확"),
+        ("관리자가 확인", "관리자 확인을 거친다"),
+        False,
+        "해석 불명확(금액 무관) → 관리자 확인",
+    ),
+    (("증빙이 불충분",), ("관리자가 확인", "관리자 확인을 거친다"), False, "증빙 불충분 → 관리자 확인"),
+    (("중복 청구가 의심",), ("관리자가 확인", "관리자 확인을 거친다"), False, "중복 의심 → 관리자 확인"),
+    (("확인될 때까지 승인을 보류",), (), True, "증빙 미확인 → 보류"),
+    (("사유서만으로는 지출을 인정하지 아니한다",), (), True, "사유서 불인정"),
+    (("전체 잔액이 충분한 지출",), ("집행할 수 있다",), True, "한도 초과 + 잔액 충분 → 예외 승인"),
+    (("예외 승인의 대상이 되지 아니한다",), (), True, "예외로도 열 수 없는 것"),
+    (
+        ("정산받은 지출의 재청구", "정산받은 지출을 다시 청구하지 아니한다"),
+        ("인정하지 아니한다", "청구하지 아니한다"),
+        True,
+        "재청구 금지",
+    ),
+    (
+        ("분할 청구", "나누어 청구"),
+        ("인정하지 아니한다", "청구하지 아니한다"),
+        True,
+        "분할 청구 금지",
+    ),
+    (
+        ("실제 거래와 다른",),
+        ("인정하지 아니한다", "청구하지 아니한다"),
+        True,
+        "허위 청구 금지",
+    ),
+]
+
+
+@pytest.mark.parametrize("phrases,consequences,required_no_auto,why", AUDIT_CRITICAL_RULES)
+@pytest.mark.parametrize("team_type", TEAM_TYPES)
+def test_audit_critical_rules_survive_in_every_type(team_type, phrases, consequences, required_no_auto, why):
+    """분량을 줄이다 심사 근거를 떨어뜨리지 않았는지 — 유형 × 규범 × 렌더링 모드 전수.
+
+    종전에는 이 검사가 문구별 테스트 5개에 흩어져 있었다. 유형별 재구성으로 조 제목과
+    문장이 바뀌자 한꺼번에 깨져서, 규범 단위로 모으고 표현 차이를 허용하게 바꿨다.
+    #83 리뷰 반영으로 두 가지를 더 본다: ① 규범이 있는 조에 귀결(금지·확인)이 함께
+    있는지 ② 기준 금액 0원 렌더링(text_no_auto 적용)에서도 규범이 사는지.
+    """
+    articles = load_templates()[team_type]["bylaw_articles"]
+    for has_auto in [True] + ([False] if required_no_auto else []):
+        texts = [article_text(a, has_auto_range=has_auto) for a in articles]
+        hits = [t for t in texts if any(p in t for p in phrases)]
+        mode = "기본" if has_auto else "기준 금액 0원"
+        assert hits, f"[{team_type}] {mode} 렌더링에서 누락 — {why} (기대 {phrases})"
+        if consequences:
+            assert any(any(c in t for c in consequences) for t in hits), (
+                f"[{team_type}] {mode} 렌더링에 '{why}' 문구는 있는데 귀결이 같은 조에 "
+                f"없다 (기대 {consequences})"
+            )
+
+
+@pytest.mark.parametrize("team_type", TEAM_TYPES)
+def test_limits_and_articles_agree_both_ways(team_type):
+    """`limits`에 정의한 한도는 반드시 어떤 조가 인용하고, 그 반대도 성립해야 한다.
+
+    종전에는 한쪽만 있었다 — 동아리·동호회의 `gift`·`travel`, 스터디의 `event`·`gift`·
+    `travel`이 **계산만 되고 인용하는 조항이 없었다**(2026-08-12 발견). 그 카테고리
+    지출은 회칙 근거 없이 심사된다.
+
+    개수는 검사하지 않는다 — 유형별로 몇 개여야 한다는 규율은 두지 않는다.
+    """
+    tpl = load_templates()[team_type]
+    defined = set(tpl["limits"])
+    body = " ".join(a["text"] for a in tpl["bylaw_articles"])
+    used = {k for k in LIMIT_LABELS if "{" + k + "}" in body}
+    assert defined == used, (
+        f"[{team_type}] 정의만 하고 안 쓰는 것: {sorted(defined - used) or '없음'} / "
+        f"정의 없이 인용하는 것: {sorted(used - defined) or '없음'}"
+    )
 
 
 async def test_no_bylaw_article_uses_a_non_catalog_category_word():
@@ -400,43 +580,34 @@ async def test_approval_threshold_appears_as_a_real_amount():
     draft = await _draft_for(force_escalation_amount=70_000)
     approval = next(r for r in draft.rules if "관리자 승인" in r)
     assert "70,000원" in approval
-    assert "AI가 자동 심사한다" in approval  # 근거를 밝힌 표현 — "AI가 승인한다"가 아니다
+    assert "AI가 자동 심사" in approval  # 근거를 밝힌 표현 — "AI가 승인한다"가 아니다
     assert "{" not in "\n".join(draft.rules)
     assert _verify(draft, force=70_000) is None
 
 
 async def test_bylaw_separates_insufficient_balance_from_over_limit():
-    """잔액 부족(반려)과 항목 한도 초과(예외 승인)를 회칙이 구분한다 — 가드레일 동작과 일치.
+    """잔액 부족(반려)과 항목 한도 초과(예외 승인)를 회칙이 **다른 조에서** 구분한다.
 
-    특별 승인 절차는 '예외 승인' 조로 일원화했다(2026-08-11 밤) — 예산 조와 예외 승인
-    조에 같은 내용이 겹쳐 있었다.
+    가드레일 동작과 대응한다 — 잔액 부족은 budget_insufficient → 반려, 한도 초과 +
+    잔액 충분은 rule 축 → escalate. 둘이 한 조에 섞이면 회칙만 읽고는 구분되지 않는다.
+
+    2026-08-12 유형별 재구성으로 '예산 집행 원칙' 조가 '지출 심사' 조 ①항으로
+    들어갔다 — 조 이름이 아니라 **두 규범이 서로 다른 조에 있는지**를 본다.
     """
     draft = await _draft_for()
-    budget_rule = next(r for r in draft.rules if "예산 집행 원칙" in r)
-    assert "보유 잔액이 부족한 지출은 금액과 관계없이 승인하지 아니한다" in budget_rule
-    assert "전체 잔액이 충분한" not in budget_rule  # 예외 승인 조로 옮겼다
+    balance_rule = next(r for r in draft.rules if "보유 잔액이 부족한 지출" in r)
+    assert "금액과 관계없이 승인하지 아니한다" in balance_rule
+    assert "전체 잔액이 충분한" not in balance_rule  # 예외 승인 조로 갈라져 있어야 한다
 
-    exception_rule = next(r for r in draft.rules if "예외 승인" in r)
-    assert "전체 잔액이 충분한" in exception_rule
+    exception_rule = next(r for r in draft.rules if "전체 잔액이 충분한" in r)
+    assert exception_rule != balance_rule, "잔액 부족과 예외 승인이 한 조에 섞여 있다"
     # 예외 승인으로도 허용하지 않는 것이 명시돼야 한다
     assert "예외 승인의 대상이 되지 아니한다" in exception_rule
 
 
-async def test_bylaw_escalates_regardless_of_amount_on_ambiguity():
-    """금액이 작아도 해석 불명확·증빙 불충분·중복 의심이면 관리자 확인 — 가드레일 동작과 일치."""
-    for team_type in TEAM_TYPES:
-        joined = "\n".join((await _draft_for(team_type=team_type)).rules)
-        assert "금액과 관계없이 회칙 해석이 불명확한 경우" in joined or \
-               "금액과 관계없이 회칙 해석이 불명확" in joined, team_type
-        assert "중복 청구가 의심되는 경우에는 관리자 확인을 거친다" in joined, team_type
-
-
-async def test_evidence_article_does_not_accept_a_note_alone():
-    """증빙 없이 사유서만으로는 인정하지 않고, 확인될 때까지 보류한다."""
-    for team_type in TEAM_TYPES:
-        joined = "\n".join((await _draft_for(team_type=team_type)).rules)
-        assert "확인될 때까지 승인을 보류한다" in joined, team_type
-        assert "사유서만으로는 지출을 인정하지 아니한다" in joined, team_type
+# 해석 불명확·증빙 불충분·중복 의심 → 관리자 확인, 사유서 불인정, 보류 —
+# 이 셋은 `test_audit_critical_rules_survive_in_every_type`이 유형 × 규범 전수로 본다.
+# 종전에는 여기에 문구별 테스트로 흩어져 있었다(2026-08-12 통합).
 
 
 async def test_dues_article_states_a_payment_period():
@@ -496,14 +667,9 @@ def test_unknown_amounts_catch_korean_man_notation():
     assert unknown_amounts_in("20만 원 이내", {200_000}) == []
 
 
-async def test_bylaw_forbids_duplicate_split_and_false_claims():
-    """중복·분할·허위 청구 금지는 전 유형 공통 조항이다."""
-    for team_type in TEAM_TYPES:
-        draft = await _draft_for(team_type=team_type)
-        joined = "\n".join(draft.rules)
-        assert "다시 청구하지 아니한다" in joined, team_type
-        assert "나누어 청구하지 아니한다" in joined, team_type
-        assert "실제 거래와 다른" in joined, team_type
+# 중복·분할·허위 청구 금지도 `test_audit_critical_rules_survive_in_every_type`으로
+# 옮겼다 — 유형별 재구성으로 회사만 '청구의 진실성'을 별도 조로 두고 나머지는
+# '인정하지 않는 지출'에 항으로 흡수해, 문구가 갈렸기 때문이다 (2026-08-12).
 
 
 async def test_bylaw_uses_human_wording_not_system_identifiers():
