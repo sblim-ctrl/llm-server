@@ -1,11 +1,13 @@
-"""LangSmith Experiment — budgetops-golden 데이터셋 위에서 심사 그래프 실측 실행.
+"""LangSmith Experiment — 골든 데이터셋 위에서 심사 그래프 실측 실행.
 
-실행:  $env:MOCK_LLM="false"; $env:LANGSMITH_TRACING="true"; \
-       uv run python eval/run_eval_langsmith.py
+실행:  $env:MOCK_LLM="false"; $env:LANGSMITH_TRACING="true"; \\
+       uv run python eval/run_eval_langsmith.py [dataset_name]
+       (기본 데이터셋은 budgetops-golden. 회칙 축 골든은 별도 데이터셋
+        budgetops-golden-rule-axis를 지정 — run_eval_real의 경로 인자와 같은 분리)
        (프롬프트 A/B: PROMPT_VERSION_{AGENT}=vN 을 함께 주면 그 버전으로 실험 —
         experiment_prefix에 버전이 박혀 웹에서 버전 간 비교 가능)
 
-어제 업로드한 Dataset(eval/upload_langsmith_dataset.py)을 기준으로 aevaluate를
+업로드된 Dataset(eval/upload_langsmith_dataset.py)을 기준으로 aevaluate를
 돌린다. 각 example마다 심사 그래프를 실 LLM으로 실행하고, verdict 일치·오승인
 금지를 evaluator로 채점 → LangSmith 웹에 Experiment로 기록된다(프롬프트 버전·비용·
 노드 트레이스까지). CSV 하니스(run_eval_real.py)의 웹 버전 — 팀 공유·발표용.
@@ -13,9 +15,9 @@
 비용: 데이터셋 건수만큼 실 LLM 호출(건당 ≈ $0.006~0.01). 실행 전 골든 팀 회칙
 실인덱싱, 실행 후 정리(목 골든셋 게이트 무오염) — run_eval_real.py와 동일 절차.
 
-주의(T9): golden_v1.json의 organizationId·expenseId가 문자열→정수로 바뀌었다
-(fixture 기반 재설계). 이 스크립트가 읽는 LangSmith 데이터셋은 구 문자열 값으로
-업로드돼 있으므로, 실행 전 upload_langsmith_dataset.py로 재업로드해야 한다.
+주의: 데이터셋은 리포 골든 json의 뷰다 — 골든을 바꾼 머지 뒤에는 실행 전
+upload_langsmith_dataset.py로 재업로드해 현행본과 맞출 것. 안 맞으면 실험이
+구본 입력·기대값으로 채점된다(2026-08-11 T9 정수화 재업로드 전례).
 
 주의(무료/저티어 계정): 심사 1건이 gpt-4o를 3회 호출하고 프롬프트가 커서,
 TPM 30k/min 한도에서는 순차 실행이어도 후반부 1~2건이 429를 맞을 수 있다.
@@ -118,6 +120,7 @@ async def main() -> int:
     if not s.langsmith_api_key:
         print("LANGSMITH_API_KEY가 없습니다 (.env)")
         return 2
+    dataset_name = sys.argv[1] if len(sys.argv) > 1 else DATASET_NAME
 
     from langsmith import Client, aevaluate
 
@@ -126,8 +129,8 @@ async def main() -> int:
     from app.llm.prompts import load_prompt
 
     client = Client(api_key=s.langsmith_api_key)
-    if not client.has_dataset(dataset_name=DATASET_NAME):
-        print(f"데이터셋 '{DATASET_NAME}' 없음 — 먼저 upload_langsmith_dataset.py 실행")
+    if not client.has_dataset(dataset_name=dataset_name):
+        print(f"데이터셋 '{dataset_name}' 없음 — 먼저 upload_langsmith_dataset.py 실행")
         return 2
 
     await open_pool()
@@ -136,7 +139,7 @@ async def main() -> int:
         teams = sorted(
             {
                 (ex.inputs or {}).get("organizationId")
-                for ex in client.list_examples(dataset_name=DATASET_NAME)
+                for ex in client.list_examples(dataset_name=dataset_name)
             }
             - {None}
         )
@@ -173,14 +176,16 @@ async def main() -> int:
                 "opinions": [op.model_dump() for op in (final.get("opinions") or {}).values()],
             }
 
-        prefix = "golden-" + "-".join(v.replace("/", "") for v in versions.values())
+        # 기본 데이터셋이면 종전과 같은 "golden-…", 회칙 축이면 "golden-rule-axis-…"
+        prefix = (dataset_name.removeprefix("budgetops-") + "-"
+                  + "-".join(v.replace("/", "") for v in versions.values()))
         print(f"Experiment 실행 시작: {prefix} (데이터셋 {len(teams)}개 팀, 실 LLM)")
         # max_concurrency=1(순차) — 심사 1건이 gpt-4o를 3회(rule·precedent·adjudicator)
         # 호출하고 프롬프트가 커서, 병렬이면 저티어 TPM 한도(30k/min)를 넘겨 429가 난다.
         # 순차면 분당 토큰이 분산돼 안정.
         results = await aevaluate(
             target,
-            data=DATASET_NAME,
+            data=dataset_name,
             evaluators=[verdict_correct, no_false_approve, category_correct,
                         gate_includes_hit, judge_quality],
             experiment_prefix=prefix,
@@ -190,7 +195,7 @@ async def main() -> int:
         )
         name = getattr(results, "experiment_name", prefix)
         print(f"\nExperiment 완료: {name}")
-        print("LangSmith 웹 → Datasets → budgetops-golden → Experiments 탭에서 확인")
+        print(f"LangSmith 웹 → Datasets → {dataset_name} → Experiments 탭에서 확인")
         return 0
     finally:
         try:
