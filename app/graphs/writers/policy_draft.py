@@ -219,6 +219,19 @@ def round_bylaw_amount_up(amount: float) -> int:
     return max(unit, -(-int(amount) // unit) * unit)
 
 
+def round_bylaw_amount_down(amount: float) -> int:
+    """같은 단위로 **내림** — 선언한 상한을 반올림이 키우지 않도록 쓰는 짝 함수.
+
+    `round_bylaw_amount_up`(min 보호)과 대칭이다. max가 격자 밖이면(예: 75,000)
+    가까운 쪽 반올림이 80,000으로 **올려** 회칙에 선언보다 큰 금액이 적혔다
+    (#80 리뷰 — meal.max 사고). 격자 위 max는 값이 그대로이므로 동작 불변이고,
+    격자 밖 max가 재유입돼도 코드가 상한을 넘기지 않는다 (#91). 데이터 규율은
+    test_limit_maxes_sit_on_the_rounding_grid가 따로 강제한다(이중 방어).
+    """
+    unit = _bylaw_unit(amount)
+    return max(unit, (int(amount) // unit) * unit)
+
+
 def round_bylaw_amount(amount: float) -> int:
     """회칙에 적을 금액으로 반올림 — **금액 크기에 따라 단위를 키운다**.
 
@@ -248,8 +261,10 @@ def suggested_limits(template: dict, initial_budget: int, member_count: int | No
         basis = per_person if cfg.get("basis") == "per_person" else initial_budget
         raw = basis * float(cfg.get("ratio", 0))
         clamped = min(max(raw, cfg.get("min", 0)), cfg.get("max", raw or 0))
-        # 반올림이 상한을 넘지 않게 상한도 같은 규칙으로 둥글린 값과 비교한다
-        rounded = min(round_bylaw_amount(clamped), round_bylaw_amount(cfg.get("max", clamped)))
+        # 반올림이 상한을 넘지 않게 — 상한은 **내림**으로 둥글린다. 가까운 쪽 반올림을
+        # 쓰면 격자 밖 max(75,000)가 80,000이 되어 이 가드가 오히려 상한을 키웠다
+        # (#80 리뷰). min 보호(round_bylaw_amount_up)와 대칭 (#91).
+        rounded = min(round_bylaw_amount(clamped), round_bylaw_amount_down(cfg.get("max", clamped)))
         # 반올림이 **하한을 깎는 것**은 막는다 — min은 "이보다 낮게는 주지 않는다"는
         # 선언이라 내림이 적용되면 안 된다. 예: meal.min=12,000이 5,000 단위 반올림으로
         # 10,000이 되던 자리(동아리·동호회, PR #65 리뷰 N1). 하한만 올림으로 맞춘다.
