@@ -9,6 +9,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from app.api.jobs import translate_result_terms
 from app.eval_metrics import category_metrics, score_category, verdict_metrics
 from app.graphs.review.graph import review_graph
 from app.graphs.review.nodes.callback import build_callback_payload
@@ -59,6 +60,27 @@ def scan_callback_payload_terms(payload: CallbackPayload) -> list[str]:
     return scan_banned_terms(*texts)
 
 
+def scan_job_result_terms(result: Any) -> list[str]:
+    """폴링 응답(`GET /v1/jobs/{job_id}`의 `result`) 사용자 노출 텍스트 스캔.
+
+    콜백과 같은 심사 결과인데 **출구가 다르다** — 콜백만 검사하면 폴링 안전망
+    (§7.1)으로 나가는 문구는 게이트 밖에 남는다(#71). dict가 아니거나 심사 잡이
+    아니면(예: `dead`의 `{"error", "message"}`) 검사할 대상이 없어 빈 목록이다.
+    """
+    if not isinstance(result, dict):
+        return []
+    texts: list[str] = []
+    reasons = result.get("reasons")
+    if isinstance(reasons, dict):
+        texts += [str(reasons.get("requester") or ""), str(reasons.get("admin") or "")]
+    for op in result.get("opinions") or []:
+        if not isinstance(op, dict):
+            continue
+        texts.append(str(op.get("summary") or ""))
+        texts += [str(c) for c in (op.get("similar_cases") or [])]
+    return scan_banned_terms(*texts)
+
+
 async def run_case(case: dict[str, Any]) -> dict[str, Any]:
     # pull 모델 — 워커(run_review_job)와 같은 초기 상태로 실행. 지출 상세는
     # load_context가 expense_id로 eval/fixtures/mock_backend.json을 되물어 채운다(T9).
@@ -100,6 +122,21 @@ async def run_case(case: dict[str, Any]) -> dict[str, Any]:
     # 실제 발송 페이로드(callback.py build_callback_payload)를 대상으로 해야
     # "테스트만 통과하고 실제로는 새는" 괴리가 생기지 않는다.
     term_violations = scan_callback_payload_terms(build_callback_payload(final_state))
+    # 폴링 출구(§7.1)도 같은 게이트에 넣는다 (#71·#73). worker.py의 결과 조립부는
+    # 소유 경계상 이 PR에서 함수로 빼지 않아, 스캐너가 읽는 reasons·opinions 두 키만
+    # worker와 같은 직렬화(model_dump)로 재현하고 read_job이 적용하는 치환
+    # (translate_result_terms)까지 태워 "폴링 응답으로 나가는 그대로"를 스캔한다.
+    # 엔드포인트가 실제로 치환을 부르는지는 test_polling_terms.py가 배선 테스트로
+    # 보증하고, 여기는 치환을 거친 뒤에도 금지 용어가 남는 케이스를 골든셋 전량으로
+    # 잡는 그물이다.
+    reasons = final_state.get("reasons")
+    polled_result = translate_result_terms(
+        {
+            "reasons": reasons.model_dump() if reasons else None,
+            "opinions": [o.model_dump() for o in final_state.get("opinions", {}).values()],
+        }
+    )
+    term_violations += scan_job_result_terms(polled_result)
 
     return {
         "id": case["id"],
