@@ -151,6 +151,23 @@ def drop_vague_rules(rules: list[str]) -> tuple[list[str], list[str]]:
     return keep, dropped
 
 
+def article_text(article: dict, *, has_auto_range: bool) -> str:
+    """조 본문 — 자동 승인 구간이 없으면(기준 금액 0) `text_no_auto`를 우선 쓴다.
+
+    기준 금액 0은 화면의 '모든 지출을 직접 확인' 토글이다(schemas/writers 참조).
+    그때 기본 문구를 그대로 치환하면 "1건 0원 미만의 지출은 AI가 자동 심사한다"처럼
+    **존재할 수 없는 금액 구간**을 말하는 조가 된다. 확정된 회칙은 인덱싱되어 심사
+    근거가 되므로(effective_dues 참조) 공허한 조항을 남기지 않는다.
+
+    `requires_dues`처럼 YAML 플래그로 둔 이유도 같다 — 문구 검색으로 갈라내면 표현이
+    바뀔 때 조용히 새고, 유형마다 어미가 달라(회사는 '규정'·'책임자') 코드에서
+    문장을 만들면 유형별 어투가 깨진다.
+    """
+    if not has_auto_range and (alt := article.get("text_no_auto")):
+        return alt
+    return article["text"]
+
+
 def _article_applies(article: dict, dues: int) -> bool:
     """`requires_dues: true`인 조는 회비 입력이 없으면 통째로 뺀다.
 
@@ -339,6 +356,9 @@ async def generate_draft(state: DraftState) -> dict:
     # (개정안 §1-3 저장 규약) 두 이름은 같은 금액을 가리킨다.
     limits = suggested_limits(template, req.initial_budget, req.member_count)
     dues = effective_dues(req.dues)
+    # 기준 금액 0 = 자동 승인 구간이 아예 없다(전건 관리자 확인). 조 문구도 프롬프트도
+    # 금액 구간을 말하면 안 된다 — article_text 참조.
+    has_auto_range = req.force_escalation_amount > 0
     fmt = {
         "auto_approve_limit": f"{req.force_escalation_amount:,}",
         "dues": f"{dues:,}",
@@ -349,7 +369,7 @@ async def generate_draft(state: DraftState) -> dict:
     # 정책 모드)이라 짧게 유지된다. 두 용도를 한 목록으로 쓰던 것을 2026-08-11에
     # 분리했다: 초안을 실제 회칙처럼 늘리면 심사 근거까지 같이 늘어나던 구조였다.
     articles = [a for a in template["bylaw_articles"] if _article_applies(a, dues)]
-    base_rules = [f"제{i}조({a['title']}) {a['text'].format(**fmt)}"
+    base_rules = [f"제{i}조({a['title']}) {article_text(a, has_auto_range=has_auto_range).format(**fmt)}"
                   for i, a in enumerate(articles, start=1)]
 
     extra_rules: list[str] = []
@@ -365,7 +385,12 @@ async def generate_draft(state: DraftState) -> dict:
                 f"모임 소개: {req.description}\n"
                 f"회원 수: {req.member_count or '미입력'}\n"
                 f"총예산: {req.initial_budget:,}원\n"
-                f"관리자 승인 기준 금액: {req.force_escalation_amount:,}원\n\n"
+                # 0원을 그대로 적으면 LLM이 "0원 이상은 관리자 승인" 같은 조를 쓴다 —
+                # 인용 가능한 기준 금액이 없다는 사실을 말로 알린다.
+                + (f"관리자 승인 기준 금액: {req.force_escalation_amount:,}원\n\n"
+                   if has_auto_range else
+                   "관리자 승인: 모든 지출이 금액과 관계없이 관리자 승인 대상입니다"
+                   " — 자동 승인 구간이 없으므로 승인 기준 금액을 조항에 쓰지 마세요.\n\n")
                 # 한도 표를 그대로 준다 — 종전에는 LLM이 금액을 몰라 "회칙이 정한 한도
                 # 범위에서"처럼 실제 한도가 불분명한 문구를 썼다(2026-08-11 지적).
                 # 이제 이 표의 금액만 인용하게 하고, 그 밖의 금액은 조립부가 걸러낸다.
@@ -389,9 +414,9 @@ async def generate_draft(state: DraftState) -> dict:
             # 회칙이 정한 한도·승인 기준 밖의 금액을 쓴 조항도 뺀다.
             # 회비도 이 회칙이 정한 금액이다 — 빼두면 기본 조항의 회비를 정당하게
             # 인용한 LLM 조항이 통째로 버려진다 (PR #65 리뷰 N4).
-            allowed = {req.force_escalation_amount} | {
-                int(v.replace(",", "")) for v in limits.values()
-            }
+            allowed = {int(v.replace(",", "")) for v in limits.values()}
+            if has_auto_range:
+                allowed.add(req.force_escalation_amount)
             if dues:
                 allowed.add(dues)
             kept = [r for r in fresh if not unknown_amounts_in(r, allowed)]
@@ -434,7 +459,10 @@ async def generate_draft(state: DraftState) -> dict:
 # 승인 기준선을 말하는 조항을 식별 — 이 조항의 금액은 요청의 기준 금액과 반드시 같아야 한다.
 # '자동 심사'뿐 아니라 '관리자 승인/확인'까지 보는 이유: 같은 기준을 "8만원 넘으면 관리자가
 # 확인한다"처럼 '자동'이라는 말 없이 쓸 수 있고, 그때도 회칙과 심사 기준은 똑같이 갈라진다.
-# 기존 조항 28개(5유형 base + 회비 + 목 추가조항) 전수 확인 결과 헛경보 0건.
+# 헛경보 없음을 주석으로 주장하지 않는다 — 종전에 "기존 조항 28개 전수 확인 결과 헛경보
+# 0건"이라 적혀 있었는데, 그 28개는 회칙 개편(#65) **이전의 base_rules**였다. 개편으로
+# 들어온 bylaw_articles에는 다시 확인한 적이 없었고 실제로 회사 유형이 걸려 있었다.
+# 전수 확인은 주석이 아니라 테스트가 한다 — `test_all_team_types_draft_verifies`.
 _AUTO_RULE_HINT = re.compile(r"자동\s*(?:심사|승인)|관리자.{0,4}(?:승인|확인)")
 _AMOUNT_RE = re.compile(r"([\d,]+)\s*원")
 # '3만원'·'20만 원' 같은 한글 단위 표기 — 숫자 표기만 보면 필터를 우회한다(N5).
@@ -512,11 +540,27 @@ def verify_draft_pure(
         if found := vague_terms_in(rule):
             return f"금액 모호어 사용: {found[0]} — 금액이나 조건으로 바꿔야 한다"
 
-    # 환각 방어 — 자동 심사를 말하는 조항의 금액은 요청의 기준 금액 하나뿐이어야 한다
+    # 환각 방어 — 자동 심사를 말하는 조항의 금액은 요청의 기준 금액 하나뿐이어야 한다.
+    #
+    # ⚠️ 이 검사는 **템플릿 조항도 함께 걸린다.** '자동 심사'·'관리자 승인/확인'이라는
+    # 말이 든 조에 한도 placeholder를 같이 쓰면 두 금액이 우연히 같지 않은 한 매번
+    # 불통과다 — 회사 유형 경조사비 조가 그렇게 초안 생성을 통째로 500으로 만들고
+    # 있었다(2026-08-12 발견, 템플릿에서 '자동 심사' 문구를 뺐다). 조항을 새로 쓸 때
+    # 이 조합을 만들지 말 것. `test_all_team_types_draft_verifies`가 5유형을 지킨다.
     for rule in draft.rules:
         if not _AUTO_RULE_HINT.search(rule):
             continue
-        bad = [a for a in _amounts_in(rule) if a != force_escalation_amount]
+        amounts = _amounts_in(rule)
+        if force_escalation_amount == 0:
+            # 자동 승인 구간이 없다 = 인용할 기준 금액 자체가 없다. "0원 미만"(공집합)도
+            # "0원 이상"(전체)도 규범으로 기능하지 않으므로 금액이 있다는 것만으로 잘못이다.
+            if amounts:
+                return (
+                    f"기준 금액이 0(전건 관리자 확인)인데 조항이 금액을 인용함: {amounts[0]:,}원 "
+                    "— 이때는 금액 없이 '모든 지출'로 써야 한다"
+                )
+            continue
+        bad = [a for a in amounts if a != force_escalation_amount]
         if bad:
             return (
                 f"자동 심사 한도 조항의 금액이 설정 금액과 불일치: {bad[0]:,}원 "
