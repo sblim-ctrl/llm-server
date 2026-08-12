@@ -59,6 +59,27 @@ def scan_callback_payload_terms(payload: CallbackPayload) -> list[str]:
     return scan_banned_terms(*texts)
 
 
+def gate_rules_from_state(final_state: dict[str, Any]) -> list[str]:
+    """심사 최종 상태 → Trajectory 채점용 가드레일 규칙 목록 (순수 함수).
+
+    영수증 불일치는 `mismatch_gate`가 `guardrail_gate` **앞에서** escalate로 직행시키므로
+    `gate_result`가 아예 없다 (§4.1). 그 경로도 궤적으로 남겨야 "왜 막혔는가"를 채점할 수
+    있어 `mismatch` 리스트에서 도출한다.
+
+    **로컬 CSV 하니스와 LangSmith Experiment가 같은 규칙을 봐야 해서 함수로 뽑았다.**
+    이 보정이 `run_case`에만 있고 `eval/run_eval_langsmith.py`의 target에는 없던 동안,
+    LangSmith `gate_includes_hit`이 영수증 불일치 케이스 8건을 계속 미달로 셌다
+    (2026-08-11 실측 42/50 = 84%, 2회 연속 동일). 그 8건은 **판정이 모두 정답**이었으므로
+    시스템 결함이 아니라 채점 하니스 결함이었다 — 같은 규칙이 두 벌로 있으면 이렇게
+    조용히 갈라진다.
+    """
+    gate_result = final_state.get("gate_result")
+    gate = list(gate_result.triggered_rules) if gate_result else []
+    if not gate and final_state.get("mismatch"):
+        return ["receipt_mismatch"]
+    return gate
+
+
 async def run_case(case: dict[str, Any]) -> dict[str, Any]:
     # pull 모델 — 워커(run_review_job)와 같은 초기 상태로 실행. 지출 상세는
     # load_context가 expense_id로 eval/fixtures/mock_backend.json을 되물어 채운다(T9).
@@ -75,11 +96,7 @@ async def run_case(case: dict[str, Any]) -> dict[str, Any]:
     )
     actual = final_state.get("verdict") or "escalate"
     expected = case["expected_verdict"]
-    gate = final_state.get("gate_result").triggered_rules if final_state.get("gate_result") else []
-    # 영수증 불일치는 mismatch_gate에서 가드레일 전에 escalate로 직행한다 (§4.1) —
-    # 그 경로도 trajectory로 기록 (실제 상태의 mismatch 리스트에서 도출)
-    if not gate and final_state.get("mismatch"):
-        gate = ["receipt_mismatch"]
+    gate = gate_rules_from_state(final_state)
 
     # Trajectory 검사: 기대한 가드레일 규칙이 실제로 발동했는가 (가이드 'Trajectory 평가'의 로컬 버전)
     expected_gate = case.get("expected_gate_includes")
