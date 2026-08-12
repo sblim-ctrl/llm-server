@@ -15,7 +15,10 @@
       },
       "expected_verdict": "approve",
       "expected_category": "교육",
-      "must_not_approve": false
+      "must_not_approve": false,
+      "expected_rule_clauses": [
+        "제4조"
+      ]
     },
     {
       "id": "club-reject-001",
@@ -33,6 +36,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "budget_insufficient"
+      ],
+      "expected_rule_clauses": [
+        "제8조"
       ]
     },
     {
@@ -51,6 +57,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_auto_approve_limit"
+      ],
+      "expected_rule_clauses": [
+        "제7조"
       ]
     },
     {
@@ -69,6 +78,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "receipt_mismatch"
+      ],
+      "expected_rule_clauses": [
+        "제5조"
       ]
     },
     {
@@ -87,6 +99,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "receipt_unreadable"
+      ],
+      "expected_rule_clauses": [
+        "제9조"
       ]
     },
     {
@@ -105,6 +120,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_force_escalation_amount"
+      ],
+      "expected_rule_clauses": [
+        "제5조"
       ]
     },
     {
@@ -120,7 +138,10 @@
       },
       "expected_verdict": "approve",
       "expected_category": "교육",
-      "must_not_approve": false
+      "must_not_approve": false,
+      "expected_rule_clauses": [
+        "제4조"
+      ]
     },
     {
       "id": "study-reject-001",
@@ -138,6 +159,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "budget_insufficient"
+      ],
+      "expected_rule_clauses": [
+        "제10조"
       ]
     },
     {
@@ -156,6 +180,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_auto_approve_limit"
+      ],
+      "expected_rule_clauses": [
+        "제6조"
       ]
     },
     {
@@ -192,6 +219,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "receipt_unreadable"
+      ],
+      "expected_rule_clauses": [
+        "제8조"
       ]
     },
     {
@@ -210,6 +240,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "receipt_unreadable"
+      ],
+      "expected_rule_clauses": [
+        "제2조"
       ]
     },
     {
@@ -225,7 +258,10 @@
       },
       "expected_verdict": "approve",
       "expected_category": "식비",
-      "must_not_approve": false
+      "must_not_approve": false,
+      "expected_rule_clauses": [
+        "제8조"
+      ]
     },
     {
       "id": "social-reject-001",
@@ -261,6 +297,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_auto_approve_limit"
+      ],
+      "expected_rule_clauses": [
+        "제2조"
       ]
     },
     {
@@ -279,6 +318,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "receipt_mismatch"
+      ],
+      "expected_rule_clauses": [
+        "제6조"
       ]
     },
     {
@@ -315,6 +357,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_auto_approve_limit"
+      ],
+      "expected_rule_clauses": [
+        "제5조"
       ]
     },
     {
@@ -330,7 +375,10 @@
       },
       "expected_verdict": "approve",
       "expected_category": "비품",
-      "must_not_approve": false
+      "must_not_approve": false,
+      "expected_rule_clauses": [
+        "제5조"
+      ]
     },
     {
       "id": "hobby-reject-001",
@@ -348,6 +396,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "budget_insufficient"
+      ],
+      "expected_rule_clauses": [
+        "제6조"
       ]
     },
     {
@@ -366,6 +417,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_auto_approve_limit"
+      ],
+      "expected_rule_clauses": [
+        "제5조"
       ]
     },
     {
@@ -384,6 +438,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "receipt_mismatch"
+      ],
+      "expected_rule_clauses": [
+        "제7조"
       ]
     },
     {
@@ -402,6 +459,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "receipt_unreadable"
+      ],
+      "expected_rule_clauses": [
+        "제8조"
       ]
     },
     {
@@ -420,6 +480,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "budget_insufficient"
+      ],
+      "expected_rule_clauses": [
+        "제5조"
       ]
     },
     {
@@ -435,7 +498,10 @@
       },
       "expected_verdict": "approve",
       "expected_category": "비품",
-      "must_not_approve": false
+      "must_not_approve": false,
+      "expected_rule_clauses": [
+        "제5조"
+      ]
     },
     {
       "id": "company-reject-001",
@@ -453,6 +519,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "budget_insufficient"
+      ],
+      "expected_rule_clauses": [
+        "제8조"
       ]
     },
     {
@@ -471,6 +540,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_auto_approve_limit"
+      ],
+      "expected_rule_clauses": [
+        "제2조"
       ]
     },
     {
@@ -489,6 +561,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "receipt_mismatch"
+      ],
+      "expected_rule_clauses": [
+        "제9조"
       ]
     },
     {
@@ -507,6 +582,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "receipt_unreadable"
+      ],
+      "expected_rule_clauses": [
+        "제9조"
       ]
     },
     {
@@ -522,7 +600,10 @@
       },
       "expected_verdict": "approve",
       "expected_category": "비품",
-      "must_not_approve": false
+      "must_not_approve": false,
+      "expected_rule_clauses": [
+        "제5조"
+      ]
     },
     {
       "id": "club-boundary-002",
@@ -558,6 +639,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_auto_approve_limit"
+      ],
+      "expected_rule_clauses": [
+        "제5조"
       ]
     },
     {
@@ -576,6 +660,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_auto_approve_limit"
+      ],
+      "expected_rule_clauses": [
+        "제5조"
       ]
     },
     {
@@ -594,6 +681,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_auto_approve_limit"
+      ],
+      "expected_rule_clauses": [
+        "제5조"
       ]
     },
     {
@@ -612,6 +702,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_force_escalation_amount"
+      ],
+      "expected_rule_clauses": [
+        "제5조"
       ]
     },
     {
@@ -630,6 +723,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_force_escalation_amount"
+      ],
+      "expected_rule_clauses": [
+        "제6조"
       ]
     },
     {
@@ -648,6 +744,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_force_escalation_amount"
+      ],
+      "expected_rule_clauses": [
+        "제6조"
       ]
     },
     {
@@ -666,6 +765,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_force_escalation_amount"
+      ],
+      "expected_rule_clauses": [
+        "제5조"
       ]
     },
     {
@@ -684,6 +786,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_force_escalation_amount"
+      ],
+      "expected_rule_clauses": [
+        "제7조"
       ]
     },
     {
@@ -702,6 +807,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "auto_approve_disabled"
+      ],
+      "expected_rule_clauses": [
+        "제8조"
       ]
     },
     {
@@ -720,6 +828,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "auto_approve_disabled"
+      ],
+      "expected_rule_clauses": [
+        "제4조"
       ]
     },
     {
@@ -738,6 +849,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "auto_approve_disabled"
+      ],
+      "expected_rule_clauses": [
+        "제8조"
       ]
     },
     {
@@ -753,7 +867,10 @@
       },
       "expected_verdict": "approve",
       "expected_category": "장소_대관",
-      "must_not_approve": false
+      "must_not_approve": false,
+      "expected_rule_clauses": [
+        "제11조"
+      ]
     },
     {
       "id": "study-approve-002",
@@ -768,7 +885,10 @@
       },
       "expected_verdict": "approve",
       "expected_category": "장소_대관",
-      "must_not_approve": false
+      "must_not_approve": false,
+      "expected_rule_clauses": [
+        "제11조"
+      ]
     },
     {
       "id": "social-approve-002",
@@ -783,7 +903,10 @@
       },
       "expected_verdict": "approve",
       "expected_category": "행사_활동",
-      "must_not_approve": false
+      "must_not_approve": false,
+      "expected_rule_clauses": [
+        "제11조"
+      ]
     },
     {
       "id": "hobby-approve-002",
@@ -798,7 +921,10 @@
       },
       "expected_verdict": "approve",
       "expected_category": "장소_대관",
-      "must_not_approve": false
+      "must_not_approve": false,
+      "expected_rule_clauses": [
+        "제11조"
+      ]
     },
     {
       "id": "company-approve-002",
@@ -813,7 +939,10 @@
       },
       "expected_verdict": "approve",
       "expected_category": "장소_대관",
-      "must_not_approve": false
+      "must_not_approve": false,
+      "expected_rule_clauses": [
+        "제11조"
+      ]
     },
     {
       "id": "social-adversarial-001",
@@ -831,6 +960,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "budget_insufficient"
+      ],
+      "expected_rule_clauses": [
+        "제5조"
       ]
     },
     {
@@ -849,6 +981,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_auto_approve_limit"
+      ],
+      "expected_rule_clauses": [
+        "제5조"
       ]
     },
     {
@@ -867,6 +1002,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "budget_insufficient"
+      ],
+      "expected_rule_clauses": [
+        "제4조"
       ]
     },
     {
@@ -885,6 +1023,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_auto_approve_limit"
+      ],
+      "expected_rule_clauses": [
+        "제5조"
       ]
     },
     {
@@ -900,7 +1041,10 @@
       },
       "expected_verdict": "approve",
       "expected_category": "장소_대관",
-      "must_not_approve": false
+      "must_not_approve": false,
+      "expected_rule_clauses": [
+        "제6조"
+      ]
     },
     {
       "id": "club-approve-004",
@@ -915,7 +1059,10 @@
       },
       "expected_verdict": "approve",
       "expected_category": "교육",
-      "must_not_approve": false
+      "must_not_approve": false,
+      "expected_rule_clauses": [
+        "제10조"
+      ]
     },
     {
       "id": "study-approve-003",
@@ -930,7 +1077,10 @@
       },
       "expected_verdict": "approve",
       "expected_category": "교통",
-      "must_not_approve": false
+      "must_not_approve": false,
+      "expected_rule_clauses": [
+        "제9조"
+      ]
     },
     {
       "id": "social-approve-003",
@@ -945,7 +1095,10 @@
       },
       "expected_verdict": "approve",
       "expected_category": "교육",
-      "must_not_approve": false
+      "must_not_approve": false,
+      "expected_rule_clauses": [
+        "제10조"
+      ]
     },
     {
       "id": "hobby-approve-003",
@@ -993,6 +1146,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "budget_insufficient"
+      ],
+      "expected_rule_clauses": [
+        "제9조"
       ]
     },
     {
@@ -1011,6 +1167,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "budget_insufficient"
+      ],
+      "expected_rule_clauses": [
+        "제5조"
       ]
     },
     {
@@ -1048,6 +1207,9 @@
       "expected_gate_includes": [
         "over_force_escalation_amount",
         "over_auto_approve_limit"
+      ],
+      "expected_rule_clauses": [
+        "제6조"
       ]
     },
     {
@@ -1066,6 +1228,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "receipt_mismatch"
+      ],
+      "expected_rule_clauses": [
+        "제5조"
       ]
     },
     {
@@ -1084,6 +1249,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "receipt_mismatch"
+      ],
+      "expected_rule_clauses": [
+        "제8조"
       ]
     },
     {
@@ -1099,7 +1267,10 @@
       },
       "expected_verdict": "approve",
       "expected_category": "비품",
-      "must_not_approve": false
+      "must_not_approve": false,
+      "expected_rule_clauses": [
+        "제5조"
+      ]
     },
     {
       "id": "club-autoclassify-001",
@@ -1114,7 +1285,10 @@
       },
       "expected_verdict": "approve",
       "expected_category": "교육",
-      "must_not_approve": false
+      "must_not_approve": false,
+      "expected_rule_clauses": [
+        "제4조"
+      ]
     },
     {
       "id": "social-autoclassify-001",
@@ -1129,7 +1303,10 @@
       },
       "expected_verdict": "approve",
       "expected_category": "식비",
-      "must_not_approve": false
+      "must_not_approve": false,
+      "expected_rule_clauses": [
+        "제8조"
+      ]
     },
     {
       "id": "hobby-gate-priority-001",
@@ -1147,6 +1324,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_auto_approve_limit"
+      ],
+      "expected_rule_clauses": [
+        "제5조"
       ]
     },
     {
@@ -1165,6 +1345,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "receipt_mismatch"
+      ],
+      "expected_rule_clauses": [
+        "제5조"
       ]
     },
     {
@@ -1180,7 +1363,8 @@
       },
       "expected_verdict": "approve",
       "expected_category": "IT_인프라",
-      "must_not_approve": false
+      "must_not_approve": false,
+      "expected_rule_clauses": []
     },
     {
       "id": "club-approve-005",
@@ -1195,7 +1379,10 @@
       },
       "expected_verdict": "approve",
       "expected_category": "회의",
-      "must_not_approve": false
+      "must_not_approve": false,
+      "expected_rule_clauses": [
+        "제6조"
+      ]
     },
     {
       "id": "social-approve-004",
@@ -1210,7 +1397,8 @@
       },
       "expected_verdict": "approve",
       "expected_category": "기타",
-      "must_not_approve": false
+      "must_not_approve": false,
+      "expected_rule_clauses": []
     },
     {
       "id": "study-reject-002",
@@ -1228,7 +1416,8 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "budget_insufficient"
-      ]
+      ],
+      "expected_rule_clauses": []
     },
     {
       "id": "study-noauto-002",
@@ -1246,7 +1435,8 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "auto_approve_disabled"
-      ]
+      ],
+      "expected_rule_clauses": []
     },
     {
       "id": "club-force-002",
@@ -1264,6 +1454,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "over_force_escalation_amount"
+      ],
+      "expected_rule_clauses": [
+        "제5조"
       ]
     },
     {
@@ -1282,6 +1475,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "auto_approve_disabled"
+      ],
+      "expected_rule_clauses": [
+        "제5조"
       ]
     },
     {
@@ -1300,6 +1496,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "auto_approve_disabled"
+      ],
+      "expected_rule_clauses": [
+        "제4조"
       ]
     },
     {
@@ -1318,6 +1517,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "auto_approve_disabled"
+      ],
+      "expected_rule_clauses": [
+        "제2조"
       ]
     },
     {
@@ -1336,6 +1538,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "auto_approve_disabled"
+      ],
+      "expected_rule_clauses": [
+        "제9조"
       ]
     },
     {
@@ -1356,6 +1561,9 @@
         "auto_approve_disabled",
         "over_auto_approve_limit",
         "over_force_escalation_amount"
+      ],
+      "expected_rule_clauses": [
+        "제6조"
       ]
     },
     {
@@ -1374,6 +1582,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "auto_approve_disabled"
+      ],
+      "expected_rule_clauses": [
+        "제2조"
       ]
     },
     {
@@ -1392,6 +1603,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "auto_approve_disabled"
+      ],
+      "expected_rule_clauses": [
+        "제7조"
       ]
     },
     {
@@ -1412,6 +1626,9 @@
         "auto_approve_disabled",
         "over_auto_approve_limit",
         "over_force_escalation_amount"
+      ],
+      "expected_rule_clauses": [
+        "제6조"
       ]
     },
     {
@@ -1430,6 +1647,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "receipt_unreadable"
+      ],
+      "expected_rule_clauses": [
+        "제5조"
       ]
     },
     {
@@ -1448,6 +1668,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "receipt_unreadable"
+      ],
+      "expected_rule_clauses": [
+        "제4조"
       ]
     },
     {
@@ -1466,6 +1689,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "receipt_unreadable"
+      ],
+      "expected_rule_clauses": [
+        "제7조"
       ]
     },
     {
@@ -1484,6 +1710,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "receipt_mismatch"
+      ],
+      "expected_rule_clauses": [
+        "제2조"
       ]
     },
     {
@@ -1503,6 +1732,9 @@
       "expected_gate_includes": [
         "over_auto_approve_limit",
         "over_force_escalation_amount"
+      ],
+      "expected_rule_clauses": [
+        "제5조"
       ]
     },
     {
@@ -1518,7 +1750,10 @@
       },
       "expected_verdict": "approve",
       "expected_category": "비품",
-      "must_not_approve": false
+      "must_not_approve": false,
+      "expected_rule_clauses": [
+        "제5조"
+      ]
     },
     {
       "id": "study-budget-short-by-one-001",
@@ -1536,6 +1771,9 @@
       "must_not_approve": true,
       "expected_gate_includes": [
         "budget_insufficient"
+      ],
+      "expected_rule_clauses": [
+        "제4조"
       ]
     },
     {
@@ -1555,6 +1793,9 @@
       "expected_gate_includes": [
         "auto_approve_disabled",
         "receipt_unreadable"
+      ],
+      "expected_rule_clauses": [
+        "제4조"
       ]
     },
     {
@@ -1570,7 +1811,8 @@
       },
       "expected_verdict": "approve",
       "expected_category": "IT_인프라",
-      "must_not_approve": false
+      "must_not_approve": false,
+      "expected_rule_clauses": []
     },
     {
       "id": "study-approve-005",
@@ -1585,7 +1827,10 @@
       },
       "expected_verdict": "approve",
       "expected_category": "장소_대관",
-      "must_not_approve": false
+      "must_not_approve": false,
+      "expected_rule_clauses": [
+        "제6조"
+      ]
     },
     {
       "id": "social-approve-005",
@@ -1600,7 +1845,10 @@
       },
       "expected_verdict": "approve",
       "expected_category": "교통",
-      "must_not_approve": false
+      "must_not_approve": false,
+      "expected_rule_clauses": [
+        "제9조"
+      ]
     },
     {
       "id": "hobby-approve-004",
@@ -1615,7 +1863,10 @@
       },
       "expected_verdict": "approve",
       "expected_category": "비품",
-      "must_not_approve": false
+      "must_not_approve": false,
+      "expected_rule_clauses": [
+        "제5조"
+      ]
     },
     {
       "id": "company-approve-004",
@@ -1630,7 +1881,10 @@
       },
       "expected_verdict": "approve",
       "expected_category": "식비",
-      "must_not_approve": false
+      "must_not_approve": false,
+      "expected_rule_clauses": [
+        "제2조"
+      ]
     },
     {
       "id": "study-budget-warn-001",
@@ -1645,7 +1899,10 @@
       },
       "expected_verdict": "approve",
       "expected_category": "교육",
-      "must_not_approve": false
+      "must_not_approve": false,
+      "expected_rule_clauses": [
+        "제4조"
+      ]
     },
     {
       "id": "company-budget-warn-001",
@@ -1660,7 +1917,10 @@
       },
       "expected_verdict": "approve",
       "expected_category": "교통",
-      "must_not_approve": false
+      "must_not_approve": false,
+      "expected_rule_clauses": [
+        "제9조"
+      ]
     }
   ]
 }
