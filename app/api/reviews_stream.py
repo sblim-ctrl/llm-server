@@ -40,6 +40,10 @@ from psycopg import AsyncConnection
 from pydantic import BaseModel
 
 from app.config import get_settings
+
+# 평가 모듈 import지만 순수 도출 함수라 제품 경로에서 그대로 쓴다 — app/api/eval.py에
+# 같은 방향의 선례가 있고, 규칙을 여기 복사하면 하니스와 화면이 조용히 갈라진다(#85 참조).
+from app.eval_support import gate_rules_from_state
 from app.graphs.review.graph import build_review_graph
 from app.observability import langsmith_config
 from app.schemas.analyze import AnalyzeRequest
@@ -126,7 +130,7 @@ async def _stream_run(stream, job_id: str, started: float):
     snap = await hitl_graph.aget_state(
         {"configurable": {"thread_id": job_id}})
     v = snap.values
-    reasons, gate, claim = v.get("reasons"), v.get("gate_result"), v.get("claim")
+    reasons, claim = v.get("reasons"), v.get("claim")
     yield _sse("result", {
         "category": claim.category if claim else None,
         "categorySource": v.get("category_source"),
@@ -134,7 +138,11 @@ async def _stream_run(stream, job_id: str, started: float):
         "confidence": v.get("confidence"),
         "adminDecision": v.get("admin_decision"),
         "reasons": reasons.model_dump() if reasons else None,
-        "gateRules": list(gate.triggered_rules) if gate else [],
+        # 영수증 불일치는 mismatch_gate가 guardrail_gate **앞에서** escalate로 직행시켜
+        # gate_result가 아예 없다(§4.1) — gate_result만 보면 이 경로의 gateRules가 빈
+        # 배열로 나가 관리자가 "왜 막혔는지"를 못 본다(#94). eval 하니스 3종과 같은
+        # 도출 규칙(gate_rules_from_state)을 쓴다 — 같은 규칙의 사본을 만들지 않는다.
+        "gateRules": gate_rules_from_state(v),
         "opinions": {k: {"verdict": o.verdict, "summary": o.summary}
                      for k, o in (v.get("opinions") or {}).items()},
         "totalMs": int((perf_counter() - started) * 1000),
