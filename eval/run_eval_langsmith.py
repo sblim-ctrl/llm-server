@@ -39,6 +39,7 @@ if sys.platform == "win32":
 
 from app.config import get_settings  # noqa: E402
 from app.db.pool import apply_schema, close_pool, open_pool  # noqa: E402
+from app.eval_support import gate_rules_from_state  # noqa: E402 — 궤적 도출 규칙 공유
 from eval.run_eval_real import clean_golden_teams  # noqa: E402
 
 DATASET_NAME = "budgetops-golden"
@@ -163,12 +164,13 @@ async def main() -> int:
                     "receipt_text": inputs.get("receipt_text"),
                 }
             )
-            gate = final.get("gate_result")
             claim = final.get("claim")  # 분류 결과 추출 — run_eval_real.py와 동일 규약
             reasons = final.get("reasons")  # judge_quality 채점 재료 (escalate면 None)
             return {
                 "verdict": final.get("verdict") or "escalate",
-                "gate": gate.triggered_rules if gate else [],
+                # 궤적은 로컬 CSV 하니스와 **같은 함수**로 도출한다 — 직접 gate_result만
+                # 읽던 시절 영수증 불일치 8건이 계속 미달로 세어졌다(함수 docstring 참조)
+                "gate": gate_rules_from_state(final),
                 "category": (claim.category if claim else "") or "",
                 "reason_requester": reasons.requester if reasons else None,
                 "reason_admin": reasons.admin if reasons else None,

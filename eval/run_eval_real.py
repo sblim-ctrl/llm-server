@@ -42,6 +42,7 @@ if sys.platform == "win32":
 
 from app.config import get_settings  # noqa: E402
 from app.db.pool import apply_schema, close_pool, get_pool, open_pool  # noqa: E402
+from app.eval_support import gate_rules_from_state  # noqa: E402 — 궤적 도출 규칙 공유
 
 DEFAULT_GOLDEN = ROOT / "eval" / "golden" / "golden_v1.json"
 FIXTURE_PATH = ROOT / "eval" / "fixtures" / "mock_backend.json"
@@ -147,8 +148,9 @@ async def main() -> int:
             correct += ok
             if fa:
                 false_appr.append(case["id"])
-            gate = final.get("gate_result")
-            gate_rules = "|".join(gate.triggered_rules) if gate else ""
+            # 궤적 도출은 로컬 CSV 하니스·LangSmith와 **같은 함수**를 쓴다 — 직접
+            # gate_result만 읽으면 영수증 불일치(mismatch_gate 단락) 경로가 빈칸이 된다
+            gate_rules = "|".join(gate_rules_from_state(final))
 
             # 분류 채점 — 기대값 없는 케이스는 분모에서 뺀다(0점 처리하지 않는다)
             claim = final.get("claim")
