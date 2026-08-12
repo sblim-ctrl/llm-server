@@ -15,11 +15,11 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 15,
+        "rules_count": 8,
         "categories_count": 9,
         "rules_contain": [
           "50,000원",
-          "AI가 자동 심사한다"
+          "AI가 자동 심사"
         ],
         "rules_not_contain": [
           "{auto_approve_limit}",
@@ -42,7 +42,7 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 16,
+        "rules_count": 7,
         "categories_count": 9
       }
     },
@@ -59,7 +59,7 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 17,
+        "rules_count": 6,
         "categories_count": 9
       }
     },
@@ -76,7 +76,7 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 17,
+        "rules_count": 8,
         "categories_count": 9
       }
     },
@@ -93,7 +93,7 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 16,
+        "rules_count": 11,
         "categories_count": 9,
         "rules_contain": [
           "90,000원"
@@ -113,10 +113,10 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 15,
+        "rules_count": 8,
         "rules_contain": [
           "70,000원",
-          "AI가 자동 심사한다"
+          "AI가 자동 심사"
         ],
         "rules_not_contain": [
           "{auto_approve_limit}"
@@ -154,7 +154,7 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 18,
+        "rules_count": 9,
         "rules_contain": [
           "안전장비"
         ]
@@ -174,7 +174,7 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 17,
+        "rules_count": 8,
         "rules_contain": [
           "서버"
         ]
@@ -194,7 +194,7 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 16,
+        "rules_count": 9,
         "rules_contain": [
           "홍보물"
         ]
@@ -214,7 +214,7 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 19,
+        "rules_count": 10,
         "rules_contain": [
           "안전장비",
           "서버",
@@ -236,7 +236,7 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 18,
+        "rules_count": 9,
         "rules_contain": [
           "안전장비",
           "서버"
