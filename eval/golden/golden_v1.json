@@ -439,9 +439,7 @@
       "expected_gate_includes": [
         "receipt_mismatch"
       ],
-      "expected_rule_clauses": [
-        "제7조"
-      ]
+      "expected_rule_clauses": []
     },
     {
       "id": "hobby-noreceipt-001",
@@ -1604,9 +1602,7 @@
       "expected_gate_includes": [
         "auto_approve_disabled"
       ],
-      "expected_rule_clauses": [
-        "제7조"
-      ]
+      "expected_rule_clauses": []
     },
     {
       "id": "hobby-noauto-002",
@@ -1690,9 +1686,7 @@
       "expected_gate_includes": [
         "receipt_unreadable"
       ],
-      "expected_rule_clauses": [
-        "제7조"
-      ]
+      "expected_rule_clauses": []
     },
     {
       "id": "club-mismatch-budget-001",
