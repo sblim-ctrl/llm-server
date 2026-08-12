@@ -241,6 +241,51 @@ async def test_limits_scale_with_budget():
     assert meal_of(small) < meal_of(large)
 
 
+@pytest.mark.parametrize("team_type", TEAM_TYPES)
+@pytest.mark.parametrize("key", ["venue", "supplies", "event"])
+def test_scale_limits_keep_growing_at_large_budgets(team_type, key):
+    """모임 규모에 비례하는 한도는 큰 예산에서도 계속 올라야 한다.
+
+    상한이 일찍 포화되면 예산이 3배가 돼도 한도가 그대로다 — 실측(2026-08-12)에서
+    대관비가 예산 1,000만과 3,000만에서 같은 값이었다. 그러면 큰 모임은 정상 지출마다
+    한도를 넘겨 에스컬레이션이 쌓인다.
+
+    **1인 단가 항목은 여기서 보지 않는다.** 식비(1인 1회)·경조사비(1건)·교통비(1인당)·
+    여행(1인 1박)은 예산과 무관하게 상식적인 상한이 있어 포화되는 것이 정상이다.
+    실제로 친목 경조사비는 예산 500만에서 이미 상한(400,000원)에 닿는다.
+    여기서 보는 것은 `basis: total`이면서 모임 규모를 반영하는 세 항목이다.
+    """
+    tpl = load_templates()[team_type]
+    small = int(suggested_limits(tpl, 5_000_000, 20)[key].replace(",", ""))
+    large = int(suggested_limits(tpl, 30_000_000, 20)[key].replace(",", ""))
+    assert large > small, (
+        f"[{team_type}] {key}: 예산 500만→3,000만인데 한도가 {small:,}원에서 안 움직인다"
+    )
+
+
+def test_prohibition_clauses_are_not_open_ended_relevance_tests():
+    """금지 조항을 '목적과 무관한 지출'만으로 쓰지 않는다 — 개인성 같은 확인 가능한 기준을 함께 둔다.
+
+    허용 조항은 열거식인데 금지가 포괄적이면, 열거에서 빠진 카테고리가 전부 금지 쪽으로
+    쏠린다. "회칙이 금지하지 않는 것은 허용"이라는 원칙(2026-08-11)이 무력화되는 자리다.
+    실제로 6인이 함께 이용한 보드게임 카페 이용료가 스터디 유형의 "학습과 무관한 지출"
+    항으로 부적합 판정을 받았다(2026-08-12).
+
+    "무관한가"는 심사관이 주관으로 답하지만 "개인이 사적으로 썼는가"는 증빙으로 확인된다.
+    회칙 작성 원칙 4번(모호한 표현을 쓰지 않는다)의 연장이다.
+    """
+    OPEN_ENDED = ("무관", "관련성이 확인되지")
+    for team_type, tpl in load_templates().items():
+        for article in tpl["bylaw_articles"]:
+            for clause in re.split(r"[①②③④⑤]", article["text"]):
+                if not any(w in clause for w in OPEN_ENDED):
+                    continue
+                assert "개인" in clause, (
+                    f"[{team_type}] '{article['title']}' 항이 목적 관련성만으로 금지한다 — "
+                    f"개인성 등 확인 가능한 기준을 함께 둘 것: {clause.strip()[:70]}"
+                )
+
+
 async def test_no_bylaw_article_uses_a_non_catalog_category_word():
     """'다과비'처럼 카탈로그에 없는 분류명을 쓰면 회원이 고를 수 있는 분류와 어긋난다."""
     templates = load_templates()
