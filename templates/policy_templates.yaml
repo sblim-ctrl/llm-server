@@ -68,7 +68,10 @@
     - "행사비는 행사 계획을 사전 공유한 건에 한해 집행한다."
     - "{auto_approve_limit}원 미만의 지출은 AI 자동 심사로 처리하고, {auto_approve_limit}원 이상은 관리자 승인을 받는다."
   limits:
-    meal: {basis: per_person, ratio: 0.12, min: 12000, max: 75000}
+    # meal.max는 80,000 — 75,000은 round_bylaw_amount의 10,000원 격자 밖이라
+    # (round(7.5)=8) 포화 구간에서 회칙에 80,000원이 적혀 상한 불변식이 깨진다
+    # (#80 리뷰). max는 반드시 격자(5만 미만 5천·20만 미만 1만·이상 5만) 위의 값으로.
+    meal: {basis: per_person, ratio: 0.12, min: 12000, max: 80000}
     venue: {basis: total, ratio: 0.03, min: 20000, max: 600000}
     supplies: {basis: total, ratio: 0.08, min: 30000, max: 1000000}
     transport: {basis: per_person, ratio: 0.25, min: 20000, max: 200000}
@@ -185,7 +188,10 @@
   limits:
     meal: {basis: per_person, ratio: 0.20, min: 15000, max: 90000}
     venue: {basis: total, ratio: 0.04, min: 20000, max: 600000}
-    supplies: {basis: total, ratio: 0.05, min: 20000, max: 400000}
+    # supplies.max 600,000 — 400,000은 예산 800만에서 포화해(다른 유형 규모 항목은
+    # 전부 1,167만~2,500만) 이 PR이 고치려는 조기 포화가 그대로 남는다. 1,000만↔
+    # 3,000만 회귀 프로브가 잡았다 (#80 리뷰 반영 중 발견).
+    supplies: {basis: total, ratio: 0.05, min: 20000, max: 600000}
     transport: {basis: per_person, ratio: 0.25, min: 20000, max: 200000}
     education: {basis: per_person, ratio: 0.15, min: 10000, max: 250000}
     event: {basis: total, ratio: 0.15, min: 50000, max: 2000000}
@@ -241,7 +247,8 @@
     - "대관료는 정기 모임 일정에 등록된 일자만 인정한다."
     - "{auto_approve_limit}원 미만 지출은 AI 자동 심사, {auto_approve_limit}원 이상은 관리자 승인."
   limits:
-    meal: {basis: per_person, ratio: 0.15, min: 12000, max: 75000}
+    # meal.max 80,000 — 격자 밖 75,000 금지 (동아리/학생회 limits 주석 참조)
+    meal: {basis: per_person, ratio: 0.15, min: 12000, max: 80000}
     venue: {basis: total, ratio: 0.10, min: 30000, max: 1250000}
     supplies: {basis: total, ratio: 0.15, min: 50000, max: 1750000}
     transport: {basis: per_person, ratio: 0.25, min: 20000, max: 200000}

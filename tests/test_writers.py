@@ -256,11 +256,30 @@ def test_scale_limits_keep_growing_at_large_budgets(team_type, key):
     여기서 보는 것은 `basis: total`이면서 모임 규모를 반영하는 세 항목이다.
     """
     tpl = load_templates()[team_type]
-    small = int(suggested_limits(tpl, 5_000_000, 20)[key].replace(",", ""))
+    # 1,000만↔3,000만 — 실측 증상과 같은 구간이어야 그물이 된다. 500만을 쓰면
+    # 동아리·스터디는 500만에서 아직 포화 전이라 종전 max로도 통과했다 (#80 리뷰).
+    small = int(suggested_limits(tpl, 10_000_000, 20)[key].replace(",", ""))
     large = int(suggested_limits(tpl, 30_000_000, 20)[key].replace(",", ""))
     assert large > small, (
-        f"[{team_type}] {key}: 예산 500만→3,000만인데 한도가 {small:,}원에서 안 움직인다"
+        f"[{team_type}] {key}: 예산 1,000만→3,000만인데 한도가 {small:,}원에서 안 움직인다"
     )
+
+
+@pytest.mark.parametrize("team_type", TEAM_TYPES)
+def test_limit_maxes_sit_on_the_rounding_grid(team_type):
+    """모든 한도 `max`는 round_bylaw_amount 격자 위의 값이어야 한다.
+
+    suggested_limits는 "반올림이 상한을 넘지 않게" `round_bylaw_amount(max)`와
+    비교하는데, max 자체가 격자 밖이면 그 가드가 오히려 상한을 키운다 —
+    meal.max 75,000이 10,000원 격자 반올림(round(7.5)=8)으로 80,000이 되어
+    포화 구간에서 회칙에 선언보다 큰 금액이 적혔다 (#80 리뷰). min은 올림 짝
+    함수(round_bylaw_amount_up)가 따로 지키므로 여기서는 max만 본다.
+    """
+    for key, cfg in load_templates()[team_type]["limits"].items():
+        assert round_bylaw_amount(cfg["max"]) == cfg["max"], (
+            f"[{team_type}] {key}.max={cfg['max']:,}가 반올림 격자 밖이다 — "
+            f"회칙에는 {round_bylaw_amount(cfg['max']):,}원이 적힌다"
+        )
 
 
 def test_prohibition_clauses_are_not_open_ended_relevance_tests():
@@ -273,11 +292,17 @@ def test_prohibition_clauses_are_not_open_ended_relevance_tests():
 
     "무관한가"는 심사관이 주관으로 답하지만 "개인이 사적으로 썼는가"는 증빙으로 확인된다.
     회칙 작성 원칙 4번(모호한 표현을 쓰지 않는다)의 연장이다.
+
+    **트립와이어지 보증이 아니다** (#80 리뷰): '개인' 글자가 같은 항에 있는지만 보므로
+    포괄 금지가 개인성 기준으로 실제로 좁혀졌는지까지는 증명하지 못한다. 포괄 표현이
+    새로 들어오는 것을 잡는 회귀 그물로만 읽을 것.
     """
     OPEN_ENDED = ("무관", "관련성이 확인되지")
     for team_type, tpl in load_templates().items():
         for article in tpl["bylaw_articles"]:
-            for clause in re.split(r"[①②③④⑤]", article["text"]):
+            # text_no_auto(기준 금액 0원일 때의 대체 본문, #75)도 같은 규범을 지켜야 한다
+            texts = [article["text"], article.get("text_no_auto") or ""]
+            for clause in (c for t in texts for c in re.split(r"[①-⑨]", t)):
                 if not any(w in clause for w in OPEN_ENDED):
                     continue
                 assert "개인" in clause, (
