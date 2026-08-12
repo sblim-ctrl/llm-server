@@ -5,7 +5,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 
 from app.db.pool import get_job
-from app.graphs.review.nodes.callback import translate_precedent_citation
+from app.graphs.review.nodes.callback import opinion_sort_key, translate_precedent_citation
 from app.schemas.analyze import JobStatusResponse
 
 router = APIRouter(prefix="/v1", tags=["jobs"])
@@ -38,6 +38,30 @@ def translate_result_terms(result: Any) -> Any:
     return {**result, "opinions": translated}
 
 
+def order_result_opinions(result: Any) -> Any:
+    """잡 결과의 opinions를 콜백과 같은 순서 계약으로 정렬 (순수 함수, #86).
+
+    worker가 저장하는 opinions는 그래프 삽입 순서라 evidence가 맨 앞이고 병렬 심사관
+    3종은 완료 순서에 따라 매번 다르다 — 배열 순서로 카드를 그리는 수신 측에서
+    2026-08-11 데모 카드 스왑을 만든 바로 그 성질이다. 콜백은 `_OPINION_ORDER`로
+    고정하는데 폴링 안전망만 원본 순서로 나가고 있었다.
+
+    치환(#71→#73)과 같은 이유로 저장이 아니라 **조회 시점**에 정렬한다 — 이미 저장된
+    잡 결과까지 함께 덮고, worker.py를 건드리지 않는다. 모양 방어도 같은 규칙이다.
+    """
+    if not isinstance(result, dict):
+        return result
+    opinions = result.get("opinions")
+    if not isinstance(opinions, list):
+        return result
+
+    def key(op: Any) -> tuple:
+        # 소견이 아닌 원소(방어)는 맨 뒤 — 순서 계약은 auditor 필드가 있는 것에만 적용
+        return opinion_sort_key(op["auditor"]) if isinstance(op, dict) and "auditor" in op else (2,)
+
+    return {**result, "opinions": sorted(opinions, key=key)}
+
+
 @router.get(
     "/jobs/{job_id}", response_model=JobStatusResponse, summary="잡 상태·결과 조회 (콜백 안전망)"
 )
@@ -54,8 +78,9 @@ async def read_job(job_id: str) -> JobStatusResponse:
     `message`는 회칙 파싱 실패(`DocumentParseError` 계열)일 때만 원문이고, 그 외
     예외는 정형 문구라 관리자에게 그대로 보여줘도 된다.
 
-    `result`의 판례 인용은 콜백과 **같은 문구**로 나간다 — 두 경로가 같은 심사를
-    다르게 표기하면 안 되기 때문이다 (#71, `translate_result_terms` 참조).
+    `result`의 판례 인용은 콜백과 **같은 문구**, opinions는 콜백과 **같은 순서**로
+    나간다 — 두 경로가 같은 심사를 다르게 내보내면 안 되기 때문이다
+    (#71 `translate_result_terms` · #86 `order_result_opinions` 참조).
     """
     job = await get_job(job_id)
     if job is None:
@@ -64,7 +89,7 @@ async def read_job(job_id: str) -> JobStatusResponse:
         job_id=str(job["id"]),
         status=job["status"],
         attempts=job["attempts"],
-        result=translate_result_terms(job["result"]),
+        result=order_result_opinions(translate_result_terms(job["result"])),
         created_at=job["created_at"].isoformat(),
         updated_at=job["updated_at"].isoformat(),
     )

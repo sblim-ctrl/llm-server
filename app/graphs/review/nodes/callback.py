@@ -64,11 +64,22 @@ def trace_meta(state: ReviewState) -> dict[str, Any]:
 _OPINION_ORDER = ("evidence", "budget", "precedent", "rule")
 
 
+def opinion_sort_key(auditor: str) -> tuple:
+    """소견 순서 계약의 정렬 키 — 알려진 심사관은 고정 순서, 신설은 뒤에 이름순.
+
+    **출구가 콜백 하나가 아니라서 공개 함수다** (#86, 용어 치환 #71→#73과 같은 구조):
+    worker가 `jobs.result`에 저장하는 opinions는 삽입 순서 그대로라, 폴링 안전망
+    (`GET /v1/jobs/{job_id}`)이 콜백과 다른 순서로 내보냈다. `app/api/jobs.py`가
+    조회 시점에 이 키로 같은 정렬을 적용한다 — 순서 규칙을 두 벌로 만들지 않는다.
+    """
+    if auditor in _OPINION_ORDER:
+        return (0, _OPINION_ORDER.index(auditor))
+    return (1, auditor)
+
+
 def ordered_opinions(opinions: dict[str, Any]) -> list:
     """소견을 고정 순서로 정렬. 목록에 없는 키(향후 신설 심사관)는 뒤에 이름순으로."""
-    known = [opinions[k] for k in _OPINION_ORDER if k in opinions]
-    extra = [opinions[k] for k in sorted(opinions) if k not in _OPINION_ORDER]
-    return known + extra
+    return [opinions[k] for k in sorted(opinions, key=opinion_sort_key)]
 
 
 # 판례 인용 접두 "(결정/결정주체[, override])" → 한국어 (2026-08-11).
