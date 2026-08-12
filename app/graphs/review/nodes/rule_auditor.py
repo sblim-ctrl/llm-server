@@ -77,6 +77,7 @@ async def _retrieve_with_correction(
     claim: ExpenseClaim,
     version: int | None,
     members: list[dict],
+    receipt: ReceiptData | None = None,
 ) -> tuple[list[dict], str, LLMCallMeta | None]:
     """CRAG 스타일 검색: 채점 → 재작성 재검색. (chunks, grade, rewrite_meta) 반환.
 
@@ -88,7 +89,7 @@ async def _retrieve_with_correction(
         # 회칙이 인덱싱된 적 없는 팀 — search_rules를 부를 필요도 없이 확정.
         return [], "no_rules", None
 
-    primary_query = f"{claim.title} {claim.description}".strip()
+    primary_query = _search_text(claim, receipt)
     chunks = await search_rules(team_id, primary_query, version)
     if not chunks:
         return [], "no_rules", None
@@ -103,6 +104,50 @@ async def _retrieve_with_correction(
     if relevant:
         return relevant, "rewritten", rewrite_meta
     return [], "insufficient", rewrite_meta
+
+
+def receipt_facts_block(receipt: ReceiptData | None) -> str:
+    """증빙에서 읽은 객관적 사실(상호·품목) — 없으면 빈 문자열.
+
+    **왜 회칙 심사관에게 이것이 필요한가.** 이 노드는 종전에 `claim`(제목·금액·
+    카테고리·날짜·설명)만 보고 판정했다. 제목·설명은 **청구자가 자유롭게 쓴 주관적
+    텍스트**라, 같은 지출도 어떻게 적느냐에 따라 판정이 갈렸다.
+
+    2026-08-12 실사용 사례: 제목 "보드게임"·설명 "모임 활동"으로 올라온 60,000원을
+    회칙 심사관이 "보드게임 **구입**"으로 읽고 개인 물품 조항 위반으로 판정했다.
+    같은 영수증을 카테고리 분류기(`classify_category`)와 증빙 심사관(`mismatch_gate`)은
+    제대로 읽고 있었다 — 상호 "플레이박스 보드게임", 품목 "2시간 이용권 x6".
+    **시설 이용료였고 구입이 아니었다.** 세 노드 중 이 노드만 사실을 못 받고 있었다.
+
+    업종별 예외를 프롬프트에 넣는 방식(예: "보드게임 카페는 구입이 아니다")으로는
+    다음 사례에서 또 뚫린다. 판단의 근거가 되는 사실 자체를 주는 것이 일반해다.
+
+    판독 실패·미첨부는 빈 문자열을 반환한다 — 그 상태는 `_receipt_status_line`이
+    이미 말하고 있고, 증빙 자체의 유무 판단은 evidence 심사관·가드레일 몫이다.
+    """
+    if receipt is None or not receipt.parse_ok:
+        return ""
+    lines = []
+    if receipt.merchant:
+        lines.append(f"- 상호: {receipt.merchant}")
+    if receipt.items:
+        lines.append(f"- 품목: {', '.join(receipt.items)}")
+    if not lines:
+        return ""
+    return "증빙에서 읽은 사실:\n" + "\n".join(lines)
+
+
+def _search_text(claim: ExpenseClaim, receipt: ReceiptData | None) -> str:
+    """RAG 1차 검색 질의 — 제목·설명에 증빙의 상호·품목을 더한다.
+
+    검색도 같은 이유로 제목에 휘둘렸다. 판정 입력만 고치고 검색 질의를 두면,
+    애초에 엉뚱한 조항이 검색돼 올라오는 경로가 남는다.
+    """
+    parts = [claim.title, claim.description]
+    if receipt is not None and receipt.parse_ok:
+        parts.append(receipt.merchant or "")
+        parts.extend(receipt.items or [])
+    return " ".join(p for p in parts if p).strip()
 
 
 def _receipt_status_line(receipt: ReceiptData | None) -> str:
@@ -156,8 +201,9 @@ async def _audit_by_default_policy(
         agent="default_policy",
         system=spec.system_with_few_shot(),
         user=f"{claim.model_dump_json()}\n\n"
-        f"기본 정책 조항 (등록된 회칙 아님 — 유형별 기본값):\n{evidence_text}\n\n"
-        f"{_receipt_status_line(state.get('receipt_data'))}",
+        + (f"{facts}\n\n" if (facts := receipt_facts_block(state.get("receipt_data"))) else "")
+        + f"기본 정책 조항 (등록된 회칙 아님 — 유형별 기본값):\n{evidence_text}\n\n"
+        + _receipt_status_line(state.get("receipt_data")),
         schema=Opinion,
         mock_response=Opinion(
             auditor="rule",
@@ -181,8 +227,9 @@ async def rule_auditor(state: ReviewState) -> dict:
     claim = state["claim"]
     members = state.get("team_members") or []
     try:
+        receipt = state.get("receipt_data")
         chunks, grade, rewrite_meta = await _retrieve_with_correction(
-            state["team_id"], claim, state["rule_version"], members
+            state["team_id"], claim, state["rule_version"], members, receipt
         )
         rewrite_llm_meta = {"query_rewriter": rewrite_meta} if rewrite_meta else {}
 
@@ -224,7 +271,11 @@ async def rule_auditor(state: ReviewState) -> dict:
         opinion, meta = await chat_structured(
             agent="rule_auditor",
             system=spec.system_with_few_shot(),
-            user=f"{claim.model_dump_json()}\n\n관련 회칙 조항 (검증된 근거만):\n{evidence_text}",
+            # 증빙 사실이 조항보다 먼저 온다 — 무엇을 산 것인지 확정한 뒤에 조항을 대야
+            # 한다. 순서를 뒤집으면 조항을 먼저 읽고 제목에 끼워 맞추는 경로가 남는다.
+            user=f"{claim.model_dump_json()}\n\n"
+            + (f"{facts}\n\n" if (facts := receipt_facts_block(receipt)) else "")
+            + f"관련 회칙 조항 (검증된 근거만):\n{evidence_text}",
             schema=Opinion,
             mock_response=Opinion(
                 auditor="rule",
