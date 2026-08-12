@@ -9,6 +9,8 @@ from pydantic import ValidationError
 from app.graphs.writers.policy_draft import (
     ExtraRule,
     ExtraRules,
+    _AUTO_RULE_HINT,
+    article_text,
     drop_vague_rules,
     round_bylaw_amount,
     round_bylaw_amount_up,
@@ -257,6 +259,66 @@ async def _draft_for(**kwargs):
     return (await generate_draft({"request": req, "template": state["template"]}))["draft"]
 
 
+@pytest.mark.parametrize("team_type", TEAM_TYPES)
+@pytest.mark.parametrize(
+    "force,budget",
+    [
+        (0, 1_000_000),        # '모든 지출 직접 확인' 토글
+        (50_000, 1_000_000),
+        (70_000, 1_000_000),
+        (70_000, 5_000_000),   # 예산이 커지면 한도도 커진다
+        (300_000, 20_000_000),
+    ],
+)
+async def test_all_team_types_draft_verifies(team_type, force, budget):
+    """5유형 × 기준 금액·예산 조합 전부에서 초안이 검증을 통과해야 한다.
+
+    이 테스트가 없어서 **회사 유형은 초안 생성이 계속 500이었다**(2026-08-12 발견).
+    경조사비 조가 'AI 자동 심사'라는 말과 `{gift}` 한도를 함께 담고 있어,
+    verify_draft_pure가 그 조의 금액을 승인 기준 금액으로 한정하는 검사에 걸렸다 —
+    승인 기준 금액과 경조사비 한도가 **우연히 같은 조합에서만** 통과했다.
+
+    놓친 경로가 둘이었다. 유형별 실측(§실측 3종)은 동아리·동호회·친목만 돌렸고,
+    단위 테스트는 대부분 BASE_KW의 스터디 하나만 봤다. 회사 유형을 쓰는 테스트는
+    조항 **개수**만 세고 verify를 부르지 않았다.
+
+    예산을 함께 흔드는 이유: 한도는 예산에서 산출되므로 예산이 바뀌면 조항 금액도
+    바뀐다. 고정 예산 하나로는 '우연히 같아서 통과'와 '정말 맞아서 통과'를 구분하지
+    못한다 — 실제로 기준 50,000 + 예산 100만에서는 회사 유형도 통과했다.
+    """
+    draft = await _draft_for(
+        team_type=team_type, initial_budget=budget,
+        force_escalation_amount=force, dues=20_000,
+    )
+    assert _verify(draft, force=force) is None
+    assert "{" not in "\n".join(draft.rules)
+
+
+def test_no_article_mixes_auto_review_wording_with_limit_amounts():
+    """'자동 심사'·'관리자 승인'을 말하는 조에는 한도 placeholder를 같이 쓰지 않는다.
+
+    verify_draft_pure가 그런 조의 금액을 승인 기준 금액 하나로 한정하므로, 한도를
+    같이 담으면 두 금액이 우연히 같을 때만 초안이 나온다(회사 경조사비 조가 그랬다).
+    위 매트릭스 테스트는 결과가 깨졌을 때 잡고, 이 테스트는 **조합 자체**를 템플릿
+    단계에서 막는다 — 새 조항을 쓰는 사람이 실패 이유를 바로 알 수 있게.
+    """
+    limit_placeholders = (
+        "{meal}", "{venue}", "{supplies}", "{transport}",
+        "{education}", "{event}", "{gift}", "{travel}",
+    )
+    for team_type, template in load_templates().items():
+        for article in template["bylaw_articles"]:
+            for key in ("text", "text_no_auto"):
+                text = article.get(key)
+                if not text or not _AUTO_RULE_HINT.search(text):
+                    continue
+                mixed = [p for p in limit_placeholders if p in text]
+                assert not mixed, (
+                    f"[{team_type}] '{article['title']}' 조({key})가 자동 심사·관리자 승인을 "
+                    f"말하면서 한도 {mixed}를 함께 인용한다 — 조를 나누거나 문구를 바꿀 것"
+                )
+
+
 async def test_approval_threshold_appears_as_a_real_amount():
     """승인 기준 금액은 화면 입력값이 **숫자 그대로** 회칙에 들어간다 (2026-08-11 저녁).
 
@@ -478,11 +540,46 @@ def test_force_escalation_amount_negative_still_rejected():
         PolicyDraftRequest(**{**BASE_KW, "force_escalation_amount": -1, "rule_source": "ai"})
 
 
-async def test_ai_draft_with_zero_amount_stays_verified():
-    """0원 기준도 조항 금액 정합 검사를 통과한다 — '0원 이상 = 전건 관리자 확인' 조항."""
+async def test_zero_threshold_says_all_expenses_not_zero_won():
+    """'모든 지출 직접 확인'(기준 금액 0)이면 금액 없이 '모든 지출'로 쓴다.
+
+    종전에는 기본 문구를 그대로 치환해 **"1건 0원 미만의 지출은 AI가 자동 심사한다"**가
+    나왔다(2026-08-12 발견). 0원 미만은 존재하지 않으므로 ①항이 통째로 공집합을
+    가리키는 공허한 조항인데 verified=True로 통과했고, 관리자가 그대로 확정하면
+    인덱싱되어 심사 근거가 된다.
+
+    종전 테스트는 `"0원" in rules`와 verify 통과만 봐서 이 자리를 그대로 지나쳤다 —
+    '0원이 적혔는가'가 아니라 '말이 되는가'를 봐야 했다.
+    """
     draft = await _draft_for(force_escalation_amount=0)
-    assert "0원" in "\n".join(draft.rules)
+    text = "\n".join(draft.rules)
+    # 앞자리 숫자가 없는 '0원'만 본다 — 40,000원·200,000원 같은 정상 한도도 "0원"으로
+    # 끝나므로 단순 부분 문자열 검사로는 구분되지 않는다.
+    assert not re.search(r"(?<![\d,])0원", text), f"기준 금액 0이 조항에 숫자로 인용됨: {text}"
+    approval = next(r for r in draft.rules if "관리자 승인" in r)
+    assert "모든 지출은 금액과 관계없이 관리자 승인을 받는다" in approval
     assert _verify(draft, force=0) is None
+
+
+def test_verify_rejects_any_amount_when_threshold_is_zero():
+    """기준 금액 0인데 조항이 금액을 인용하면 불통과 — LLM이 '0원 이상' 조를 써도 막는다.
+
+    프롬프트에도 쓰지 말라고 적었지만, 이 저장소에서 반복 확인된 것은 '프롬프트로
+    금지한 것은 코드로 한 번 더 막아야 한다'이다(모호어·한도 밖 금액이 같은 계열).
+    """
+    err = _verify(
+        _draft(rules=["제1조(지출 심사) 1건 0원 이상의 지출은 관리자 승인을 받는다."]), force=0
+    )
+    assert err is not None and "0" in err
+
+
+def test_article_text_falls_back_when_no_override():
+    """`text_no_auto`가 없는 조는 기준 금액 0이어도 기본 본문을 그대로 쓴다."""
+    plain = {"title": "목적", "text": "이 회칙은 …"}
+    assert article_text(plain, has_auto_range=False) == "이 회칙은 …"
+    both = {"title": "지출 심사", "text": "기본", "text_no_auto": "대체"}
+    assert article_text(both, has_auto_range=True) == "기본"
+    assert article_text(both, has_auto_range=False) == "대체"
 
 
 def test_ai_source_tolerates_leftover_rule_text():
