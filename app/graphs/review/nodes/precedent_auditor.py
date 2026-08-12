@@ -75,7 +75,7 @@ def _mock_opinion(cases: list[dict]) -> Opinion:
             if support
             else "유사 판례 있음, 위험 신호 없음"
             if cases
-            else "유사 판례 없음"
+            else "비교할 과거 지출 이력 없음 — 특이사항 없음"
         ),
         similar_cases=citations,
         figures={"admin_approve_support": len(support)},

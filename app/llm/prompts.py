@@ -117,12 +117,20 @@ DEFAULT_VERSIONS = {
     #  guardrail의 receipt_unreadable → 전건 관리자 확인이 된다.
     #  백엔드 추출 텍스트에는 상호·품목이 없는 경우가 흔해서
     #  운영 자동 처리율을 통째로 죽이는 결함이었다.
-    "precedent_auditor": "v5",  # v4(카탈로그 라벨 정합) + 정합 수정(2026-08-11):
-    #  화면 심사관 카드 summary에 톤·용어 지침이 없던 공백을 메웠다 — system에
-    #  "summary는 한국어로만, ADMIN/AGENT/override는 관리자·AI 자동·AI 추천
-    #  번복으로 풀어 쓴다"는 규칙을 추가(few_shot은 이미 한국어라 교정 불요).
-    #  similar_cases의 "입력 표기 그대로" 규칙은 유지 — 화면 노출 문구는
-    #  출구 경계(callback.py translate_precedent_citation — 콜백·폴링 공용)에서 옮긴다.
+    "precedent_auditor": "v6",  # v5 + 정합 수정(2026-08-12, 팀원 피드백): 판례가
+    #  없을 때 summary가 "유사 판례 없음 — 판례 부재는 위험 신호가 아님, 특이사항
+    #  없음"으로 나가 사용자에게 무의미했다. v5 few_shot '판례 없음' 예시가 그
+    #  문장을 정답으로 가르쳤고, "판례 부재는 위험 신호가 아님"은 원래 pass 판정
+    #  기준의 설명이라 내부 판정 규칙이 노출된 것. 예시 summary를 "비교할 과거
+    #  지출 이력 없음 — 특이사항 없음"으로 바꾸고 system에 "판정 기준 자체를
+    #  서술하지 말고 관찰된 사실만 쓰라"는 규칙을 추가했다(_mock_opinion도 정합).
+    #  ── 아래는 v5 이력 ──
+    #  v5는 v4(카탈로그 라벨 정합) + 정합 수정(2026-08-11): 화면 심사관 카드
+    #  summary에 톤·용어 지침이 없던 공백을 메웠다 — system에 "summary는 한국어로만,
+    #  ADMIN/AGENT/override는 관리자·AI 자동·AI 추천 번복으로 풀어 쓴다"는 규칙을
+    #  추가(few_shot은 이미 한국어라 교정 불요). similar_cases의 "입력 표기 그대로"
+    #  규칙은 유지 — 화면 노출 문구는 출구 경계(callback.py
+    #  translate_precedent_citation — 콜백·폴링 공용)에서 옮긴다.
     "digest_writer": "v3",  # sblim v2 + advice 계약 복구 (PR #9 리뷰 D2). v2는 코드가
     #  필수로 요구하는 advice를 system·few_shot 어디에서도 언급하지
     #  않아, 목 모드에서만 _mock_advice로 가려지고 실모드에서
