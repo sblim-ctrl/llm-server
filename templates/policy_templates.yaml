@@ -68,14 +68,17 @@
     - "행사비는 행사 계획을 사전 공유한 건에 한해 집행한다."
     - "{auto_approve_limit}원 미만의 지출은 AI 자동 심사로 처리하고, {auto_approve_limit}원 이상은 관리자 승인을 받는다."
   limits:
-    meal: {basis: per_person, ratio: 0.12, min: 12000, max: 50000}
-    venue: {basis: total, ratio: 0.03, min: 20000, max: 250000}
-    supplies: {basis: total, ratio: 0.08, min: 30000, max: 400000}
-    transport: {basis: per_person, ratio: 0.25, min: 20000, max: 100000}
-    education: {basis: per_person, ratio: 0.30, min: 20000, max: 200000}
-    event: {basis: total, ratio: 0.10, min: 50000, max: 800000}
-    gift: {basis: total, ratio: 0.02, min: 20000, max: 100000}
-    travel: {basis: per_person, ratio: 0.40, min: 30000, max: 150000}
+    # meal.max는 80,000 — 75,000은 round_bylaw_amount의 10,000원 격자 밖이라
+    # (round(7.5)=8) 포화 구간에서 회칙에 80,000원이 적혀 상한 불변식이 깨진다
+    # (#80 리뷰). max는 반드시 격자(5만 미만 5천·20만 미만 1만·이상 5만) 위의 값으로.
+    meal: {basis: per_person, ratio: 0.12, min: 12000, max: 80000}
+    venue: {basis: total, ratio: 0.03, min: 20000, max: 600000}
+    supplies: {basis: total, ratio: 0.08, min: 30000, max: 1000000}
+    transport: {basis: per_person, ratio: 0.25, min: 20000, max: 200000}
+    education: {basis: per_person, ratio: 0.30, min: 20000, max: 500000}
+    event: {basis: total, ratio: 0.10, min: 50000, max: 2000000}
+    gift: {basis: total, ratio: 0.02, min: 20000, max: 200000}
+    travel: {basis: per_person, ratio: 0.40, min: 30000, max: 300000}
   dues_default: 10000
   dues_period: 학기당
   bylaw_articles:
@@ -122,14 +125,14 @@
     - "구독형 서비스는 스터디 기간 내 결제분만 인정한다."
     - "{auto_approve_limit}원 미만 지출은 AI 자동 심사, {auto_approve_limit}원 이상은 관리자 승인."
   limits:
-    meal: {basis: per_person, ratio: 0.10, min: 10000, max: 40000}
-    venue: {basis: total, ratio: 0.025, min: 20000, max: 200000}
-    supplies: {basis: total, ratio: 0.08, min: 30000, max: 400000}
-    transport: {basis: per_person, ratio: 0.25, min: 20000, max: 100000}
-    education: {basis: per_person, ratio: 0.40, min: 30000, max: 300000}
-    event: {basis: total, ratio: 0.04, min: 30000, max: 300000}
-    gift: {basis: total, ratio: 0.02, min: 20000, max: 80000}
-    travel: {basis: per_person, ratio: 0.30, min: 30000, max: 120000}
+    meal: {basis: per_person, ratio: 0.10, min: 10000, max: 60000}
+    venue: {basis: total, ratio: 0.025, min: 20000, max: 500000}
+    supplies: {basis: total, ratio: 0.08, min: 30000, max: 1000000}
+    transport: {basis: per_person, ratio: 0.25, min: 20000, max: 200000}
+    education: {basis: per_person, ratio: 0.40, min: 30000, max: 750000}
+    event: {basis: total, ratio: 0.04, min: 30000, max: 750000}
+    gift: {basis: total, ratio: 0.02, min: 20000, max: 150000}
+    travel: {basis: per_person, ratio: 0.30, min: 30000, max: 250000}
   dues_default: 20000
   dues_period: 월
   bylaw_articles:
@@ -158,7 +161,13 @@
     - title: IT 인프라 비용
       text: "학습에 사용하는 구독형 서비스·개발 도구 비용은 스터디 기간 내 결제분만 인정하며, 결제 계정과 사용 목적을 사전에 공유한다."
     - title: 인정하지 않는 지출
-      text: "① 개인이 단독으로 소유·사용하는 전자기기, 개인용 소프트웨어 구입비는 인정하지 아니한다. ② 개인 식사비와 통근 등 개인 이동 비용은 인정하지 아니한다. ③ 주류 구입비와 학습과 무관한 지출은 인정하지 아니한다."
+      # ③에서 "학습과 무관한 지출"이라는 포괄 금지를 뺐다 (2026-08-12). 허용 조항은
+      # 열거식인데 금지가 포괄적이면, 열거에서 빠진 카테고리가 전부 금지 쪽으로 쏠린다
+      # — "회칙이 금지하지 않는 것은 허용"이라는 원칙(2026-08-11)이 무력화되던 자리다.
+      # 실제로 6인이 함께 이용한 보드게임 카페 이용료가 이 항으로 부적합 판정을 받았다.
+      # 금지의 잣대를 **목적 관련성(심사관의 주관)**에서 **개인성(증빙으로 확인 가능)**
+      # 으로 바꾼다.
+      text: "① 개인이 단독으로 소유·사용하는 전자기기, 개인용 소프트웨어 구입비는 인정하지 아니한다. ② 개인 식사비와 통근 등 개인 이동 비용은 인정하지 아니한다. ③ 주류 구입비와, 모임 활동과 무관하게 개인이 사적으로 사용한 지출은 인정하지 아니한다."
     - title: 청구의 진실성
       text: "① 이미 정산받은 지출을 다시 청구하지 아니한다. ② 승인 기준 금액을 회피할 목적으로 하나의 지출을 여러 건으로 나누어 청구하지 아니한다. ③ 실제 거래와 다른 금액·품목·일자로 청구하지 아니한다."
     - title: 증빙
@@ -177,14 +186,17 @@
     - "모임 인원 과반이 참여하지 않은 활동 비용은 인정하지 않는다."
     - "{auto_approve_limit}원 미만 지출은 AI 자동 심사, {auto_approve_limit}원 이상은 관리자 승인."
   limits:
-    meal: {basis: per_person, ratio: 0.20, min: 15000, max: 60000}
-    venue: {basis: total, ratio: 0.04, min: 20000, max: 250000}
-    supplies: {basis: total, ratio: 0.05, min: 20000, max: 150000}
-    transport: {basis: per_person, ratio: 0.25, min: 20000, max: 100000}
-    education: {basis: per_person, ratio: 0.15, min: 10000, max: 100000}
-    event: {basis: total, ratio: 0.15, min: 50000, max: 900000}
-    gift: {basis: total, ratio: 0.08, min: 30000, max: 200000}
-    travel: {basis: per_person, ratio: 0.50, min: 50000, max: 300000}
+    meal: {basis: per_person, ratio: 0.20, min: 15000, max: 90000}
+    venue: {basis: total, ratio: 0.04, min: 20000, max: 600000}
+    # supplies.max 600,000 — 400,000은 예산 800만에서 포화해(다른 유형 규모 항목은
+    # 전부 1,167만~2,500만) 이 PR이 고치려는 조기 포화가 그대로 남는다. 1,000만↔
+    # 3,000만 회귀 프로브가 잡았다 (#80 리뷰 반영 중 발견).
+    supplies: {basis: total, ratio: 0.05, min: 20000, max: 600000}
+    transport: {basis: per_person, ratio: 0.25, min: 20000, max: 200000}
+    education: {basis: per_person, ratio: 0.15, min: 10000, max: 250000}
+    event: {basis: total, ratio: 0.15, min: 50000, max: 2000000}
+    gift: {basis: total, ratio: 0.08, min: 30000, max: 400000}
+    travel: {basis: per_person, ratio: 0.50, min: 50000, max: 600000}
   dues_default: 30000
   dues_period: 월
   bylaw_articles:
@@ -235,14 +247,15 @@
     - "대관료는 정기 모임 일정에 등록된 일자만 인정한다."
     - "{auto_approve_limit}원 미만 지출은 AI 자동 심사, {auto_approve_limit}원 이상은 관리자 승인."
   limits:
-    meal: {basis: per_person, ratio: 0.15, min: 12000, max: 50000}
-    venue: {basis: total, ratio: 0.10, min: 30000, max: 500000}
-    supplies: {basis: total, ratio: 0.15, min: 50000, max: 700000}
-    transport: {basis: per_person, ratio: 0.25, min: 20000, max: 100000}
-    education: {basis: per_person, ratio: 0.20, min: 15000, max: 150000}
-    event: {basis: total, ratio: 0.10, min: 50000, max: 700000}
-    gift: {basis: total, ratio: 0.02, min: 20000, max: 100000}
-    travel: {basis: per_person, ratio: 0.40, min: 40000, max: 200000}
+    # meal.max 80,000 — 격자 밖 75,000 금지 (동아리/학생회 limits 주석 참조)
+    meal: {basis: per_person, ratio: 0.15, min: 12000, max: 80000}
+    venue: {basis: total, ratio: 0.10, min: 30000, max: 1250000}
+    supplies: {basis: total, ratio: 0.15, min: 50000, max: 1750000}
+    transport: {basis: per_person, ratio: 0.25, min: 20000, max: 200000}
+    education: {basis: per_person, ratio: 0.20, min: 15000, max: 400000}
+    event: {basis: total, ratio: 0.10, min: 50000, max: 1750000}
+    gift: {basis: total, ratio: 0.02, min: 20000, max: 200000}
+    travel: {basis: per_person, ratio: 0.40, min: 40000, max: 400000}
   dues_default: 30000
   dues_period: 월
   bylaw_articles:
@@ -296,14 +309,14 @@
     - "법인카드 사용 건도 지출 등록·심사를 거친다."
     - "{auto_approve_limit}원 미만 지출은 AI 자동 심사, {auto_approve_limit}원 이상은 관리자 승인."
   limits:
-    meal: {basis: per_person, ratio: 0.15, min: 20000, max: 80000}
-    venue: {basis: total, ratio: 0.04, min: 30000, max: 400000}
-    supplies: {basis: total, ratio: 0.08, min: 30000, max: 400000}
-    transport: {basis: per_person, ratio: 0.25, min: 20000, max: 120000}
-    education: {basis: per_person, ratio: 0.40, min: 30000, max: 400000}
-    event: {basis: total, ratio: 0.08, min: 50000, max: 600000}
-    gift: {basis: total, ratio: 0.03, min: 50000, max: 300000}
-    travel: {basis: per_person, ratio: 0.40, min: 50000, max: 250000}
+    meal: {basis: per_person, ratio: 0.15, min: 20000, max: 120000}
+    venue: {basis: total, ratio: 0.04, min: 30000, max: 1000000}
+    supplies: {basis: total, ratio: 0.08, min: 30000, max: 1000000}
+    transport: {basis: per_person, ratio: 0.25, min: 20000, max: 250000}
+    education: {basis: per_person, ratio: 0.40, min: 30000, max: 1000000}
+    event: {basis: total, ratio: 0.08, min: 50000, max: 1500000}
+    gift: {basis: total, ratio: 0.03, min: 50000, max: 600000}
+    travel: {basis: per_person, ratio: 0.40, min: 50000, max: 500000}
   dues_default: 0
   bylaw_articles:
     - title: 목적
@@ -335,7 +348,8 @@
       #     같지 않으면 초안 생성이 통째로 500이 됐다 (2026-08-12 발견).
       text: "① 경조사비는 1건 {gift}원 이내로 집행하며 대상과 사유를 기록한다. ② 접대비는 목적·상대방·참석자를 기록하고 책임자의 사전 승인을 받는다. ③ 두 항목은 금액과 관계없이 책임자의 별도 승인 절차를 따른다."
     - title: 인정하지 않는 지출
-      text: "① 개인이 단독으로 소유·사용하는 물품 구입비, 개인 식사비, 통근 비용은 인정하지 아니한다. ② 벌금·과태료·연체료는 인정하지 아니한다. ③ 업무와 관련성이 확인되지 않는 지출은 인정하지 아니한다."
+      # ③ 포괄 금지 → 개인성 기준으로 좁힘 (스터디 유형과 같은 이유, 2026-08-12).
+      text: "① 개인이 단독으로 소유·사용하는 물품 구입비, 개인 식사비, 통근 비용은 인정하지 아니한다. ② 벌금·과태료·연체료는 인정하지 아니한다. ③ 업무와 무관하게 개인이 사적으로 사용한 지출은 인정하지 아니한다."
     - title: 청구의 진실성
       text: "① 이미 정산받은 지출을 다시 청구하지 아니한다. ② 승인 기준 금액을 회피할 목적으로 하나의 지출을 여러 건으로 나누어 청구하지 아니한다. ③ 실제 거래와 다른 금액·품목·일자로 청구하지 아니한다. ④ 위반이 확인된 경우 해당 지출은 인정하지 않으며 회사 정책에 따라 후속 조치한다."
     - title: 증빙
