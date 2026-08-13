@@ -179,7 +179,7 @@ def test_accuracy_is_none_when_nothing_is_scorable():
     assert m["category_misses"] == []
 
 
-def test_csv_carries_the_category_columns():
+def test_csv_carries_the_category_columns(tmp_path, monkeypatch):
     """결과 CSV에 분류 채점 3열이 실려야 한다 — 헤더와 행의 열 수가 어긋나면 안 된다.
 
     CSV는 사람이 오분류를 훑는 통로다(가이드 제출물). 열이 하나 빠지면 이후 열이
@@ -187,7 +187,11 @@ def test_csv_carries_the_category_columns():
     """
     import csv as _csv
 
+    from app import eval_support
     from app.eval_support import export_results_csv
+
+    # 실제 제출용 CSV(eval/results/golden_run.csv)를 덮어쓰지 않도록 임시 경로로 격리한다.
+    monkeypatch.setattr(eval_support, "RESULTS_DIR", tmp_path)
 
     row = {
         "id": "case-1",
