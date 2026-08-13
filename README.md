@@ -3,7 +3,7 @@
 모임(동아리·스터디·친목·동호회·회사) 지출 요청을 AI가 회칙·예산·판례에 근거해
 1차 심사하고, 확신 없는 건만 관리자에게 넘기는 멀티 에이전트 시스템.
 FastAPI(llm-api) + LangGraph 워커(llm-worker) + Postgres/pgvector(llm-postgres).
-설계 근거: `../기획/LLM팀_아키텍처_워크플로우_설계서.md`
+설계 근거: `LLM팀_아키텍처_워크플로우_설계서_v1.1.md`
 
 ## 에이전트 카탈로그
 
@@ -13,22 +13,32 @@ FastAPI(llm-api) + LangGraph 워커(llm-worker) + Postgres/pgvector(llm-postgres
 | PolicyDrafter | 모임 유형·소개 기반 회칙 초안 생성 (RAG) | `POST /v1/policy-draft` (동기) |
 | ReportWriter | 정산 요약 + 다음 예산 활용 추천 | `POST /v1/reports/summary` (비동기 잡) |
 | BriefingWriter | 판례 로그 기반 인수인계 브리핑 | `POST /v1/briefings` (비동기 잡) |
-| classify_category | 지출 카테고리 자동 분류 (모임 유형별 고정 6개) | 심사 그래프 내부 노드 |
+| classify_category | 지출 카테고리 자동 분류 (전역 9종 고정 ENUM) | 심사 그래프 내부 노드 |
 
-## 빠른 시작 (로컬 개발, Windows)
+## 빠른 시작 (로컬 개발)
 
-```powershell
+> **API 키 없이도 전 기능이 돈다.** 기본값이 목(mock) 모드라 `.env`만 복사하면
+> OpenAI 키·백엔드 없이 결정적 응답으로 심사·문서생성이 동작한다. 실연동은 §목 모드 참고.
+
+uv 미설치라면 먼저 설치한다 — macOS/Linux: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+· Windows PowerShell: `powershell -c "irm https://astral.sh/uv/install.ps1 | iex"`
+
+> pip만 쓰는 환경이라면 `pip install -r requirements.txt`로도 설치할 수 있다
+> (`uv.lock` 기준으로 고정한 런타임 의존성 목록).
+
+```bash
 # 1. 의존성 설치 (uv가 .venv 자동 생성, Python 3.12 고정)
 cd llm-server              # 반드시 이 폴더 안에서 실행 — 상위 폴더에서 돌리면 uv가 프로젝트를 못 찾음
 uv sync
 
-# 2. 환경 파일
-copy .env.example .env      # 기본값 = MOCK_LLM/MOCK_BACKEND 켜짐 (키·백엔드 없이 동작)
+# 2. 환경 파일 — 기본값 = MOCK_LLM/MOCK_BACKEND 켜짐 (키·백엔드 없이 동작)
+cp .env.example .env        # Windows PowerShell: copy .env.example .env
 
-# 3. DB 기동 (Docker Desktop 필요)
+# 3. DB 기동 (Docker 필요)
 docker compose up -d llm-postgres
 
-# 4. API 서버 (터미널 1) — Windows는 반드시 run_api 사용 (psycopg 비동기 ↔ ProactorEventLoop 비호환 보정)
+# 4. API 서버 (터미널 1) — 모든 OS 공통. run_api가 psycopg 비동기 ↔ 이벤트 루프 보정을
+#    처리한다 (Windows는 ProactorEventLoop 비호환 때문에 이 방식이 필수)
 uv run --active python -m app.run_api
 
 # 5. 워커 (터미널 2) — 심사·문서생성 그래프 실행, DB 폴링
@@ -101,6 +111,8 @@ uv run python scripts/verify_realmode_proposals.py       # B-8 실모드 검증 
 | `MOCK_BACKEND` | 백엔드 API 대신 고정값 반환 + 콜백은 로그로만 출력 |
 
 실연동 시 `.env`만 바꾸면 됨 — 노드 코드는 불변 (`app/tools/backend_client.py`가 경계).
+필요한 키는 `OPENAI_API_KEY` 하나다 (모델 라우팅이 전부 OpenAI — `models.yaml`. ANTHROPIC
+키는 쓰지 않는다). LangSmith 트레이싱은 선택이며 `LANGSMITH_API_KEY`로 켠다.
 
 ## API 계약 (OpenAPI)
 
@@ -174,8 +186,19 @@ app/
 
 templates/                  # policy_templates.yaml(유형별 회칙 템플릿), category_catalog.yaml(유형별 카테고리 6개)
 reference_docs/              # PolicyDrafter RAG 참고 문서 5종 (실제 규정 관행을 참고해 재구성 — 원문 아님, README 하단 참고)
-eval/golden/                # 골든셋 30건 (5개 유형 × 6개 시나리오)
+eval/golden/                # 골든셋 97건 (5개 유형 × 시나리오, golden_v1.json) + writers·rule_axis 골든셋
 ```
+
+## 샘플 데이터 출처
+
+평가·시연에 쓰는 데이터는 전부 팀이 자체 제작했으며 외부 저작물을 포함하지 않는다.
+
+- `eval/golden/golden_v1.json`(97건)·`eval/golden/writers_golden_v1.json`·
+  `eval/golden/golden_rule_axis.json` — 심사·문서생성 골든셋(시나리오와 기대 판정을 직접 작성).
+- `eval/fixtures/mock_backend.json` — 목 모드용 백엔드 응답 픽스처(가상 조직·지출).
+- `eval/golden/receipts/*.png` — `scripts/generate_golden_receipts.py`가 PIL로 렌더한
+  **합성 영수증 이미지**다(실제 영수증이 아니라 `mock_backend.json`의 금액·날짜에 맞춰 그린 것).
+- `reference_docs/*.txt` — 아래 「참고 문서(RAG)에 대한 정직한 안내」 참고.
 
 ## 참고 문서(RAG)에 대한 정직한 안내
 
