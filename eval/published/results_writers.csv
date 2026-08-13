@@ -6,11 +6,11 @@ policy_draft,pd-hobby-base,동호회 기본 — 유형별 회칙 조항 전체,T
 policy_draft,pd-company-base,"회사 기본 — 승인 기준이 금액 숫자로 적히고, 회비 개념이 없어 회비 조는 빠진다",True,True,
 policy_draft,pd-amount-passthrough,사용자 입력 기준 금액(7만)이 추천 계산 없이 그대로 회칙 조항에 들어간다,True,True,
 policy_draft,pd-skip-empty,"개정 — 건너뛰기(skip)는 초안 없이 빈 rules, 카테고리 9종만 내려간다 (개정안 §1-4)",True,True,
-policy_draft,pd-desc-hiking,소개 반영 — 등산 모임이면 안전장비 조 1개 추가,False,True,rules_count: 기대=9 실제=11 | rules_contain: '안전장비' 없음
-policy_draft,pd-desc-study,소개 반영 — 개발 실습 스터디면 실습 인프라 조 1개 추가,False,True,rules_count: 기대=8 실제=9 | rules_contain: '서버' 없음
-policy_draft,pd-desc-recruit,소개 반영 — 신입 모집 중심이면 모집 홍보 조 1개 추가,False,True,rules_count: 기대=9 실제=10
-policy_draft,pd-desc-multi,상한 — 키워드 3그룹 모두 해당하면 추가 조 3개,False,True,rules_contain: '안전장비' 없음 | rules_contain: '서버' 없음
-policy_draft,pd-desc-two-groups,소개 반영 — 캠핑+개발 2그룹만 겹침(신입 모집 없음) → 추가 조 정확히 2개,False,True,rules_count: 기대=9 실제=10 | rules_contain: '안전장비' 없음 | rules_contain: '서버' 없음
+policy_draft,pd-desc-hiking,소개 반영 — 등산 모임이면 안전장비 조 1개 추가,True,True,
+policy_draft,pd-desc-study,소개 반영 — 개발 실습 스터디면 실습 인프라 조 1개 추가,True,True,
+policy_draft,pd-desc-recruit,소개 반영 — 신입 모집 중심이면 모집 홍보 조 1개 추가,True,True,
+policy_draft,pd-desc-multi,상한 — 키워드 3그룹 모두 해당하면 추가 조 3개,True,True,
+policy_draft,pd-desc-two-groups,소개 반영 — 캠핑+개발 2그룹만 겹침(신입 모집 없음) → 추가 조 정확히 2개,True,True,
 report,rp-standard,기본 이력 8건 — 식비 61% 편중 경고 + 저활용(IT_인프라·비품) 재배분 제안,True,True,
 report,rp-empty,"지출 없는 기간 — 수치 0으로도 검증 통과, 특이사항 없음 안내",True,True,
 report,rp-balanced,균형 지출(20~30%) — 편중·저활용 경고 없이 최대 단건 안내만,True,True,
@@ -24,10 +24,10 @@ briefing,bf-scattered,"에스컬레이션 3건이 카테고리별로 분산(각 
 digest,dg-week-with-activity,"판례 5건이 그 주에 있는 팀(9025) — 자동 승인 2·반려 1·에스컬레이션 1이 각각 집계되고, 같은 주 지출(단체 티셔츠 90,000원)이 주간 지출로 잡힌다. ADMIN 결정은 자동 처리 건수에 들어가지 않는다",True,True,
 digest,dg-quiet-week,판례도 지출도 없는 주 — 0건이어도 검증을 통과하고 '특이사항 없음'으로 안내한다. 종전에는 판례가 늘 실행 시각에 쌓여 이 상태와 구분되지 않았다,True,True,
 budget_proposal,bp-skewed-category,"5월 편중형 팀(9024, 예산 50만·사용 37.2만) — 식비 67% 편중과 저활용 카테고리가 카테고리 분석에 드러나고, 예산 현황에 사용률 74%·잔액 128,000원이 정확히 실린다",True,True,
-budget_proposal,bp-tight-budget,"예산이 빠듯한 팀(9026, 20만 중 17.8만 사용) — 사용률 89%·잔액 22,000원이 그대로 문장에 나오고, 그 달 승인 지출이 없으면 카테고리 분석은 그 사실을 밝힌다",False,True,category_analysis_contain: '아직 승인된 지출이 없어' 없음
+budget_proposal,bp-tight-budget,"예산이 빠듯한 팀(9026, 20만 중 17.8만 사용) — 사용률 89%·잔액 22,000원이 그대로 문장에 나오고, 그 달 승인 지출이 없으면 카테고리 분석은 그 사실을 밝힌다",True,True,
 dashboard,db-two-months-june,두 달치 이력 팀(9025)의 6월 요약 — 5월 지출(정기 회식·연습실 대관)이 섞이지 않는다. 기간 필터가 없던 시절엔 전월 건이 그대로 합산됐다,True,True,
 dashboard,db-tight-budget,"예산이 빠듯한 팀(9026)의 6월 요약 — 6월 지출은 167,700원이지만 잔액/사용률은 백엔드 누적 spent(178,000원) 기준이라 예산 200,000원의 89%를 써서 잔액이 22,000원뿐이다. 처음엔 5월로 두었는데 그 달은 지출 0건이라 잔액이 예산 전액이 되는 자기모순이었다(지금은 근본 수정으로 해소됨 — remaining/usage_ratio가 누적 기준이라 어느 달을 골라도 22,000원·89%로 동일하다)",True,True,
-dashboard,db-pending-submitted-escalated,"승인 대기가 있는 팀(9027)의 7월 요약 — 대기 2건(SUBMITTED 250,000원 + ESCALATED 80,000원 = 330,000원)이 대기 건수·금액에 반영된다. 5e2a3eb 이전에는 PENDING_STATUSES에 SUBMITTED가 빠져 있어 대기가 1건(80,000원)으로 과소 집계됐다",False,True,message_contain: '승인 대기가 2건' 없음
-rule_amendment,ra-repeated-override,"동일 지출('심야 야식 배달' 38,000원)에 관리자 개입 4회 — override 반려 2·override 승인 1·직접 반려 1이 한 군집으로 묶여 개정안 1건이 나온다. 2회뿐인 '심야 택시'와 AGENT 판례는 개정안을 만들지 않는다",False,True,amendment_contain: '4회' 없음
+dashboard,db-pending-submitted-escalated,"승인 대기가 있는 팀(9027)의 7월 요약 — 대기 2건(SUBMITTED 250,000원 + ESCALATED 80,000원 = 330,000원)이 대기 건수·금액에 반영된다. 5e2a3eb 이전에는 PENDING_STATUSES에 SUBMITTED가 빠져 있어 대기가 1건(80,000원)으로 과소 집계됐다",True,True,
+rule_amendment,ra-repeated-override,"동일 지출('심야 야식 배달' 38,000원)에 관리자 개입 4회 — override 반려 2·override 승인 1·직접 반려 1이 한 군집으로 묶여 개정안 1건이 나온다. 2회뿐인 '심야 택시'와 AGENT 판례는 개정안을 만들지 않는다",True,True,
 rule_amendment,ra-below-threshold,"동일 override가 2회뿐 — 임계(3건) 미달이라 개정안 없이 '반복 판례 없음'으로 정상 종료한다 (에러도, 검증 실패도 아니다)",True,,
 rule_amendment,ra-agent-not-signal,AGENT 반려 3회·ADMIN 일반 승인 3회가 각각 동일 지출이어도 개정 신호가 아니다 — 관리자 개입(override 또는 직접 반려)만 군집 대상이다,True,,
