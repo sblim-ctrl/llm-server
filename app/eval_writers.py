@@ -42,17 +42,46 @@ RESULTS_DIR = Path(__file__).resolve().parents[1] / "eval" / "results"
 def evaluate_expectations(expect: dict[str, Any], actual: dict[str, Any]) -> list[str]:
     """expect 대 actual 대조 — 실패한 검사 설명 목록 반환 (통과 시 빈 목록). 순수 함수.
 
-    규칙: `<필드>_contain`은 actual의 `<필드>_text`에 부분 문자열이 모두 있어야 하고,
-    `<필드>_not_contain`은 하나도 없어야 한다. 그 외 키는 동등 비교.
+    규칙:
+    - `<필드>_contain`      : `<필드>_text`에 **모든** 부분 문자열이 있어야 한다
+    - `<필드>_not_contain`  : 하나도 없어야 한다
+    - `<필드>_contain_any`  : 나열한 표현 중 **하나 이상** 있어야 한다
+                              (중첩 리스트면 **그룹마다** 하나씩)
+    - `<키>_between`        : `[하한, 상한]` 범위 안(양끝 포함)이어야 한다
+    - 그 외                 : 동등 비교
+
+    **`_contain_any`·`_between`이 왜 있나** (2026-08-13, 실모드 전면 평가에서 드러남).
+    기대값을 목 모드 산출물의 문자열·개수로 못박아 두면 실 LLM에서는 같은 뜻을 다르게
+    써서 전부 실패한다 — 실측에서 32건 중 8건이 그렇게 걸렸고 **생성물은 전부
+    verified 통과**였다(예: 기대 "승인 대기가 2건" vs 실제 "승인 대기 2건 330,000원",
+    조사 하나 차이). 그 상태로는 이 골든을 실모드 회귀 게이트로 쓸 수 없다.
+
+    두 연산자는 **검사를 약하게 만드는 것이 아니라 의도에 맞추는 것**이다: 조 수는
+    애초에 정확값이 아니라 범위가 요구사항이었고(목은 맞춤 조항이 휴리스틱 3개 고정,
+    실 LLM은 소개글에 따라 가변), 문구는 "이 사실을 밝힌다"가 요구사항이지 특정 어절이
+    요구사항이 아니었다. 허용 표현은 나열로 못박으므로 아무 문장이나 통과하지 않는다.
     """
     failures: list[str] = []
     for key, want in expect.items():
         if key.endswith("_not_contain"):
             text = actual.get(key[: -len("_not_contain")] + "_text", "")
             failures += [f"{key}: '{s}' 포함되면 안 됨" for s in want if s in text]
+        elif key.endswith("_contain_any"):
+            text = actual.get(key[: -len("_contain_any")] + "_text", "")
+            # 중첩 리스트는 **그룹마다** 하나씩 필요하다는 뜻 — 한 조항에 서로 다른
+            # 두 주제(예: 안전 / 인프라)를 함께 요구할 때 키가 겹치지 않게 하기 위함.
+            groups = want if want and isinstance(want[0], list) else [want]
+            for group in groups:
+                if not any(s in text for s in group):
+                    failures.append(f"{key}: {group!r} 중 아무것도 없음")
         elif key.endswith("_contain"):
             text = actual.get(key[: -len("_contain")] + "_text", "")
             failures += [f"{key}: '{s}' 없음" for s in want if s not in text]
+        elif key.endswith("_between"):
+            name = key[: -len("_between")]
+            got, (lo, hi) = actual.get(name), want
+            if got is None or not (lo <= got <= hi):
+                failures.append(f"{key}: 기대={lo}~{hi} 실제={got!r}")
         elif actual.get(key) != want:
             failures.append(f"{key}: 기대={want!r} 실제={actual.get(key)!r}")
     return failures

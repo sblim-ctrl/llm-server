@@ -34,6 +34,47 @@ def test_missing_actual_key_is_a_failure():
     assert len(fails) == 1
 
 
+# ── 실모드 대응 연산자 (2026-08-13) ───────────────────────
+# 목 산출물의 문자열·개수를 그대로 못박으면 실 LLM에서 같은 뜻을 다르게 써서 전부
+# 실패한다 — 실측에서 32건 중 8건이 그렇게 걸렸고 생성물은 전부 verified 통과였다.
+
+
+def test_contain_any_passes_when_one_alternative_matches():
+    """허용 표현 중 하나만 있으면 통과 — 패러프레이즈를 흡수한다."""
+    assert evaluate_expectations(
+        {"rules_contain_any": ["보호 장비", "안전장비", "안전 수칙"]}, ACTUAL) == []
+
+
+def test_contain_any_fails_when_no_alternative_matches():
+    """아무 표현이나 통과시키지 않는다 — 허용 목록은 못박혀 있다."""
+    fails = evaluate_expectations({"rules_contain_any": ["홍보물", "서버"]}, ACTUAL)
+    assert len(fails) == 1 and "홍보물" in fails[0]
+
+
+def test_contain_any_nested_groups_need_one_match_each():
+    """중첩 리스트는 그룹마다 하나씩 — 한 조항에 두 주제를 함께 요구할 때 쓴다."""
+    ok = evaluate_expectations(
+        {"rules_contain_any": [["안전장비", "보호 장비"], ["영수증", "증빙"]]}, ACTUAL)
+    assert ok == []
+    fails = evaluate_expectations(
+        {"rules_contain_any": [["안전장비"], ["서버", "인프라"]]}, ACTUAL)
+    assert len(fails) == 1 and "서버" in fails[0]  # 두 번째 그룹만 실패
+
+
+def test_between_checks_inclusive_range():
+    """조 수는 정확값이 아니라 범위가 요구사항이다 (목=고정 휴리스틱, 실=가변)."""
+    assert evaluate_expectations({"rules_count_between": [5, 7]}, ACTUAL) == []
+    assert evaluate_expectations({"rules_count_between": [6, 6]}, ACTUAL) == []  # 양끝 포함
+    fails = evaluate_expectations({"rules_count_between": [7, 9]}, ACTUAL)
+    assert len(fails) == 1 and "6" in fails[0]
+
+
+def test_between_treats_missing_key_as_failure():
+    """없는 키를 범위 검사로 조용히 통과시키면 그물에 구멍이 난다."""
+    fails = evaluate_expectations({"categories_count_between": [1, 9]}, ACTUAL)
+    assert len(fails) == 1
+
+
 # ── 목 이력 규약 (골든셋 시나리오의 결정성 기반) ─────────
 
 

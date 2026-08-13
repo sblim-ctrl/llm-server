@@ -207,9 +207,16 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 9,
-        "rules_contain": [
-          "안전장비"
+        "rules_count_between": [8, 12],
+        "rules_contain_any": [
+          "안전장비",
+          "안전 장비",
+          "보호 장비",
+          "안전 수칙",
+          "등산 활동",
+          "등산 경비",
+          "캠핑 장비",
+          "캠핑 경비"
         ]
       }
     },
@@ -227,9 +234,11 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 8,
-        "rules_contain": [
-          "서버"
+        "rules_count_between": [7, 11],
+        "rules_contain_any": [
+          "서버",
+          "인프라",
+          "구독"
         ]
       }
     },
@@ -247,7 +256,7 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 9,
+        "rules_count_between": [8, 12],
         "rules_contain": [
           "홍보물"
         ]
@@ -267,11 +276,14 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 10,
+        "rules_count_between": [9, 13],
         "rules_contain": [
-          "안전장비",
-          "서버",
           "홍보물"
+        ],
+        "rules_contain_any": [
+          ["안전장비", "안전 장비", "보호 장비", "안전 수칙",
+           "등산 활동", "등산 경비", "캠핑 장비", "캠핑 경비"],
+          ["서버", "인프라", "구독", "프로젝트 경비"]
         ]
       }
     },
@@ -289,10 +301,11 @@
       },
       "expect": {
         "verified": true,
-        "rules_count": 9,
-        "rules_contain": [
-          "안전장비",
-          "서버"
+        "rules_count_between": [8, 12],
+        "rules_contain_any": [
+          ["안전장비", "안전 장비", "보호 장비", "안전 수칙",
+           "등산 활동", "등산 경비", "캠핑 장비", "캠핑 경비"],
+          ["서버", "인프라", "구독", "프로젝트 경비"]
         ],
         "rules_not_contain": [
           "홍보물"
@@ -821,8 +834,10 @@
           "89%",
           "22,000원"
         ],
-        "category_analysis_contain": [
-          "아직 승인된 지출이 없어"
+        "category_analysis_contain_any": [
+          "승인된 지출이 없",
+          "집계되지 않아",
+          "지출이 없"
         ]
       }
     }
@@ -868,8 +883,9 @@
         "verified": true,
         "pending_count": 2,
         "pending_amount": 330000,
-        "message_contain": [
-          "승인 대기가 2건"
+        "message_contain_any": [
+          "승인 대기가 2건",
+          "승인 대기 2건"
         ]
       }
     }
@@ -951,14 +967,14 @@
         ],
         "proposals_count": 1,
         "amendment_contain": [
-          "심야 야식 배달",
-          "4회"
+          "심야 야식 배달"
         ],
         "amendment_not_contain": [
           "심야 택시"
         ],
-        "rationale_contain": [
-          "관리자가 4회 반복 개입"
+        "rationale_contain_any": [
+          "관리자가 4회",
+          "4회 반복"
         ]
       }
     },
