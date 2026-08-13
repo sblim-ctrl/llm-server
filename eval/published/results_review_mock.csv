@@ -1,0 +1,2 @@
+﻿id,scenario,expected,actual,correct,false_approve,expected_gate,actual_gate,trajectory_ok,expected_category,actual_category,category_ok,term_violations
+case-1,,approve,approve,True,False,,,,식비,교통,False,
