@@ -21,6 +21,7 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
+import csv  # noqa: E402
 import json  # noqa: E402
 
 from app.config import get_settings                                     # noqa: E402
@@ -29,6 +30,7 @@ from app.eval_judge import judge_reasons, passes                        # noqa: 
 from eval.run_eval_real import clean_golden_teams, receipt_text_for     # noqa: E402
 
 DEFAULT_GOLDEN = ROOT / "eval" / "golden" / "golden_v1.json"
+RESULTS_DIR = ROOT / "eval" / "results"
 
 
 async def main() -> int:
@@ -53,6 +55,7 @@ async def main() -> int:
             await indexing_graph.ainvoke({"team_id": t, "doc_type": "rule"})
 
         judged, fails, score_sum, cost = 0, [], 0.0, 0.0
+        rows: list[dict] = []  # CSV 행 — 나머지 하니스와 같이 결과를 파일로 남긴다
         for case in cases:
             req = AnalyzeRequest.model_validate(case["input"])
             final = await review_graph.ainvoke({
@@ -83,6 +86,22 @@ async def main() -> int:
                   + (f"  ← {result.notes}" if not ok else ""))
             if not ok:
                 fails.append(case["id"])
+            rows.append({
+                "id": case["id"], "verdict": verdict,
+                "score": f"{result.overall_score:.2f}", "passed": ok,
+                # 채점 근거를 남긴다 — 점수만으로는 왜 깎였는지 재현이 안 된다
+                "notes": (result.notes or "").replace("\n", " "),
+                "reason_requester": (reasons.requester or "").replace("\n", " "),
+                "reason_admin": (reasons.admin or "").replace("\n", " "),
+            })
+
+        RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+        csv_path = RESULTS_DIR / "judge_run.csv"
+        with csv_path.open("w", newline="", encoding="utf-8-sig") as f:
+            w = csv.DictWriter(f, fieldnames=["id", "verdict", "score", "passed", "notes",
+                                              "reason_requester", "reason_admin"])
+            w.writeheader()
+            w.writerows(rows)
 
         await clean_golden_teams()
         if not judged:
@@ -90,6 +109,7 @@ async def main() -> int:
             return 0
         print(f"\n사유 품질: {judged}건 채점 · 평균 {score_sum / judged:.2f} · "
               f"합격 {judged - len(fails)}/{judged} · judge 비용 ${cost:.4f}")
+        print(f"결과 CSV: {csv_path}")
         if fails:
             print(f"불합격(사유 품질): {fails}")
             return 1
