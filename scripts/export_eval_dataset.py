@@ -155,6 +155,41 @@ def export_run_results() -> list[tuple[Path, int]]:
     return made
 
 
+def export_submission_single() -> tuple[Path, int]:
+    """제출용 단일 CSV — 케이스 정의 + 실행 결과를 id로 조인해 한 파일로 만든다.
+
+    제출 요건이 "평가셋 CSV 1개 + 노트북 1개"라 파일을 갈라 두면 채점자가 둘을 맞춰
+    봐야 한다. 한 장에 **무엇을 시험했고(정의) 어떻게 나왔는지(결과)**가 함께 있으면
+    그 파일만으로 평가 전체를 읽을 수 있다. 조인 키는 케이스 id.
+
+    라이터 평가셋(32건)은 열 구조가 전혀 달라(생성물 기대값 JSON) 여기 섞지 않는다 —
+    섞으면 행의 절반이 빈 칸이 된다. 저장소의 golden_writers_v1.csv로 따로 둔다.
+    """
+    ds = OUT_DIR / "golden_review_v1.csv"
+    rs = OUT_DIR / "results_review_realmode.csv"
+    if not (ds.exists() and rs.exists()):
+        raise SystemExit("golden_review_v1.csv·results_review_realmode.csv가 먼저 필요합니다")
+
+    with rs.open(encoding="utf-8-sig") as f:
+        # 결과 쪽 expected_category·expected는 정의 쪽과 중복이라 결과 고유 열만 가져온다
+        res = {r["id"]: r for r in csv.DictReader(f)}
+    keep = ["actual", "correct", "false_approve", "gate", "cost_usd", "actual_category"]
+
+    with ds.open(encoding="utf-8-sig") as f:
+        reader = csv.DictReader(f)
+        rows = list(reader)
+        cols = list(reader.fieldnames or [])
+
+    out = OUT_DIR / "budgetops_eval_set.csv"
+    with out.open("w", newline="", encoding="utf-8-sig") as f:
+        w = csv.DictWriter(f, fieldnames=cols + keep)
+        w.writeheader()
+        for r in rows:
+            hit = res.get(r["id"], {})
+            w.writerow({**r, **{k: hit.get(k, "") for k in keep}})
+    return out, len(rows)
+
+
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     for path, n in (export_review_golden(), export_writers_golden()):
@@ -162,6 +197,8 @@ def main() -> int:
     print("실행 산출물:")
     for path, n in export_run_results():
         print(f"  {path.relative_to(ROOT)} — {n}행")
+    sub, n = export_submission_single()
+    print(f"제출용 단일본: {sub.relative_to(ROOT)} — {n}건 (정의 + 결과 조인)")
     return 0
 
 
