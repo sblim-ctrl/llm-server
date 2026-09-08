@@ -126,44 +126,10 @@ async def main() -> int:
         sem = asyncio.Semaphore(CONCURRENCY)
         results = await asyncio.gather(*(_run_one(c, sem) for c in cases))
 
-        n = len(results)
-        correct = sum(r["correct"] for r in results)
-        false_appr = [r["id"] for r in results if r["false_approve"]]
-        cost_total = sum(r["cost_usd"] for r in results)
-
-        by_type: dict[str, list[dict]] = {}
-        for r in results:
-            by_type.setdefault(r["type"], []).append(r)
-
-        print(
-            f"{'유형':20s} {'n':>4s} {'정확도':>8s} {'오승인':>6s} {'에스컬 R':>9s} {'분류 정확도':>10s}"
-        )
-        for type_key in sorted(by_type):
-            rows = by_type[type_key]
-            t_correct = sum(r["correct"] for r in rows)
-            t_fa = sum(r["false_approve"] for r in rows)
-            vm = verdict_metrics([{"expected": r["expected"], "actual": r["actual"]} for r in rows])
-            cat = category_metrics(
-                [
-                    {
-                        "id": r["id"],
-                        "expected_category": r["expected_category"],
-                        "category_ok": (r["actual_category"] == r["expected_category"])
-                        if r["expected_category"]
-                        else None,
-                    }
-                    for r in rows
-                ]
-            )
-            esc_r = vm["escalation_recall"]
-            esc_r_s = f"{esc_r:.0%}" if esc_r is not None else "N/A"
-            cat_acc = cat["category_accuracy"]
-            cat_acc_s = f"{cat_acc:.1%}" if cat_acc is not None else "N/A"
-            print(
-                f"{type_key:20s} {len(rows):4d} {t_correct / len(rows):7.1%} "
-                f"{t_fa:6d} {esc_r_s:>9s} {cat_acc_s:>10s}"
-            )
-
+        # 실제 LLM 호출 비용을 이미 다 치른 원본 결과다 — 이후 통계 집계·출력이 죽더라도
+        # 이 799건 실측 자체는 반드시 디스크에 남아야 한다(2026-09-08 사고: 유형별 통계
+        # 계산 중 KeyError로 죽어 결과가 메모리에서만 존재하다 통째로 유실됐다). 그래서
+        # CSV 저장을 집계/출력보다 먼저, try 블록 최상단으로 옮긴다.
         RESULTS_DIR.mkdir(parents=True, exist_ok=True)
         out = RESULTS_DIR / f"golden_v2_realmode_{date.today().isoformat()}.csv"
         with out.open("w", newline="", encoding="utf-8-sig") as f:
@@ -197,6 +163,56 @@ async def main() -> int:
                         r["actual_category"],
                     ]
                 )
+        print(f"결과 CSV 저장 완료(집계 전 원본): {out}\n")
+
+        n = len(results)
+        correct = sum(r["correct"] for r in results)
+        false_appr = [r["id"] for r in results if r["false_approve"]]
+        cost_total = sum(r["cost_usd"] for r in results)
+
+        by_type: dict[str, list[dict]] = {}
+        for r in results:
+            by_type.setdefault(r["type"], []).append(r)
+
+        print(
+            f"{'유형':20s} {'n':>4s} {'정확도':>8s} {'오승인':>6s} {'에스컬 R':>9s} {'분류 정확도':>10s}"
+        )
+        for type_key in sorted(by_type):
+            rows = by_type[type_key]
+            try:
+                t_correct = sum(r["correct"] for r in rows)
+                t_fa = sum(r["false_approve"] for r in rows)
+                vm = verdict_metrics(
+                    [{"expected": r["expected"], "actual": r["actual"]} for r in rows]
+                )
+                cat = category_metrics(
+                    [
+                        {
+                            "id": r["id"],
+                            "expected_category": r["expected_category"],
+                            "actual_category": r["actual_category"],
+                            "category_ok": (r["actual_category"] == r["expected_category"])
+                            if r["expected_category"]
+                            else None,
+                        }
+                        for r in rows
+                    ]
+                )
+                esc_r = vm["escalation_recall"]
+                esc_r_s = f"{esc_r:.0%}" if esc_r is not None else "N/A"
+                cat_acc = cat["category_accuracy"]
+                cat_acc_s = f"{cat_acc:.1%}" if cat_acc is not None else "N/A"
+                print(
+                    f"{type_key:20s} {len(rows):4d} {t_correct / len(rows):7.1%} "
+                    f"{t_fa:6d} {esc_r_s:>9s} {cat_acc_s:>10s}"
+                )
+            except Exception:
+                # 원본 CSV는 이미 저장됐으니 집계 단계 결함 하나가 나머지 유형 통계
+                # 출력까지 막지 않게 한다 — raw 데이터는 안전, 요약만 스킵.
+                import logging
+
+                logging.exception("유형 %s 통계 집계 실패 — CSV 원본은 이미 저장됨", type_key)
+                print(f"{type_key:20s} (통계 집계 실패 — CSV 원본 참조)")
 
         acc = correct / n if n else 0.0
         elapsed = time.time() - started
