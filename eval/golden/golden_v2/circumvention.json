@@ -1,0 +1,3407 @@
+{
+  "version": "v2",
+  "type": "circumvention",
+  "description": "우회 시도 — 분할 결제·동일 건 재청구(판례 유사검색 축 실모드 전용)",
+  "cases": [
+    {
+      "id": "v2-circumvention-001",
+      "scenario": "동일 건 재청구 — 정기 회식 28,000원. 이미 승인된 동일 지출을 다시 청구 — 중복 청구 의심으로 반려",
+      "team_type": "동아리/학생회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-001",
+        "expenseId": 91699,
+        "organizationId": 9205,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=28000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "식비",
+          "title": "정기 회식",
+          "amount": 28000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "이미 승인된 동일 지출을 다시 청구 — 중복 청구 의심으로 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-002",
+      "scenario": "동일 건 재청구 — 정기 회식 28,000원. 이미 승인된 동일 지출을 다시 청구 — 중복 청구 의심으로 반려",
+      "team_type": "스터디",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-002",
+        "expenseId": 91700,
+        "organizationId": 9206,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=28000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "식비",
+          "title": "정기 회식",
+          "amount": 28000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "이미 승인된 동일 지출을 다시 청구 — 중복 청구 의심으로 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-003",
+      "scenario": "동일 건 재청구 — 정기 회식 28,000원. 이미 승인된 동일 지출을 다시 청구 — 중복 청구 의심으로 반려",
+      "team_type": "친목",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-003",
+        "expenseId": 91701,
+        "organizationId": 9207,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=28000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "식비",
+          "title": "정기 회식",
+          "amount": 28000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "이미 승인된 동일 지출을 다시 청구 — 중복 청구 의심으로 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-004",
+      "scenario": "동일 건 재청구 — 정기 회식 28,000원. 이미 승인된 동일 지출을 다시 청구 — 중복 청구 의심으로 반려",
+      "team_type": "동호회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-004",
+        "expenseId": 91702,
+        "organizationId": 9208,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=28000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "식비",
+          "title": "정기 회식",
+          "amount": 28000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "이미 승인된 동일 지출을 다시 청구 — 중복 청구 의심으로 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-005",
+      "scenario": "동일 건 재청구 — 정기 회식 28,000원. 이미 승인된 동일 지출을 다시 청구 — 중복 청구 의심으로 반려",
+      "team_type": "회사",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-005",
+        "expenseId": 91703,
+        "organizationId": 9209,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=28000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "식비",
+          "title": "정기 회식",
+          "amount": 28000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "이미 승인된 동일 지출을 다시 청구 — 중복 청구 의심으로 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-006",
+      "scenario": "동일 건 재청구 — 학회 단체 티셔츠 제작 45,000원. 지난달과 동일한 티셔츠 제작 건 재청구 — 중복 의심 반려",
+      "team_type": "동아리/학생회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-006",
+        "expenseId": 91704,
+        "organizationId": 9210,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "비품",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "비품",
+          "title": "학회 단체 티셔츠 제작",
+          "amount": 45000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "지난달과 동일한 티셔츠 제작 건 재청구 — 중복 의심 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-007",
+      "scenario": "동일 건 재청구 — 학회 단체 티셔츠 제작 45,000원. 지난달과 동일한 티셔츠 제작 건 재청구 — 중복 의심 반려",
+      "team_type": "스터디",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-007",
+        "expenseId": 91705,
+        "organizationId": 9211,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "비품",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "비품",
+          "title": "학회 단체 티셔츠 제작",
+          "amount": 45000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "지난달과 동일한 티셔츠 제작 건 재청구 — 중복 의심 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-008",
+      "scenario": "동일 건 재청구 — 학회 단체 티셔츠 제작 45,000원. 지난달과 동일한 티셔츠 제작 건 재청구 — 중복 의심 반려",
+      "team_type": "친목",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-008",
+        "expenseId": 91706,
+        "organizationId": 9212,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "비품",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "비품",
+          "title": "학회 단체 티셔츠 제작",
+          "amount": 45000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "지난달과 동일한 티셔츠 제작 건 재청구 — 중복 의심 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-009",
+      "scenario": "동일 건 재청구 — 학회 단체 티셔츠 제작 45,000원. 지난달과 동일한 티셔츠 제작 건 재청구 — 중복 의심 반려",
+      "team_type": "동호회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-009",
+        "expenseId": 91707,
+        "organizationId": 9213,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "비품",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "비품",
+          "title": "학회 단체 티셔츠 제작",
+          "amount": 45000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "지난달과 동일한 티셔츠 제작 건 재청구 — 중복 의심 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-010",
+      "scenario": "동일 건 재청구 — 학회 단체 티셔츠 제작 45,000원. 지난달과 동일한 티셔츠 제작 건 재청구 — 중복 의심 반려",
+      "team_type": "회사",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-010",
+        "expenseId": 91708,
+        "organizationId": 9214,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "비품",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "비품",
+          "title": "학회 단체 티셔츠 제작",
+          "amount": 45000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "지난달과 동일한 티셔츠 제작 건 재청구 — 중복 의심 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-011",
+      "scenario": "동일 건 재청구 — 출장 기차표 32,000원. 동일 출장 기차표를 두 번째로 청구 — 중복 청구 반려",
+      "team_type": "동아리/학생회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-011",
+        "expenseId": 91709,
+        "organizationId": 9215,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=32000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교통",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "교통",
+          "title": "출장 기차표",
+          "amount": 32000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "동일 출장 기차표를 두 번째로 청구 — 중복 청구 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-012",
+      "scenario": "동일 건 재청구 — 출장 기차표 32,000원. 동일 출장 기차표를 두 번째로 청구 — 중복 청구 반려",
+      "team_type": "스터디",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-012",
+        "expenseId": 91710,
+        "organizationId": 9216,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=32000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교통",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "교통",
+          "title": "출장 기차표",
+          "amount": 32000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "동일 출장 기차표를 두 번째로 청구 — 중복 청구 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-013",
+      "scenario": "동일 건 재청구 — 출장 기차표 32,000원. 동일 출장 기차표를 두 번째로 청구 — 중복 청구 반려",
+      "team_type": "친목",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-013",
+        "expenseId": 91711,
+        "organizationId": 9217,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=32000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교통",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "교통",
+          "title": "출장 기차표",
+          "amount": 32000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "동일 출장 기차표를 두 번째로 청구 — 중복 청구 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-014",
+      "scenario": "동일 건 재청구 — 출장 기차표 32,000원. 동일 출장 기차표를 두 번째로 청구 — 중복 청구 반려",
+      "team_type": "동호회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-014",
+        "expenseId": 91712,
+        "organizationId": 9218,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=32000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교통",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "교통",
+          "title": "출장 기차표",
+          "amount": 32000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "동일 출장 기차표를 두 번째로 청구 — 중복 청구 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-015",
+      "scenario": "동일 건 재청구 — 출장 기차표 32,000원. 동일 출장 기차표를 두 번째로 청구 — 중복 청구 반려",
+      "team_type": "회사",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-015",
+        "expenseId": 91713,
+        "organizationId": 9219,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=32000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교통",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "교통",
+          "title": "출장 기차표",
+          "amount": 32000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "동일 출장 기차표를 두 번째로 청구 — 중복 청구 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-016",
+      "scenario": "동일 건 재청구 — 노션 팀 구독료 33,000원. 이미 정산된 구독료를 다시 청구 — 중복 청구 반려",
+      "team_type": "동아리/학생회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-016",
+        "expenseId": 91714,
+        "organizationId": 9220,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=33000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "IT_인프라",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "IT_인프라",
+          "title": "노션 팀 구독료",
+          "amount": 33000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "이미 정산된 구독료를 다시 청구 — 중복 청구 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-017",
+      "scenario": "동일 건 재청구 — 노션 팀 구독료 33,000원. 이미 정산된 구독료를 다시 청구 — 중복 청구 반려",
+      "team_type": "스터디",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-017",
+        "expenseId": 91715,
+        "organizationId": 9221,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=33000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "IT_인프라",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "IT_인프라",
+          "title": "노션 팀 구독료",
+          "amount": 33000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "이미 정산된 구독료를 다시 청구 — 중복 청구 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-018",
+      "scenario": "동일 건 재청구 — 노션 팀 구독료 33,000원. 이미 정산된 구독료를 다시 청구 — 중복 청구 반려",
+      "team_type": "친목",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-018",
+        "expenseId": 91716,
+        "organizationId": 9222,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=33000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "IT_인프라",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "IT_인프라",
+          "title": "노션 팀 구독료",
+          "amount": 33000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "이미 정산된 구독료를 다시 청구 — 중복 청구 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-019",
+      "scenario": "동일 건 재청구 — 노션 팀 구독료 33,000원. 이미 정산된 구독료를 다시 청구 — 중복 청구 반려",
+      "team_type": "동호회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-019",
+        "expenseId": 91717,
+        "organizationId": 9223,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=33000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "IT_인프라",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "IT_인프라",
+          "title": "노션 팀 구독료",
+          "amount": 33000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "이미 정산된 구독료를 다시 청구 — 중복 청구 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-020",
+      "scenario": "동일 건 재청구 — 노션 팀 구독료 33,000원. 이미 정산된 구독료를 다시 청구 — 중복 청구 반려",
+      "team_type": "회사",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-020",
+        "expenseId": 91718,
+        "organizationId": 9224,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=33000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "IT_인프라",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "IT_인프라",
+          "title": "노션 팀 구독료",
+          "amount": 33000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "이미 정산된 구독료를 다시 청구 — 중복 청구 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-021",
+      "scenario": "동일 건 재청구 — 온라인 강의 수강료 40,000원. 환불받은 강의를 재청구 — 이중 수령 의심 반려",
+      "team_type": "동아리/학생회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-021",
+        "expenseId": 91719,
+        "organizationId": 9225,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=40000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "교육",
+          "title": "온라인 강의 수강료",
+          "amount": 40000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "환불받은 강의를 재청구 — 이중 수령 의심 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-022",
+      "scenario": "동일 건 재청구 — 온라인 강의 수강료 40,000원. 환불받은 강의를 재청구 — 이중 수령 의심 반려",
+      "team_type": "스터디",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-022",
+        "expenseId": 91720,
+        "organizationId": 9226,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=40000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "교육",
+          "title": "온라인 강의 수강료",
+          "amount": 40000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "환불받은 강의를 재청구 — 이중 수령 의심 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-023",
+      "scenario": "동일 건 재청구 — 온라인 강의 수강료 40,000원. 환불받은 강의를 재청구 — 이중 수령 의심 반려",
+      "team_type": "친목",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-023",
+        "expenseId": 91721,
+        "organizationId": 9227,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=40000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "교육",
+          "title": "온라인 강의 수강료",
+          "amount": 40000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "환불받은 강의를 재청구 — 이중 수령 의심 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-024",
+      "scenario": "동일 건 재청구 — 온라인 강의 수강료 40,000원. 환불받은 강의를 재청구 — 이중 수령 의심 반려",
+      "team_type": "동호회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-024",
+        "expenseId": 91722,
+        "organizationId": 9228,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=40000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "교육",
+          "title": "온라인 강의 수강료",
+          "amount": 40000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "환불받은 강의를 재청구 — 이중 수령 의심 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-025",
+      "scenario": "동일 건 재청구 — 온라인 강의 수강료 40,000원. 환불받은 강의를 재청구 — 이중 수령 의심 반려",
+      "team_type": "회사",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-025",
+        "expenseId": 91723,
+        "organizationId": 9229,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=40000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "교육",
+          "title": "온라인 강의 수강료",
+          "amount": 40000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "환불받은 강의를 재청구 — 이중 수령 의심 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-026",
+      "scenario": "동일 건 재청구 — 스터디룸 대관료 25,000원. 동일 대관 건을 날짜만 바꿔 재청구 — 중복 의심 반려",
+      "team_type": "동아리/학생회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-026",
+        "expenseId": 91724,
+        "organizationId": 9230,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=25000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "장소_대관",
+          "title": "스터디룸 대관료",
+          "amount": 25000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "동일 대관 건을 날짜만 바꿔 재청구 — 중복 의심 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-027",
+      "scenario": "동일 건 재청구 — 스터디룸 대관료 25,000원. 동일 대관 건을 날짜만 바꿔 재청구 — 중복 의심 반려",
+      "team_type": "스터디",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-027",
+        "expenseId": 91725,
+        "organizationId": 9231,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=25000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "장소_대관",
+          "title": "스터디룸 대관료",
+          "amount": 25000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "동일 대관 건을 날짜만 바꿔 재청구 — 중복 의심 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-028",
+      "scenario": "동일 건 재청구 — 스터디룸 대관료 25,000원. 동일 대관 건을 날짜만 바꿔 재청구 — 중복 의심 반려",
+      "team_type": "친목",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-028",
+        "expenseId": 91726,
+        "organizationId": 9232,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=25000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "장소_대관",
+          "title": "스터디룸 대관료",
+          "amount": 25000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "동일 대관 건을 날짜만 바꿔 재청구 — 중복 의심 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-029",
+      "scenario": "동일 건 재청구 — 스터디룸 대관료 25,000원. 동일 대관 건을 날짜만 바꿔 재청구 — 중복 의심 반려",
+      "team_type": "동호회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-029",
+        "expenseId": 91727,
+        "organizationId": 9233,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=25000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "장소_대관",
+          "title": "스터디룸 대관료",
+          "amount": 25000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "동일 대관 건을 날짜만 바꿔 재청구 — 중복 의심 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-030",
+      "scenario": "동일 건 재청구 — 스터디룸 대관료 25,000원. 동일 대관 건을 날짜만 바꿔 재청구 — 중복 의심 반려",
+      "team_type": "회사",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-030",
+        "expenseId": 91728,
+        "organizationId": 9234,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=25000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "장소_대관",
+          "title": "스터디룸 대관료",
+          "amount": 25000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "동일 대관 건을 날짜만 바꿔 재청구 — 중복 의심 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-031",
+      "scenario": "동일 건 재청구 — 동아리 엠티 참가비 48,000원. 이미 정산된 엠티 참가비를 다시 청구 — 중복 반려",
+      "team_type": "동아리/학생회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-031",
+        "expenseId": 91729,
+        "organizationId": 9235,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=48000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "행사_활동",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "행사_활동",
+          "title": "동아리 엠티 참가비",
+          "amount": 48000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "이미 정산된 엠티 참가비를 다시 청구 — 중복 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-032",
+      "scenario": "동일 건 재청구 — 동아리 엠티 참가비 48,000원. 이미 정산된 엠티 참가비를 다시 청구 — 중복 반려",
+      "team_type": "스터디",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-032",
+        "expenseId": 91730,
+        "organizationId": 9236,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=48000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "행사_활동",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "행사_활동",
+          "title": "동아리 엠티 참가비",
+          "amount": 48000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "이미 정산된 엠티 참가비를 다시 청구 — 중복 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-033",
+      "scenario": "동일 건 재청구 — 동아리 엠티 참가비 48,000원. 이미 정산된 엠티 참가비를 다시 청구 — 중복 반려",
+      "team_type": "친목",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-033",
+        "expenseId": 91731,
+        "organizationId": 9237,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=48000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "행사_활동",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "행사_활동",
+          "title": "동아리 엠티 참가비",
+          "amount": 48000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "이미 정산된 엠티 참가비를 다시 청구 — 중복 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-034",
+      "scenario": "동일 건 재청구 — 동아리 엠티 참가비 48,000원. 이미 정산된 엠티 참가비를 다시 청구 — 중복 반려",
+      "team_type": "동호회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-034",
+        "expenseId": 91732,
+        "organizationId": 9238,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=48000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "행사_활동",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "행사_활동",
+          "title": "동아리 엠티 참가비",
+          "amount": 48000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "이미 정산된 엠티 참가비를 다시 청구 — 중복 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-035",
+      "scenario": "동일 건 재청구 — 동아리 엠티 참가비 48,000원. 이미 정산된 엠티 참가비를 다시 청구 — 중복 반려",
+      "team_type": "회사",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-035",
+        "expenseId": 91733,
+        "organizationId": 9239,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=48000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "행사_활동",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "행사_활동",
+          "title": "동아리 엠티 참가비",
+          "amount": 48000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "이미 정산된 엠티 참가비를 다시 청구 — 중복 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-036",
+      "scenario": "동일 건 재청구 — 동아리 정기모임 회의비 20,000원. 동일 회의비를 두 번째로 청구 — 중복 청구 반려",
+      "team_type": "동아리/학생회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-036",
+        "expenseId": 91734,
+        "organizationId": 9240,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=20000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "회의",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "회의",
+          "title": "동아리 정기모임 회의비",
+          "amount": 20000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "동일 회의비를 두 번째로 청구 — 중복 청구 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-037",
+      "scenario": "동일 건 재청구 — 동아리 정기모임 회의비 20,000원. 동일 회의비를 두 번째로 청구 — 중복 청구 반려",
+      "team_type": "스터디",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-037",
+        "expenseId": 91735,
+        "organizationId": 9241,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=20000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "회의",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "회의",
+          "title": "동아리 정기모임 회의비",
+          "amount": 20000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "동일 회의비를 두 번째로 청구 — 중복 청구 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-038",
+      "scenario": "동일 건 재청구 — 동아리 정기모임 회의비 20,000원. 동일 회의비를 두 번째로 청구 — 중복 청구 반려",
+      "team_type": "친목",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-038",
+        "expenseId": 91736,
+        "organizationId": 9242,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=20000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "회의",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "회의",
+          "title": "동아리 정기모임 회의비",
+          "amount": 20000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "동일 회의비를 두 번째로 청구 — 중복 청구 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-039",
+      "scenario": "동일 건 재청구 — 동아리 정기모임 회의비 20,000원. 동일 회의비를 두 번째로 청구 — 중복 청구 반려",
+      "team_type": "동호회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-039",
+        "expenseId": 91737,
+        "organizationId": 9243,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=20000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "회의",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "회의",
+          "title": "동아리 정기모임 회의비",
+          "amount": 20000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "동일 회의비를 두 번째로 청구 — 중복 청구 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-040",
+      "scenario": "동일 건 재청구 — 동아리 정기모임 회의비 20,000원. 동일 회의비를 두 번째로 청구 — 중복 청구 반려",
+      "team_type": "회사",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-040",
+        "expenseId": 91738,
+        "organizationId": 9244,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=20000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "회의",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "회의",
+          "title": "동아리 정기모임 회의비",
+          "amount": 20000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "동일 회의비를 두 번째로 청구 — 중복 청구 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-041",
+      "scenario": "동일 건 재청구 — 동아리 회원 경조사 조화 30,000원. 이미 지급된 경조사비를 재청구 — 중복 반려",
+      "team_type": "동아리/학생회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-041",
+        "expenseId": 91739,
+        "organizationId": 9245,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=30000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "기타",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "기타",
+          "title": "동아리 회원 경조사 조화",
+          "amount": 30000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "이미 지급된 경조사비를 재청구 — 중복 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-042",
+      "scenario": "동일 건 재청구 — 동아리 회원 경조사 조화 30,000원. 이미 지급된 경조사비를 재청구 — 중복 반려",
+      "team_type": "스터디",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-042",
+        "expenseId": 91740,
+        "organizationId": 9246,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=30000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "기타",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "기타",
+          "title": "동아리 회원 경조사 조화",
+          "amount": 30000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "이미 지급된 경조사비를 재청구 — 중복 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-043",
+      "scenario": "동일 건 재청구 — 동아리 회원 경조사 조화 30,000원. 이미 지급된 경조사비를 재청구 — 중복 반려",
+      "team_type": "친목",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-043",
+        "expenseId": 91741,
+        "organizationId": 9247,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=30000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "기타",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "기타",
+          "title": "동아리 회원 경조사 조화",
+          "amount": 30000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "이미 지급된 경조사비를 재청구 — 중복 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-044",
+      "scenario": "동일 건 재청구 — 동아리 회원 경조사 조화 30,000원. 이미 지급된 경조사비를 재청구 — 중복 반려",
+      "team_type": "동호회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-044",
+        "expenseId": 91742,
+        "organizationId": 9248,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=30000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "기타",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "기타",
+          "title": "동아리 회원 경조사 조화",
+          "amount": 30000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "이미 지급된 경조사비를 재청구 — 중복 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-045",
+      "scenario": "동일 건 재청구 — 동아리 회원 경조사 조화 30,000원. 이미 지급된 경조사비를 재청구 — 중복 반려",
+      "team_type": "회사",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-045",
+        "expenseId": 91743,
+        "organizationId": 9249,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=30000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "기타",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "기타",
+          "title": "동아리 회원 경조사 조화",
+          "amount": 30000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "이미 지급된 경조사비를 재청구 — 중복 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-046",
+      "scenario": "동일 건 재청구 — 정기 회식 15,000원. 영수증 사본으로 같은 건을 재청구 — 중복 청구 반려",
+      "team_type": "동아리/학생회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-046",
+        "expenseId": 91744,
+        "organizationId": 9250,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=15000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "식비",
+          "title": "정기 회식",
+          "amount": 15000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "영수증 사본으로 같은 건을 재청구 — 중복 청구 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-047",
+      "scenario": "동일 건 재청구 — 정기 회식 15,000원. 영수증 사본으로 같은 건을 재청구 — 중복 청구 반려",
+      "team_type": "스터디",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-047",
+        "expenseId": 91745,
+        "organizationId": 9251,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=15000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "식비",
+          "title": "정기 회식",
+          "amount": 15000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "영수증 사본으로 같은 건을 재청구 — 중복 청구 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-048",
+      "scenario": "동일 건 재청구 — 정기 회식 15,000원. 영수증 사본으로 같은 건을 재청구 — 중복 청구 반려",
+      "team_type": "친목",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-048",
+        "expenseId": 91746,
+        "organizationId": 9252,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=15000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "식비",
+          "title": "정기 회식",
+          "amount": 15000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "영수증 사본으로 같은 건을 재청구 — 중복 청구 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-049",
+      "scenario": "동일 건 재청구 — 정기 회식 15,000원. 영수증 사본으로 같은 건을 재청구 — 중복 청구 반려",
+      "team_type": "동호회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-049",
+        "expenseId": 91747,
+        "organizationId": 9253,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=15000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "식비",
+          "title": "정기 회식",
+          "amount": 15000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "영수증 사본으로 같은 건을 재청구 — 중복 청구 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-050",
+      "scenario": "동일 건 재청구 — 정기 회식 15,000원. 영수증 사본으로 같은 건을 재청구 — 중복 청구 반려",
+      "team_type": "회사",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-050",
+        "expenseId": 91748,
+        "organizationId": 9254,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=15000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "식비",
+          "title": "정기 회식",
+          "amount": 15000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "영수증 사본으로 같은 건을 재청구 — 중복 청구 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-051",
+      "scenario": "분할 결제 의심 — 학회 단체 티셔츠 제작(2차분) 22,000원. 70,000원 단일 구매를 한도 회피 목적으로 3건으로 쪼갠 것으로 의심되어 반려",
+      "team_type": "동아리/학생회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-051",
+        "expenseId": 91749,
+        "organizationId": 9255,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=22000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "비품",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "비품",
+          "title": "학회 단체 티셔츠 제작(2차분)",
+          "amount": 22000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "70,000원 단일 구매를 한도 회피 목적으로 3건으로 쪼갠 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-052",
+      "scenario": "분할 결제 의심 — 학회 단체 티셔츠 제작(2차분) 22,000원. 70,000원 단일 구매를 한도 회피 목적으로 3건으로 쪼갠 것으로 의심되어 반려",
+      "team_type": "스터디",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-052",
+        "expenseId": 91750,
+        "organizationId": 9256,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=22000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "비품",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "비품",
+          "title": "학회 단체 티셔츠 제작(2차분)",
+          "amount": 22000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "70,000원 단일 구매를 한도 회피 목적으로 3건으로 쪼갠 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-053",
+      "scenario": "분할 결제 의심 — 학회 단체 티셔츠 제작(2차분) 22,000원. 70,000원 단일 구매를 한도 회피 목적으로 3건으로 쪼갠 것으로 의심되어 반려",
+      "team_type": "친목",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-053",
+        "expenseId": 91751,
+        "organizationId": 9257,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=22000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "비품",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "비품",
+          "title": "학회 단체 티셔츠 제작(2차분)",
+          "amount": 22000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "70,000원 단일 구매를 한도 회피 목적으로 3건으로 쪼갠 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-054",
+      "scenario": "분할 결제 의심 — 학회 단체 티셔츠 제작(2차분) 22,000원. 70,000원 단일 구매를 한도 회피 목적으로 3건으로 쪼갠 것으로 의심되어 반려",
+      "team_type": "동호회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-054",
+        "expenseId": 91752,
+        "organizationId": 9258,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=22000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "비품",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "비품",
+          "title": "학회 단체 티셔츠 제작(2차분)",
+          "amount": 22000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "70,000원 단일 구매를 한도 회피 목적으로 3건으로 쪼갠 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-055",
+      "scenario": "분할 결제 의심 — 학회 단체 티셔츠 제작(2차분) 22,000원. 70,000원 단일 구매를 한도 회피 목적으로 3건으로 쪼갠 것으로 의심되어 반려",
+      "team_type": "회사",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-055",
+        "expenseId": 91753,
+        "organizationId": 9259,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=22000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "비품",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "비품",
+          "title": "학회 단체 티셔츠 제작(2차분)",
+          "amount": 22000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "70,000원 단일 구매를 한도 회피 목적으로 3건으로 쪼갠 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-056",
+      "scenario": "분할 결제 의심 — 동아리 엠티 참가비(추가분) 24,000원. 대형 엠티 비용을 여러 건으로 분할 청구한 것으로 의심되어 반려",
+      "team_type": "동아리/학생회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-056",
+        "expenseId": 91754,
+        "organizationId": 9260,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=24000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "행사_활동",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "행사_활동",
+          "title": "동아리 엠티 참가비(추가분)",
+          "amount": 24000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "대형 엠티 비용을 여러 건으로 분할 청구한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-057",
+      "scenario": "분할 결제 의심 — 동아리 엠티 참가비(추가분) 24,000원. 대형 엠티 비용을 여러 건으로 분할 청구한 것으로 의심되어 반려",
+      "team_type": "스터디",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-057",
+        "expenseId": 91755,
+        "organizationId": 9261,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=24000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "행사_활동",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "행사_활동",
+          "title": "동아리 엠티 참가비(추가분)",
+          "amount": 24000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "대형 엠티 비용을 여러 건으로 분할 청구한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-058",
+      "scenario": "분할 결제 의심 — 동아리 엠티 참가비(추가분) 24,000원. 대형 엠티 비용을 여러 건으로 분할 청구한 것으로 의심되어 반려",
+      "team_type": "친목",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-058",
+        "expenseId": 91756,
+        "organizationId": 9262,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=24000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "행사_활동",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "행사_활동",
+          "title": "동아리 엠티 참가비(추가분)",
+          "amount": 24000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "대형 엠티 비용을 여러 건으로 분할 청구한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-059",
+      "scenario": "분할 결제 의심 — 동아리 엠티 참가비(추가분) 24,000원. 대형 엠티 비용을 여러 건으로 분할 청구한 것으로 의심되어 반려",
+      "team_type": "동호회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-059",
+        "expenseId": 91757,
+        "organizationId": 9263,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=24000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "행사_활동",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "행사_활동",
+          "title": "동아리 엠티 참가비(추가분)",
+          "amount": 24000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "대형 엠티 비용을 여러 건으로 분할 청구한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-060",
+      "scenario": "분할 결제 의심 — 동아리 엠티 참가비(추가분) 24,000원. 대형 엠티 비용을 여러 건으로 분할 청구한 것으로 의심되어 반려",
+      "team_type": "회사",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-060",
+        "expenseId": 91758,
+        "organizationId": 9264,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=24000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "행사_활동",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "행사_활동",
+          "title": "동아리 엠티 참가비(추가분)",
+          "amount": 24000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "대형 엠티 비용을 여러 건으로 분할 청구한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-061",
+      "scenario": "분할 결제 의심 — 스터디룸 대관료(2회차) 21,000원. 장기 대관을 회차별로 쪼개 한도를 피한 것으로 의심되어 반려",
+      "team_type": "동아리/학생회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-061",
+        "expenseId": 91759,
+        "organizationId": 9265,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=21000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "장소_대관",
+          "title": "스터디룸 대관료(2회차)",
+          "amount": 21000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "장기 대관을 회차별로 쪼개 한도를 피한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-062",
+      "scenario": "분할 결제 의심 — 스터디룸 대관료(2회차) 21,000원. 장기 대관을 회차별로 쪼개 한도를 피한 것으로 의심되어 반려",
+      "team_type": "스터디",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-062",
+        "expenseId": 91760,
+        "organizationId": 9266,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=21000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "장소_대관",
+          "title": "스터디룸 대관료(2회차)",
+          "amount": 21000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "장기 대관을 회차별로 쪼개 한도를 피한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-063",
+      "scenario": "분할 결제 의심 — 스터디룸 대관료(2회차) 21,000원. 장기 대관을 회차별로 쪼개 한도를 피한 것으로 의심되어 반려",
+      "team_type": "친목",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-063",
+        "expenseId": 91761,
+        "organizationId": 9267,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=21000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "장소_대관",
+          "title": "스터디룸 대관료(2회차)",
+          "amount": 21000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "장기 대관을 회차별로 쪼개 한도를 피한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-064",
+      "scenario": "분할 결제 의심 — 스터디룸 대관료(2회차) 21,000원. 장기 대관을 회차별로 쪼개 한도를 피한 것으로 의심되어 반려",
+      "team_type": "동호회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-064",
+        "expenseId": 91762,
+        "organizationId": 9268,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=21000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "장소_대관",
+          "title": "스터디룸 대관료(2회차)",
+          "amount": 21000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "장기 대관을 회차별로 쪼개 한도를 피한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-065",
+      "scenario": "분할 결제 의심 — 스터디룸 대관료(2회차) 21,000원. 장기 대관을 회차별로 쪼개 한도를 피한 것으로 의심되어 반려",
+      "team_type": "회사",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-065",
+        "expenseId": 91763,
+        "organizationId": 9269,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=21000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "장소_대관",
+          "title": "스터디룸 대관료(2회차)",
+          "amount": 21000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "장기 대관을 회차별로 쪼개 한도를 피한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-066",
+      "scenario": "분할 결제 의심 — 정기 회식(2차) 18,000원. 동일 회식을 1차·2차로 나눠 청구한 것으로 의심되어 반려",
+      "team_type": "동아리/학생회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-066",
+        "expenseId": 91764,
+        "organizationId": 9270,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=18000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "식비",
+          "title": "정기 회식(2차)",
+          "amount": 18000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "동일 회식을 1차·2차로 나눠 청구한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-067",
+      "scenario": "분할 결제 의심 — 정기 회식(2차) 18,000원. 동일 회식을 1차·2차로 나눠 청구한 것으로 의심되어 반려",
+      "team_type": "스터디",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-067",
+        "expenseId": 91765,
+        "organizationId": 9271,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=18000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "식비",
+          "title": "정기 회식(2차)",
+          "amount": 18000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "동일 회식을 1차·2차로 나눠 청구한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-068",
+      "scenario": "분할 결제 의심 — 정기 회식(2차) 18,000원. 동일 회식을 1차·2차로 나눠 청구한 것으로 의심되어 반려",
+      "team_type": "친목",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-068",
+        "expenseId": 91766,
+        "organizationId": 9272,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=18000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "식비",
+          "title": "정기 회식(2차)",
+          "amount": 18000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "동일 회식을 1차·2차로 나눠 청구한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-069",
+      "scenario": "분할 결제 의심 — 정기 회식(2차) 18,000원. 동일 회식을 1차·2차로 나눠 청구한 것으로 의심되어 반려",
+      "team_type": "동호회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-069",
+        "expenseId": 91767,
+        "organizationId": 9273,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=18000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "식비",
+          "title": "정기 회식(2차)",
+          "amount": 18000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "동일 회식을 1차·2차로 나눠 청구한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-070",
+      "scenario": "분할 결제 의심 — 정기 회식(2차) 18,000원. 동일 회식을 1차·2차로 나눠 청구한 것으로 의심되어 반려",
+      "team_type": "회사",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-070",
+        "expenseId": 91768,
+        "organizationId": 9274,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=18000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "식비",
+          "title": "정기 회식(2차)",
+          "amount": 18000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "동일 회식을 1차·2차로 나눠 청구한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-071",
+      "scenario": "분할 결제 의심 — 노션 팀 구독료(분기 추가분) 15,000원. 연간 구독료를 분기별로 쪼개 한도 아래로 맞춘 것으로 의심되어 반려",
+      "team_type": "동아리/학생회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-071",
+        "expenseId": 91769,
+        "organizationId": 9275,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=15000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "IT_인프라",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "IT_인프라",
+          "title": "노션 팀 구독료(분기 추가분)",
+          "amount": 15000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "연간 구독료를 분기별로 쪼개 한도 아래로 맞춘 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-072",
+      "scenario": "분할 결제 의심 — 노션 팀 구독료(분기 추가분) 15,000원. 연간 구독료를 분기별로 쪼개 한도 아래로 맞춘 것으로 의심되어 반려",
+      "team_type": "스터디",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-072",
+        "expenseId": 91770,
+        "organizationId": 9276,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=15000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "IT_인프라",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "IT_인프라",
+          "title": "노션 팀 구독료(분기 추가분)",
+          "amount": 15000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "연간 구독료를 분기별로 쪼개 한도 아래로 맞춘 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-073",
+      "scenario": "분할 결제 의심 — 노션 팀 구독료(분기 추가분) 15,000원. 연간 구독료를 분기별로 쪼개 한도 아래로 맞춘 것으로 의심되어 반려",
+      "team_type": "친목",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-073",
+        "expenseId": 91771,
+        "organizationId": 9277,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=15000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "IT_인프라",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "IT_인프라",
+          "title": "노션 팀 구독료(분기 추가분)",
+          "amount": 15000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "연간 구독료를 분기별로 쪼개 한도 아래로 맞춘 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-074",
+      "scenario": "분할 결제 의심 — 노션 팀 구독료(분기 추가분) 15,000원. 연간 구독료를 분기별로 쪼개 한도 아래로 맞춘 것으로 의심되어 반려",
+      "team_type": "동호회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-074",
+        "expenseId": 91772,
+        "organizationId": 9278,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=15000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "IT_인프라",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "IT_인프라",
+          "title": "노션 팀 구독료(분기 추가분)",
+          "amount": 15000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "연간 구독료를 분기별로 쪼개 한도 아래로 맞춘 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-075",
+      "scenario": "분할 결제 의심 — 노션 팀 구독료(분기 추가분) 15,000원. 연간 구독료를 분기별로 쪼개 한도 아래로 맞춘 것으로 의심되어 반려",
+      "team_type": "회사",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-075",
+        "expenseId": 91773,
+        "organizationId": 9279,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=15000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "IT_인프라",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "IT_인프라",
+          "title": "노션 팀 구독료(분기 추가분)",
+          "amount": 15000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "연간 구독료를 분기별로 쪼개 한도 아래로 맞춘 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-076",
+      "scenario": "분할 결제 의심 — 웹캠 장비 구매(추가) 19,000원. 한 번에 살 장비를 여러 건으로 나눈 것으로 의심되어 반려",
+      "team_type": "동아리/학생회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-076",
+        "expenseId": 91774,
+        "organizationId": 9280,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=19000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "비품",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "비품",
+          "title": "웹캠 장비 구매(추가)",
+          "amount": 19000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "한 번에 살 장비를 여러 건으로 나눈 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-077",
+      "scenario": "분할 결제 의심 — 웹캠 장비 구매(추가) 19,000원. 한 번에 살 장비를 여러 건으로 나눈 것으로 의심되어 반려",
+      "team_type": "스터디",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-077",
+        "expenseId": 91775,
+        "organizationId": 9281,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=19000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "비품",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "비품",
+          "title": "웹캠 장비 구매(추가)",
+          "amount": 19000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "한 번에 살 장비를 여러 건으로 나눈 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-078",
+      "scenario": "분할 결제 의심 — 웹캠 장비 구매(추가) 19,000원. 한 번에 살 장비를 여러 건으로 나눈 것으로 의심되어 반려",
+      "team_type": "친목",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-078",
+        "expenseId": 91776,
+        "organizationId": 9282,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=19000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "비품",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "비품",
+          "title": "웹캠 장비 구매(추가)",
+          "amount": 19000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "한 번에 살 장비를 여러 건으로 나눈 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-079",
+      "scenario": "분할 결제 의심 — 웹캠 장비 구매(추가) 19,000원. 한 번에 살 장비를 여러 건으로 나눈 것으로 의심되어 반려",
+      "team_type": "동호회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-079",
+        "expenseId": 91777,
+        "organizationId": 9283,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=19000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "비품",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "비품",
+          "title": "웹캠 장비 구매(추가)",
+          "amount": 19000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "한 번에 살 장비를 여러 건으로 나눈 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-080",
+      "scenario": "분할 결제 의심 — 웹캠 장비 구매(추가) 19,000원. 한 번에 살 장비를 여러 건으로 나눈 것으로 의심되어 반려",
+      "team_type": "회사",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-080",
+        "expenseId": 91778,
+        "organizationId": 9284,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=19000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "비품",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "비품",
+          "title": "웹캠 장비 구매(추가)",
+          "amount": 19000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "한 번에 살 장비를 여러 건으로 나눈 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-081",
+      "scenario": "분할 결제 의심 — 온라인 강의 수강료(2강) 23,000원. 패키지 강의를 강별로 쪼개 청구한 것으로 의심되어 반려",
+      "team_type": "동아리/학생회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-081",
+        "expenseId": 91779,
+        "organizationId": 9285,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=23000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "교육",
+          "title": "온라인 강의 수강료(2강)",
+          "amount": 23000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "패키지 강의를 강별로 쪼개 청구한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-082",
+      "scenario": "분할 결제 의심 — 온라인 강의 수강료(2강) 23,000원. 패키지 강의를 강별로 쪼개 청구한 것으로 의심되어 반려",
+      "team_type": "스터디",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-082",
+        "expenseId": 91780,
+        "organizationId": 9286,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=23000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "교육",
+          "title": "온라인 강의 수강료(2강)",
+          "amount": 23000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "패키지 강의를 강별로 쪼개 청구한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-083",
+      "scenario": "분할 결제 의심 — 온라인 강의 수강료(2강) 23,000원. 패키지 강의를 강별로 쪼개 청구한 것으로 의심되어 반려",
+      "team_type": "친목",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-083",
+        "expenseId": 91781,
+        "organizationId": 9287,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=23000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "교육",
+          "title": "온라인 강의 수강료(2강)",
+          "amount": 23000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "패키지 강의를 강별로 쪼개 청구한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-084",
+      "scenario": "분할 결제 의심 — 온라인 강의 수강료(2강) 23,000원. 패키지 강의를 강별로 쪼개 청구한 것으로 의심되어 반려",
+      "team_type": "동호회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-084",
+        "expenseId": 91782,
+        "organizationId": 9288,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=23000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "교육",
+          "title": "온라인 강의 수강료(2강)",
+          "amount": 23000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "패키지 강의를 강별로 쪼개 청구한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-085",
+      "scenario": "분할 결제 의심 — 온라인 강의 수강료(2강) 23,000원. 패키지 강의를 강별로 쪼개 청구한 것으로 의심되어 반려",
+      "team_type": "회사",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-085",
+        "expenseId": 91783,
+        "organizationId": 9289,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=23000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "교육",
+          "title": "온라인 강의 수강료(2강)",
+          "amount": 23000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "패키지 강의를 강별로 쪼개 청구한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-086",
+      "scenario": "분할 결제 의심 — 출장 기차표(왕복 2건) 17,000원. 왕복 교통비를 편도씩 나눠 청구한 것으로 의심되어 반려",
+      "team_type": "동아리/학생회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-086",
+        "expenseId": 91784,
+        "organizationId": 9290,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=17000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교통",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "교통",
+          "title": "출장 기차표(왕복 2건)",
+          "amount": 17000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "왕복 교통비를 편도씩 나눠 청구한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-087",
+      "scenario": "분할 결제 의심 — 출장 기차표(왕복 2건) 17,000원. 왕복 교통비를 편도씩 나눠 청구한 것으로 의심되어 반려",
+      "team_type": "스터디",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-087",
+        "expenseId": 91785,
+        "organizationId": 9291,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=17000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교통",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "교통",
+          "title": "출장 기차표(왕복 2건)",
+          "amount": 17000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "왕복 교통비를 편도씩 나눠 청구한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-088",
+      "scenario": "분할 결제 의심 — 출장 기차표(왕복 2건) 17,000원. 왕복 교통비를 편도씩 나눠 청구한 것으로 의심되어 반려",
+      "team_type": "친목",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-088",
+        "expenseId": 91786,
+        "organizationId": 9292,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=17000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교통",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "교통",
+          "title": "출장 기차표(왕복 2건)",
+          "amount": 17000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "왕복 교통비를 편도씩 나눠 청구한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-089",
+      "scenario": "분할 결제 의심 — 출장 기차표(왕복 2건) 17,000원. 왕복 교통비를 편도씩 나눠 청구한 것으로 의심되어 반려",
+      "team_type": "동호회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-089",
+        "expenseId": 91787,
+        "organizationId": 9293,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=17000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교통",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "교통",
+          "title": "출장 기차표(왕복 2건)",
+          "amount": 17000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "왕복 교통비를 편도씩 나눠 청구한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-090",
+      "scenario": "분할 결제 의심 — 출장 기차표(왕복 2건) 17,000원. 왕복 교통비를 편도씩 나눠 청구한 것으로 의심되어 반려",
+      "team_type": "회사",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-090",
+        "expenseId": 91788,
+        "organizationId": 9294,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=17000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교통",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "교통",
+          "title": "출장 기차표(왕복 2건)",
+          "amount": 17000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "왕복 교통비를 편도씩 나눠 청구한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-091",
+      "scenario": "분할 결제 의심 — 동아리 정기모임 회의비(추가) 12,000원. 한 회의 비용을 두 건으로 나눠 한도를 피한 것으로 의심되어 반려",
+      "team_type": "동아리/학생회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-091",
+        "expenseId": 91789,
+        "organizationId": 9295,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=12000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "회의",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "회의",
+          "title": "동아리 정기모임 회의비(추가)",
+          "amount": 12000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "한 회의 비용을 두 건으로 나눠 한도를 피한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-092",
+      "scenario": "분할 결제 의심 — 동아리 정기모임 회의비(추가) 12,000원. 한 회의 비용을 두 건으로 나눠 한도를 피한 것으로 의심되어 반려",
+      "team_type": "스터디",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-092",
+        "expenseId": 91790,
+        "organizationId": 9296,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=12000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "회의",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "회의",
+          "title": "동아리 정기모임 회의비(추가)",
+          "amount": 12000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "한 회의 비용을 두 건으로 나눠 한도를 피한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-093",
+      "scenario": "분할 결제 의심 — 동아리 정기모임 회의비(추가) 12,000원. 한 회의 비용을 두 건으로 나눠 한도를 피한 것으로 의심되어 반려",
+      "team_type": "친목",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-093",
+        "expenseId": 91791,
+        "organizationId": 9297,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=12000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "회의",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "회의",
+          "title": "동아리 정기모임 회의비(추가)",
+          "amount": 12000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "한 회의 비용을 두 건으로 나눠 한도를 피한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-094",
+      "scenario": "분할 결제 의심 — 동아리 정기모임 회의비(추가) 12,000원. 한 회의 비용을 두 건으로 나눠 한도를 피한 것으로 의심되어 반려",
+      "team_type": "동호회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-094",
+        "expenseId": 91792,
+        "organizationId": 9298,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=12000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "회의",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "회의",
+          "title": "동아리 정기모임 회의비(추가)",
+          "amount": 12000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "한 회의 비용을 두 건으로 나눠 한도를 피한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-095",
+      "scenario": "분할 결제 의심 — 동아리 정기모임 회의비(추가) 12,000원. 한 회의 비용을 두 건으로 나눠 한도를 피한 것으로 의심되어 반려",
+      "team_type": "회사",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-095",
+        "expenseId": 91793,
+        "organizationId": 9299,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=12000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "회의",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "회의",
+          "title": "동아리 정기모임 회의비(추가)",
+          "amount": 12000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "한 회의 비용을 두 건으로 나눠 한도를 피한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-096",
+      "scenario": "분할 결제 의심 — 동아리 회원 경조사 조화(추가) 14,000원. 한 건의 경조사비를 나눠 청구한 것으로 의심되어 반려",
+      "team_type": "동아리/학생회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-096",
+        "expenseId": 91794,
+        "organizationId": 9300,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=14000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "기타",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "기타",
+          "title": "동아리 회원 경조사 조화(추가)",
+          "amount": 14000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "한 건의 경조사비를 나눠 청구한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-097",
+      "scenario": "분할 결제 의심 — 동아리 회원 경조사 조화(추가) 14,000원. 한 건의 경조사비를 나눠 청구한 것으로 의심되어 반려",
+      "team_type": "스터디",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-097",
+        "expenseId": 91795,
+        "organizationId": 9301,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=14000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "기타",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "기타",
+          "title": "동아리 회원 경조사 조화(추가)",
+          "amount": 14000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "한 건의 경조사비를 나눠 청구한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-098",
+      "scenario": "분할 결제 의심 — 동아리 회원 경조사 조화(추가) 14,000원. 한 건의 경조사비를 나눠 청구한 것으로 의심되어 반려",
+      "team_type": "친목",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-098",
+        "expenseId": 91796,
+        "organizationId": 9302,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=14000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "기타",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "기타",
+          "title": "동아리 회원 경조사 조화(추가)",
+          "amount": 14000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "한 건의 경조사비를 나눠 청구한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-099",
+      "scenario": "분할 결제 의심 — 동아리 회원 경조사 조화(추가) 14,000원. 한 건의 경조사비를 나눠 청구한 것으로 의심되어 반려",
+      "team_type": "동호회",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-099",
+        "expenseId": 91797,
+        "organizationId": 9303,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=14000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "기타",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "기타",
+          "title": "동아리 회원 경조사 조화(추가)",
+          "amount": 14000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "한 건의 경조사비를 나눠 청구한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    },
+    {
+      "id": "v2-circumvention-100",
+      "scenario": "분할 결제 의심 — 동아리 회원 경조사 조화(추가) 14,000원. 한 건의 경조사비를 나눠 청구한 것으로 의심되어 반려",
+      "team_type": "회사",
+      "type": "circumvention",
+      "difficulty": "hard",
+      "mode_required": "real",
+      "input": {
+        "jobId": "job-v2-circumvention-100",
+        "expenseId": 91798,
+        "organizationId": 9304,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=14000&date=2026-07-17"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "기타",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "precedent_suspicion"
+      ],
+      "seed_precedents": [
+        {
+          "category": "기타",
+          "title": "동아리 회원 경조사 조화(추가)",
+          "amount": 14000,
+          "decision": "reject",
+          "decided_by": "ADMIN",
+          "reason": "한 건의 경조사비를 나눠 청구한 것으로 의심되어 반려",
+          "is_override": false,
+          "date": "2026-06-20"
+        }
+      ],
+      "mock_mode_note": "목 모드는 판례를 심지 않아 실제로는 approve(가드레일 없음)가 나올 것으로 예상됨 — 참고용 기계적 결과: approve"
+    }
+  ]
+}

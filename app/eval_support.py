@@ -158,6 +158,9 @@ async def run_case(case: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": case["id"],
         "scenario": case.get("scenario", ""),
+        # v2 골든셋 전용(§Phase 4 유형별 집계) — v1 케이스는 키가 없어 None. 기존 컬럼은
+        # 그대로라 export_results_csv·run_golden_set 등 기존 소비자는 영향받지 않는다.
+        "type": case.get("type"),
         "expected": expected,
         "actual": actual,
         "correct": actual == expected,
@@ -248,6 +251,7 @@ def export_results_csv(results: list[dict[str, Any]]) -> Path:
                 "actual_category",
                 "category_ok",
                 "term_violations",
+                "type",
             ]
         )
         for r in results:
@@ -266,6 +270,59 @@ def export_results_csv(results: list[dict[str, Any]]) -> Path:
                     r["actual_category"] or "",
                     "" if r["category_ok"] is None else r["category_ok"],
                     "|".join(r["term_violations"]),
+                    r.get("type") or "",
                 ]
             )
     return path
+
+
+async def run_typed_golden_set(golden_paths: list[Path]) -> dict[str, Any]:
+    """여러 골든 파일(golden_v2/{type}.json 등)을 합쳐 실행하고 유형별로 집계한다.
+
+    run_golden_set()과 별도 함수로 둔 이유: run_golden_set은 단일 파일 + 기존 summary
+    모양(대시보드 GET /v1/eval/golden 공유)을 그대로 유지해야 하고, 이 함수는 여러 파일을
+    합쳐 "유형별" 지표(§Phase 4)를 추가로 내야 해서 반환 모양 자체가 다르다 — 시그니처를
+    바꾸기보다 나란히 두는 편이 기존 소비자(대시보드·run_eval.py)에 안전하다.
+    """
+    cases: list[dict[str, Any]] = []
+    for path in golden_paths:
+        cases.extend(json.loads(path.read_text(encoding="utf-8"))["cases"])
+
+    results = [await run_case(c) for c in cases]
+
+    by_type: dict[str, list[dict[str, Any]]] = {}
+    for r in results:
+        by_type.setdefault(r["type"] or "unknown", []).append(r)
+
+    type_summaries: dict[str, Any] = {}
+    for type_key, type_results in sorted(by_type.items()):
+        correct = sum(r["correct"] for r in type_results)
+        false_approves = [r for r in type_results if r["false_approve"]]
+        vm = verdict_metrics(type_results)
+        type_summaries[type_key] = {
+            "n": len(type_results),
+            "correct": correct,
+            "accuracy": correct / len(type_results) if type_results else 0.0,
+            "false_approve_count": len(false_approves),
+            "false_approve_ids": [r["id"] for r in false_approves],
+            "escalation_recall": vm["escalation_recall"],
+            "escalation_precision": vm["escalation_precision"],
+            **category_metrics(type_results),
+        }
+
+    correct_total = sum(r["correct"] for r in results)
+    false_approves_total = [r for r in results if r["false_approve"]]
+    term_violation_cases = [r for r in results if r["term_violations"]]
+
+    return {
+        "total": len(results),
+        "correct": correct_total,
+        "accuracy": (correct_total / len(results)) if results else 0.0,
+        "false_approve_count": len(false_approves_total),
+        "false_approve_ids": [r["id"] for r in false_approves_total],
+        "term_violation_count": len(term_violation_cases),
+        "term_violation_ids": [r["id"] for r in term_violation_cases],
+        "by_type": type_summaries,
+        "results": results,
+        "csv_path": str(export_results_csv(results)),
+    }

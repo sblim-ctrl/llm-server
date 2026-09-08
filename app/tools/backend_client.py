@@ -465,26 +465,32 @@ async def get_policy_document(team_id: int, doc_type: str) -> PolicyDocumentSour
     s = get_settings()
     if s.mock_backend:
         if doc_type == "rule":
+            base_text = (
+                "제1조 (목적) 이 회칙은 모임 활동비 집행 기준을 정한다.\n\n"
+                "제2조 (회식비 한도) 1인당 회식비는 3만원을 초과할 수 없다.\n\n"
+                "제3조 (금지 항목) 개인 용도 물품 구입은 지출로 인정하지 않는다.\n\n"
+                "제4조 (도서 구입) 스터디 관련 도서는 인당 연 5만원 한도로 인정한다.\n\n"
+                "제5조 (비품·물품) 모임 공동 사용 목적의 비품·물품·장비 구입은 인정한다.\n\n"
+                "제6조 (장소 대관) 모임 활동을 위한 장소 대관료는 인정한다.\n\n"
+                "제7조 (홍보·행사) 모임 홍보물 제작비와 행사 운영 경비는 인정한다.\n\n"
+                "제8조 (다과·간식) 모임 진행 중의 다과·간식 구입은 인정한다.\n\n"
+                "제9조 (교통·이동) 모임 활동 목적의 교통비는 인정한다.\n\n"
+                "제10조 (교육·수강) 모임 주제와 관련된 교육·강연·수강료는 인정한다.\n\n"
+                "제11조 (숙박·여행) 모임 공식 일정의 숙박·여행 경비는 인정한다.\n\n"
+                f"(mock rule text, team={team_id})"
+            )
             # 제5조 이후는 실모드 골든셋 1차 실측(2026-07-20) 결과 반영 — 카테고리
             # 미커버로 rule_ambiguous escalate가 지배적 실패 원인이라 유형 공통
             # 카테고리 조항을 확장 (골든 시나리오 카테고리 커버). 목 골든셋은
             # 회칙 미인덱싱 팀이라 영향 없음(no_rules 경로).
-            return PolicyDocumentSource(
-                text=(
-                    "제1조 (목적) 이 회칙은 모임 활동비 집행 기준을 정한다.\n\n"
-                    "제2조 (회식비 한도) 1인당 회식비는 3만원을 초과할 수 없다.\n\n"
-                    "제3조 (금지 항목) 개인 용도 물품 구입은 지출로 인정하지 않는다.\n\n"
-                    "제4조 (도서 구입) 스터디 관련 도서는 인당 연 5만원 한도로 인정한다.\n\n"
-                    "제5조 (비품·물품) 모임 공동 사용 목적의 비품·물품·장비 구입은 인정한다.\n\n"
-                    "제6조 (장소 대관) 모임 활동을 위한 장소 대관료는 인정한다.\n\n"
-                    "제7조 (홍보·행사) 모임 홍보물 제작비와 행사 운영 경비는 인정한다.\n\n"
-                    "제8조 (다과·간식) 모임 진행 중의 다과·간식 구입은 인정한다.\n\n"
-                    "제9조 (교통·이동) 모임 활동 목적의 교통비는 인정한다.\n\n"
-                    "제10조 (교육·수강) 모임 주제와 관련된 교육·강연·수강료는 인정한다.\n\n"
-                    "제11조 (숙박·여행) 모임 공식 일정의 숙박·여행 경비는 인정한다.\n\n"
-                    f"(mock rule text, team={team_id})"
-                )
-            )
+            #
+            # fixture의 "policy_documents"[team_id]가 있으면 위 표준 조항 뒤에 덧붙인다
+            # — golden_v2 rule_conflict 유형이 팀별로 서로 다른 특별 조항을 실인덱싱해
+            # 표준 조항과의 충돌을 만드는 데 쓴다(eval/golden/rules/conflict_rules_v1.txt).
+            override = _fixtures().get("policy_documents", {}).get(str(team_id))
+            if override:
+                return PolicyDocumentSource(text=f"{base_text}\n\n{override}")
+            return PolicyDocumentSource(text=base_text)
         return PolicyDocumentSource(text=f"(mock {doc_type} text, team={team_id})")
     r = await _client().get(
         f"/internal/agent/teams/{team_id}/policy-document",

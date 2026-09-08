@@ -15,6 +15,14 @@ from app.tools.category_catalog import all_categories
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = json.loads((ROOT / "eval/fixtures/mock_backend.json").read_text(encoding="utf-8"))
 GOLDEN = json.loads((ROOT / "eval/golden/golden_v1.json").read_text(encoding="utf-8"))
+GOLDEN_V2_DIR = ROOT / "eval/golden/golden_v2"
+GOLDEN_V2_FILES = sorted(GOLDEN_V2_DIR.glob("*.json")) if GOLDEN_V2_DIR.is_dir() else []
+
+# v1 + v2(있으면 전 유형 파일) 케이스를 합쳐 검사한다 — 유형 파일을 새로 추가할 때마다
+# 이 테스트만 돌려도 계약 위반을 즉시 잡을 수 있게 하기 위해서다(golden_v2 생성 작업 지시).
+ALL_CASES = list(GOLDEN["cases"])
+for _path in GOLDEN_V2_FILES:
+    ALL_CASES += json.loads(_path.read_text(encoding="utf-8"))["cases"]
 
 VALID_CATEGORIES = set(all_categories()) | {""}
 
@@ -70,7 +78,7 @@ def test_expenses_carry_no_category():
 
 def test_every_golden_case_has_expected_category():
     """분류 채점의 분모 — 기대값이 빠진 케이스는 조용히 채점에서 빠진다."""
-    missing = [c["id"] for c in GOLDEN["cases"] if not c.get("expected_category")]
+    missing = [c["id"] for c in ALL_CASES if not c.get("expected_category")]
     assert not missing, missing
 
 
@@ -78,7 +86,7 @@ def test_expected_categories_are_canonical():
     """기대값이 카탈로그 밖이면 영원히 못 맞히는 케이스가 된다 — 채점이 무의미해진다."""
     bad = {
         c["id"]: c["expected_category"]
-        for c in GOLDEN["cases"]
+        for c in ALL_CASES
         if c["expected_category"] not in VALID_CATEGORIES
     }
     assert not bad, bad
@@ -93,7 +101,7 @@ def test_every_catalog_category_appears_as_an_answer():
     특히 `기타`는 "모르면 억지로 8종에 밀어 넣지 않는다"는 T7의 핵심 설계라
     검증 없이 두면 안 된다.
     """
-    answered = {c["expected_category"] for c in GOLDEN["cases"]}
+    answered = {c["expected_category"] for c in ALL_CASES}
     missing = [cat for cat in all_categories() if cat not in answered]
     assert not missing, f"골든셋에 정답으로 한 번도 없는 카테고리: {missing}"
 
@@ -108,7 +116,7 @@ def test_golden_case_ids_resolve_in_fixture():
     orgs = FIXTURE["organizations"]
     expenses = FIXTURE["expenses"]
     missing = []
-    for case in GOLDEN["cases"]:
+    for case in ALL_CASES:
         org_id = str(case["input"]["organizationId"])
         expense_id = str(case["input"]["expenseId"])
         if org_id not in orgs:
@@ -137,11 +145,11 @@ def test_golden_receipt_paths_are_posix_and_exist():
     밟았고, 스크립트를 as_posix()로 고치면서 이 그물을 함께 놓는다.
     """
     bad_sep, missing = [], []
-    for case in GOLDEN["cases"]:
+    for case in ALL_CASES:
         path = case["input"].get("receiptPath") or ""
         if not path.startswith("file://"):
             continue  # mock://receipt(불일치 시나리오)·미첨부는 대상 아님
-        rel = path[len("file://"):]
+        rel = path[len("file://") :]
         if "\\" in rel:
             bad_sep.append((case["id"], rel))
         elif not (ROOT / rel).exists():
@@ -152,6 +160,6 @@ def test_golden_receipt_paths_are_posix_and_exist():
 
 def test_no_query_string_leftovers_in_golden_ids():
     """골든셋 치환 후 옛 규약(? 쿼리)이 하나라도 남아 있으면 여기서 잡는다."""
-    for case in GOLDEN["cases"]:
+    for case in ALL_CASES:
         assert "?" not in str(case["input"]["expenseId"]), case["id"]
         assert not parse_qs(str(case["input"]["organizationId"])), case["id"]
