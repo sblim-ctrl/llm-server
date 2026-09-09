@@ -1,0 +1,2028 @@
+{
+  "version": "v2",
+  "type": "boundary",
+  "description": "경계선 — 금액·예산 임계값의 '>=' 경계",
+  "cases": [
+    {
+      "id": "v2-boundary-001",
+      "scenario": "경계 — 정기 회식 — auto_approve_limit(50,000원)보다 정확히 1원 낮음 → approve",
+      "team_type": "동아리/학생회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-001",
+        "expenseId": 91200,
+        "organizationId": 9125,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=49999&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "식비",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-002",
+      "scenario": "경계 — 정기 회식 — auto_approve_limit(50,000원)과 정확히 같음(이상 규칙) → escalate",
+      "team_type": "동아리/학생회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-002",
+        "expenseId": 91201,
+        "organizationId": 9125,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=50000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-003",
+      "scenario": "경계 — 출장 기차표 — auto_approve_limit(50,000원)보다 정확히 1원 낮음 → approve",
+      "team_type": "동아리/학생회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-003",
+        "expenseId": 91202,
+        "organizationId": 9125,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=49999&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교통",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-004",
+      "scenario": "경계 — 출장 기차표 — auto_approve_limit(50,000원)과 정확히 같음(이상 규칙) → escalate",
+      "team_type": "동아리/학생회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-004",
+        "expenseId": 91203,
+        "organizationId": 9125,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=50000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교통",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-005",
+      "scenario": "경계 — 노션 팀 구독료 — auto_approve_limit(50,000원)보다 정확히 1원 낮음 → approve",
+      "team_type": "동아리/학생회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-005",
+        "expenseId": 91204,
+        "organizationId": 9125,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=49999&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "IT_인프라",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-006",
+      "scenario": "경계 — 노션 팀 구독료 — auto_approve_limit(50,000원)과 정확히 같음(이상 규칙) → escalate",
+      "team_type": "동아리/학생회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-006",
+        "expenseId": 91205,
+        "organizationId": 9125,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=50000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "IT_인프라",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-007",
+      "scenario": "경계 — 정기 회식 — auto_approve_limit(50,000원)보다 정확히 1원 낮음 → approve",
+      "team_type": "스터디",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-007",
+        "expenseId": 91206,
+        "organizationId": 9126,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=49999&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "식비",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-008",
+      "scenario": "경계 — 정기 회식 — auto_approve_limit(50,000원)과 정확히 같음(이상 규칙) → escalate",
+      "team_type": "스터디",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-008",
+        "expenseId": 91207,
+        "organizationId": 9126,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=50000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-009",
+      "scenario": "경계 — 출장 기차표 — auto_approve_limit(50,000원)보다 정확히 1원 낮음 → approve",
+      "team_type": "스터디",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-009",
+        "expenseId": 91208,
+        "organizationId": 9126,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=49999&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교통",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-010",
+      "scenario": "경계 — 출장 기차표 — auto_approve_limit(50,000원)과 정확히 같음(이상 규칙) → escalate",
+      "team_type": "스터디",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-010",
+        "expenseId": 91209,
+        "organizationId": 9126,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=50000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교통",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-011",
+      "scenario": "경계 — 노션 팀 구독료 — auto_approve_limit(50,000원)보다 정확히 1원 낮음 → approve",
+      "team_type": "스터디",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-011",
+        "expenseId": 91210,
+        "organizationId": 9126,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=49999&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "IT_인프라",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-012",
+      "scenario": "경계 — 노션 팀 구독료 — auto_approve_limit(50,000원)과 정확히 같음(이상 규칙) → escalate",
+      "team_type": "스터디",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-012",
+        "expenseId": 91211,
+        "organizationId": 9126,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=50000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "IT_인프라",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-013",
+      "scenario": "경계 — 정기 회식 — auto_approve_limit(50,000원)보다 정확히 1원 낮음 → approve",
+      "team_type": "친목",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-013",
+        "expenseId": 91212,
+        "organizationId": 9127,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=49999&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "식비",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-014",
+      "scenario": "경계 — 정기 회식 — auto_approve_limit(50,000원)과 정확히 같음(이상 규칙) → escalate",
+      "team_type": "친목",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-014",
+        "expenseId": 91213,
+        "organizationId": 9127,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=50000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-015",
+      "scenario": "경계 — 출장 기차표 — auto_approve_limit(50,000원)보다 정확히 1원 낮음 → approve",
+      "team_type": "친목",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-015",
+        "expenseId": 91214,
+        "organizationId": 9127,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=49999&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교통",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-016",
+      "scenario": "경계 — 출장 기차표 — auto_approve_limit(50,000원)과 정확히 같음(이상 규칙) → escalate",
+      "team_type": "친목",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-016",
+        "expenseId": 91215,
+        "organizationId": 9127,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=50000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교통",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-017",
+      "scenario": "경계 — 노션 팀 구독료 — auto_approve_limit(50,000원)보다 정확히 1원 낮음 → approve",
+      "team_type": "친목",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-017",
+        "expenseId": 91216,
+        "organizationId": 9127,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=49999&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "IT_인프라",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-018",
+      "scenario": "경계 — 노션 팀 구독료 — auto_approve_limit(50,000원)과 정확히 같음(이상 규칙) → escalate",
+      "team_type": "친목",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-018",
+        "expenseId": 91217,
+        "organizationId": 9127,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=50000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "IT_인프라",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-019",
+      "scenario": "경계 — 정기 회식 — auto_approve_limit(50,000원)보다 정확히 1원 낮음 → approve",
+      "team_type": "동호회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-019",
+        "expenseId": 91218,
+        "organizationId": 9128,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=49999&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "식비",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-020",
+      "scenario": "경계 — 정기 회식 — auto_approve_limit(50,000원)과 정확히 같음(이상 규칙) → escalate",
+      "team_type": "동호회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-020",
+        "expenseId": 91219,
+        "organizationId": 9128,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=50000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-021",
+      "scenario": "경계 — 출장 기차표 — auto_approve_limit(50,000원)보다 정확히 1원 낮음 → approve",
+      "team_type": "동호회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-021",
+        "expenseId": 91220,
+        "organizationId": 9128,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=49999&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교통",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-022",
+      "scenario": "경계 — 출장 기차표 — auto_approve_limit(50,000원)과 정확히 같음(이상 규칙) → escalate",
+      "team_type": "동호회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-022",
+        "expenseId": 91221,
+        "organizationId": 9128,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=50000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교통",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-023",
+      "scenario": "경계 — 노션 팀 구독료 — auto_approve_limit(50,000원)보다 정확히 1원 낮음 → approve",
+      "team_type": "동호회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-023",
+        "expenseId": 91222,
+        "organizationId": 9128,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=49999&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "IT_인프라",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-024",
+      "scenario": "경계 — 노션 팀 구독료 — auto_approve_limit(50,000원)과 정확히 같음(이상 규칙) → escalate",
+      "team_type": "동호회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-024",
+        "expenseId": 91223,
+        "organizationId": 9128,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=50000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "IT_인프라",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-025",
+      "scenario": "경계 — 정기 회식 — auto_approve_limit(50,000원)보다 정확히 1원 낮음 → approve",
+      "team_type": "회사",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-025",
+        "expenseId": 91224,
+        "organizationId": 9129,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=49999&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "식비",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-026",
+      "scenario": "경계 — 정기 회식 — auto_approve_limit(50,000원)과 정확히 같음(이상 규칙) → escalate",
+      "team_type": "회사",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-026",
+        "expenseId": 91225,
+        "organizationId": 9129,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=50000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-027",
+      "scenario": "경계 — 출장 기차표 — auto_approve_limit(50,000원)보다 정확히 1원 낮음 → approve",
+      "team_type": "회사",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-027",
+        "expenseId": 91226,
+        "organizationId": 9129,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=49999&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교통",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-028",
+      "scenario": "경계 — 출장 기차표 — auto_approve_limit(50,000원)과 정확히 같음(이상 규칙) → escalate",
+      "team_type": "회사",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-028",
+        "expenseId": 91227,
+        "organizationId": 9129,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=50000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교통",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-029",
+      "scenario": "경계 — 노션 팀 구독료 — auto_approve_limit(50,000원)보다 정확히 1원 낮음 → approve",
+      "team_type": "회사",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-029",
+        "expenseId": 91228,
+        "organizationId": 9129,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=49999&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "IT_인프라",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-030",
+      "scenario": "경계 — 노션 팀 구독료 — auto_approve_limit(50,000원)과 정확히 같음(이상 규칙) → escalate",
+      "team_type": "회사",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-030",
+        "expenseId": 91229,
+        "organizationId": 9129,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=50000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "IT_인프라",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-031",
+      "scenario": "경계 — 온라인 강의 수강료 — force_escalation_amount(200,000원)보다 1원 낮음. auto_approve_limit은 이미 넘어 escalate지만 over_force_escalation_amount는 아직 발동하지 않음",
+      "team_type": "동아리/학생회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-031",
+        "expenseId": 91230,
+        "organizationId": 9130,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=199999&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-032",
+      "scenario": "경계 — 온라인 강의 수강료 — force_escalation_amount(200,000원)과 정확히 같음. 판정은 위와 동일하게 escalate지만 over_force_escalation_amount가 추가로 발동",
+      "team_type": "동아리/학생회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-032",
+        "expenseId": 91231,
+        "organizationId": 9130,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=200000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_force_escalation_amount",
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-033",
+      "scenario": "경계 — 동아리 정기모임 회의비 — force_escalation_amount(200,000원)보다 1원 낮음. auto_approve_limit은 이미 넘어 escalate지만 over_force_escalation_amount는 아직 발동하지 않음",
+      "team_type": "동아리/학생회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-033",
+        "expenseId": 91232,
+        "organizationId": 9130,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=199999&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "회의",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-034",
+      "scenario": "경계 — 동아리 정기모임 회의비 — force_escalation_amount(200,000원)과 정확히 같음. 판정은 위와 동일하게 escalate지만 over_force_escalation_amount가 추가로 발동",
+      "team_type": "동아리/학생회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-034",
+        "expenseId": 91233,
+        "organizationId": 9130,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=200000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "회의",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_force_escalation_amount",
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-035",
+      "scenario": "경계 — 스터디룸 대관료 — force_escalation_amount(200,000원)보다 1원 낮음. auto_approve_limit은 이미 넘어 escalate지만 over_force_escalation_amount는 아직 발동하지 않음",
+      "team_type": "동아리/학생회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-035",
+        "expenseId": 91234,
+        "organizationId": 9130,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=199999&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-036",
+      "scenario": "경계 — 스터디룸 대관료 — force_escalation_amount(200,000원)과 정확히 같음. 판정은 위와 동일하게 escalate지만 over_force_escalation_amount가 추가로 발동",
+      "team_type": "동아리/학생회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-036",
+        "expenseId": 91235,
+        "organizationId": 9130,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=200000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_force_escalation_amount",
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-037",
+      "scenario": "경계 — 온라인 강의 수강료 — force_escalation_amount(200,000원)보다 1원 낮음. auto_approve_limit은 이미 넘어 escalate지만 over_force_escalation_amount는 아직 발동하지 않음",
+      "team_type": "스터디",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-037",
+        "expenseId": 91236,
+        "organizationId": 9131,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=199999&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-038",
+      "scenario": "경계 — 온라인 강의 수강료 — force_escalation_amount(200,000원)과 정확히 같음. 판정은 위와 동일하게 escalate지만 over_force_escalation_amount가 추가로 발동",
+      "team_type": "스터디",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-038",
+        "expenseId": 91237,
+        "organizationId": 9131,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=200000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_force_escalation_amount",
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-039",
+      "scenario": "경계 — 동아리 정기모임 회의비 — force_escalation_amount(200,000원)보다 1원 낮음. auto_approve_limit은 이미 넘어 escalate지만 over_force_escalation_amount는 아직 발동하지 않음",
+      "team_type": "스터디",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-039",
+        "expenseId": 91238,
+        "organizationId": 9131,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=199999&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "회의",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-040",
+      "scenario": "경계 — 동아리 정기모임 회의비 — force_escalation_amount(200,000원)과 정확히 같음. 판정은 위와 동일하게 escalate지만 over_force_escalation_amount가 추가로 발동",
+      "team_type": "스터디",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-040",
+        "expenseId": 91239,
+        "organizationId": 9131,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=200000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "회의",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_force_escalation_amount",
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-041",
+      "scenario": "경계 — 스터디룸 대관료 — force_escalation_amount(200,000원)보다 1원 낮음. auto_approve_limit은 이미 넘어 escalate지만 over_force_escalation_amount는 아직 발동하지 않음",
+      "team_type": "스터디",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-041",
+        "expenseId": 91240,
+        "organizationId": 9131,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=199999&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-042",
+      "scenario": "경계 — 스터디룸 대관료 — force_escalation_amount(200,000원)과 정확히 같음. 판정은 위와 동일하게 escalate지만 over_force_escalation_amount가 추가로 발동",
+      "team_type": "스터디",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-042",
+        "expenseId": 91241,
+        "organizationId": 9131,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=200000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_force_escalation_amount",
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-043",
+      "scenario": "경계 — 온라인 강의 수강료 — force_escalation_amount(200,000원)보다 1원 낮음. auto_approve_limit은 이미 넘어 escalate지만 over_force_escalation_amount는 아직 발동하지 않음",
+      "team_type": "친목",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-043",
+        "expenseId": 91242,
+        "organizationId": 9132,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=199999&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-044",
+      "scenario": "경계 — 온라인 강의 수강료 — force_escalation_amount(200,000원)과 정확히 같음. 판정은 위와 동일하게 escalate지만 over_force_escalation_amount가 추가로 발동",
+      "team_type": "친목",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-044",
+        "expenseId": 91243,
+        "organizationId": 9132,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=200000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_force_escalation_amount",
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-045",
+      "scenario": "경계 — 동아리 정기모임 회의비 — force_escalation_amount(200,000원)보다 1원 낮음. auto_approve_limit은 이미 넘어 escalate지만 over_force_escalation_amount는 아직 발동하지 않음",
+      "team_type": "친목",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-045",
+        "expenseId": 91244,
+        "organizationId": 9132,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=199999&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "회의",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-046",
+      "scenario": "경계 — 동아리 정기모임 회의비 — force_escalation_amount(200,000원)과 정확히 같음. 판정은 위와 동일하게 escalate지만 over_force_escalation_amount가 추가로 발동",
+      "team_type": "친목",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-046",
+        "expenseId": 91245,
+        "organizationId": 9132,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=200000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "회의",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_force_escalation_amount",
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-047",
+      "scenario": "경계 — 스터디룸 대관료 — force_escalation_amount(200,000원)보다 1원 낮음. auto_approve_limit은 이미 넘어 escalate지만 over_force_escalation_amount는 아직 발동하지 않음",
+      "team_type": "친목",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-047",
+        "expenseId": 91246,
+        "organizationId": 9132,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=199999&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-048",
+      "scenario": "경계 — 스터디룸 대관료 — force_escalation_amount(200,000원)과 정확히 같음. 판정은 위와 동일하게 escalate지만 over_force_escalation_amount가 추가로 발동",
+      "team_type": "친목",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-048",
+        "expenseId": 91247,
+        "organizationId": 9132,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=200000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_force_escalation_amount",
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-049",
+      "scenario": "경계 — 온라인 강의 수강료 — force_escalation_amount(200,000원)보다 1원 낮음. auto_approve_limit은 이미 넘어 escalate지만 over_force_escalation_amount는 아직 발동하지 않음",
+      "team_type": "동호회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-049",
+        "expenseId": 91248,
+        "organizationId": 9133,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=199999&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-050",
+      "scenario": "경계 — 온라인 강의 수강료 — force_escalation_amount(200,000원)과 정확히 같음. 판정은 위와 동일하게 escalate지만 over_force_escalation_amount가 추가로 발동",
+      "team_type": "동호회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-050",
+        "expenseId": 91249,
+        "organizationId": 9133,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=200000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_force_escalation_amount",
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-051",
+      "scenario": "경계 — 동아리 정기모임 회의비 — force_escalation_amount(200,000원)보다 1원 낮음. auto_approve_limit은 이미 넘어 escalate지만 over_force_escalation_amount는 아직 발동하지 않음",
+      "team_type": "동호회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-051",
+        "expenseId": 91250,
+        "organizationId": 9133,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=199999&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "회의",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-052",
+      "scenario": "경계 — 동아리 정기모임 회의비 — force_escalation_amount(200,000원)과 정확히 같음. 판정은 위와 동일하게 escalate지만 over_force_escalation_amount가 추가로 발동",
+      "team_type": "동호회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-052",
+        "expenseId": 91251,
+        "organizationId": 9133,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=200000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "회의",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_force_escalation_amount",
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-053",
+      "scenario": "경계 — 스터디룸 대관료 — force_escalation_amount(200,000원)보다 1원 낮음. auto_approve_limit은 이미 넘어 escalate지만 over_force_escalation_amount는 아직 발동하지 않음",
+      "team_type": "동호회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-053",
+        "expenseId": 91252,
+        "organizationId": 9133,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=199999&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-054",
+      "scenario": "경계 — 스터디룸 대관료 — force_escalation_amount(200,000원)과 정확히 같음. 판정은 위와 동일하게 escalate지만 over_force_escalation_amount가 추가로 발동",
+      "team_type": "동호회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-054",
+        "expenseId": 91253,
+        "organizationId": 9133,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=200000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_force_escalation_amount",
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-055",
+      "scenario": "경계 — 온라인 강의 수강료 — force_escalation_amount(200,000원)보다 1원 낮음. auto_approve_limit은 이미 넘어 escalate지만 over_force_escalation_amount는 아직 발동하지 않음",
+      "team_type": "회사",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-055",
+        "expenseId": 91254,
+        "organizationId": 9134,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=199999&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-056",
+      "scenario": "경계 — 온라인 강의 수강료 — force_escalation_amount(200,000원)과 정확히 같음. 판정은 위와 동일하게 escalate지만 over_force_escalation_amount가 추가로 발동",
+      "team_type": "회사",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-056",
+        "expenseId": 91255,
+        "organizationId": 9134,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=200000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_force_escalation_amount",
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-057",
+      "scenario": "경계 — 동아리 정기모임 회의비 — force_escalation_amount(200,000원)보다 1원 낮음. auto_approve_limit은 이미 넘어 escalate지만 over_force_escalation_amount는 아직 발동하지 않음",
+      "team_type": "회사",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-057",
+        "expenseId": 91256,
+        "organizationId": 9134,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=199999&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "회의",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-058",
+      "scenario": "경계 — 동아리 정기모임 회의비 — force_escalation_amount(200,000원)과 정확히 같음. 판정은 위와 동일하게 escalate지만 over_force_escalation_amount가 추가로 발동",
+      "team_type": "회사",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-058",
+        "expenseId": 91257,
+        "organizationId": 9134,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=200000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "회의",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_force_escalation_amount",
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-059",
+      "scenario": "경계 — 스터디룸 대관료 — force_escalation_amount(200,000원)보다 1원 낮음. auto_approve_limit은 이미 넘어 escalate지만 over_force_escalation_amount는 아직 발동하지 않음",
+      "team_type": "회사",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-059",
+        "expenseId": 91258,
+        "organizationId": 9134,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=199999&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-060",
+      "scenario": "경계 — 스터디룸 대관료 — force_escalation_amount(200,000원)과 정확히 같음. 판정은 위와 동일하게 escalate지만 over_force_escalation_amount가 추가로 발동",
+      "team_type": "회사",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-060",
+        "expenseId": 91259,
+        "organizationId": 9134,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=200000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_force_escalation_amount",
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-061",
+      "scenario": "경계 — 동아리 엠티 참가비 — 승인 시 예산 사용률 89.9%(90% 미만). budget_auditor 의견은 pass지만 verdict=='fail'만 게이트에 영향을 주므로 결과는 아래 90.0% 케이스와 동일하게 approve — 사용률 경계는 게이트에 관측되지 않는다",
+      "team_type": "동아리/학생회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-061",
+        "expenseId": 91260,
+        "organizationId": 9135,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "행사_활동",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-062",
+      "scenario": "경계 — 동아리 엠티 참가비 — 승인 시 예산 사용률 정확히 90.0%. budget_auditor 의견은 warn으로 바뀌지만 guardrail_gate는 verdict=='fail'만 보므로(§4.5 밖) 최종 판정은 위 89.9% 케이스와 동일하게 approve — '경계선이니 갈릴 것'이라는 직관과 달리 게이트·최종 판정에는 무영향(이 유형의 핵심 발견)",
+      "team_type": "동아리/학생회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-062",
+        "expenseId": 91261,
+        "organizationId": 9136,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "행사_활동",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-063",
+      "scenario": "경계 — 학회 단체 티셔츠 제작 — 승인 시 예산 사용률 89.9%(90% 미만). budget_auditor 의견은 pass지만 verdict=='fail'만 게이트에 영향을 주므로 결과는 아래 90.0% 케이스와 동일하게 approve — 사용률 경계는 게이트에 관측되지 않는다",
+      "team_type": "동아리/학생회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-063",
+        "expenseId": 91262,
+        "organizationId": 9135,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "비품",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-064",
+      "scenario": "경계 — 학회 단체 티셔츠 제작 — 승인 시 예산 사용률 정확히 90.0%. budget_auditor 의견은 warn으로 바뀌지만 guardrail_gate는 verdict=='fail'만 보므로(§4.5 밖) 최종 판정은 위 89.9% 케이스와 동일하게 approve — '경계선이니 갈릴 것'이라는 직관과 달리 게이트·최종 판정에는 무영향(이 유형의 핵심 발견)",
+      "team_type": "동아리/학생회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-064",
+        "expenseId": 91263,
+        "organizationId": 9136,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "비품",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-065",
+      "scenario": "경계 — 동아리 회원 경조사 조화 — 승인 시 예산 사용률 89.9%(90% 미만). budget_auditor 의견은 pass지만 verdict=='fail'만 게이트에 영향을 주므로 결과는 아래 90.0% 케이스와 동일하게 approve — 사용률 경계는 게이트에 관측되지 않는다",
+      "team_type": "동아리/학생회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-065",
+        "expenseId": 91264,
+        "organizationId": 9135,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "기타",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-066",
+      "scenario": "경계 — 동아리 회원 경조사 조화 — 승인 시 예산 사용률 정확히 90.0%. budget_auditor 의견은 warn으로 바뀌지만 guardrail_gate는 verdict=='fail'만 보므로(§4.5 밖) 최종 판정은 위 89.9% 케이스와 동일하게 approve — '경계선이니 갈릴 것'이라는 직관과 달리 게이트·최종 판정에는 무영향(이 유형의 핵심 발견)",
+      "team_type": "동아리/학생회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-066",
+        "expenseId": 91265,
+        "organizationId": 9136,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "기타",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-067",
+      "scenario": "경계 — 동아리 엠티 참가비 — 승인 시 예산 사용률 89.9%(90% 미만). budget_auditor 의견은 pass지만 verdict=='fail'만 게이트에 영향을 주므로 결과는 아래 90.0% 케이스와 동일하게 approve — 사용률 경계는 게이트에 관측되지 않는다",
+      "team_type": "스터디",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-067",
+        "expenseId": 91266,
+        "organizationId": 9137,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "행사_활동",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-068",
+      "scenario": "경계 — 동아리 엠티 참가비 — 승인 시 예산 사용률 정확히 90.0%. budget_auditor 의견은 warn으로 바뀌지만 guardrail_gate는 verdict=='fail'만 보므로(§4.5 밖) 최종 판정은 위 89.9% 케이스와 동일하게 approve — '경계선이니 갈릴 것'이라는 직관과 달리 게이트·최종 판정에는 무영향(이 유형의 핵심 발견)",
+      "team_type": "스터디",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-068",
+        "expenseId": 91267,
+        "organizationId": 9138,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "행사_활동",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-069",
+      "scenario": "경계 — 학회 단체 티셔츠 제작 — 승인 시 예산 사용률 89.9%(90% 미만). budget_auditor 의견은 pass지만 verdict=='fail'만 게이트에 영향을 주므로 결과는 아래 90.0% 케이스와 동일하게 approve — 사용률 경계는 게이트에 관측되지 않는다",
+      "team_type": "스터디",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-069",
+        "expenseId": 91268,
+        "organizationId": 9137,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "비품",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-070",
+      "scenario": "경계 — 학회 단체 티셔츠 제작 — 승인 시 예산 사용률 정확히 90.0%. budget_auditor 의견은 warn으로 바뀌지만 guardrail_gate는 verdict=='fail'만 보므로(§4.5 밖) 최종 판정은 위 89.9% 케이스와 동일하게 approve — '경계선이니 갈릴 것'이라는 직관과 달리 게이트·최종 판정에는 무영향(이 유형의 핵심 발견)",
+      "team_type": "스터디",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-070",
+        "expenseId": 91269,
+        "organizationId": 9138,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "비품",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-071",
+      "scenario": "경계 — 동아리 회원 경조사 조화 — 승인 시 예산 사용률 89.9%(90% 미만). budget_auditor 의견은 pass지만 verdict=='fail'만 게이트에 영향을 주므로 결과는 아래 90.0% 케이스와 동일하게 approve — 사용률 경계는 게이트에 관측되지 않는다",
+      "team_type": "스터디",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-071",
+        "expenseId": 91270,
+        "organizationId": 9137,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "기타",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-072",
+      "scenario": "경계 — 동아리 회원 경조사 조화 — 승인 시 예산 사용률 정확히 90.0%. budget_auditor 의견은 warn으로 바뀌지만 guardrail_gate는 verdict=='fail'만 보므로(§4.5 밖) 최종 판정은 위 89.9% 케이스와 동일하게 approve — '경계선이니 갈릴 것'이라는 직관과 달리 게이트·최종 판정에는 무영향(이 유형의 핵심 발견)",
+      "team_type": "스터디",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-072",
+        "expenseId": 91271,
+        "organizationId": 9138,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "기타",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-073",
+      "scenario": "경계 — 동아리 엠티 참가비 — 승인 시 예산 사용률 89.9%(90% 미만). budget_auditor 의견은 pass지만 verdict=='fail'만 게이트에 영향을 주므로 결과는 아래 90.0% 케이스와 동일하게 approve — 사용률 경계는 게이트에 관측되지 않는다",
+      "team_type": "친목",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-073",
+        "expenseId": 91272,
+        "organizationId": 9139,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "행사_활동",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-074",
+      "scenario": "경계 — 동아리 엠티 참가비 — 승인 시 예산 사용률 정확히 90.0%. budget_auditor 의견은 warn으로 바뀌지만 guardrail_gate는 verdict=='fail'만 보므로(§4.5 밖) 최종 판정은 위 89.9% 케이스와 동일하게 approve — '경계선이니 갈릴 것'이라는 직관과 달리 게이트·최종 판정에는 무영향(이 유형의 핵심 발견)",
+      "team_type": "친목",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-074",
+        "expenseId": 91273,
+        "organizationId": 9140,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "행사_활동",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-075",
+      "scenario": "경계 — 학회 단체 티셔츠 제작 — 승인 시 예산 사용률 89.9%(90% 미만). budget_auditor 의견은 pass지만 verdict=='fail'만 게이트에 영향을 주므로 결과는 아래 90.0% 케이스와 동일하게 approve — 사용률 경계는 게이트에 관측되지 않는다",
+      "team_type": "친목",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-075",
+        "expenseId": 91274,
+        "organizationId": 9139,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "비품",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-076",
+      "scenario": "경계 — 학회 단체 티셔츠 제작 — 승인 시 예산 사용률 정확히 90.0%. budget_auditor 의견은 warn으로 바뀌지만 guardrail_gate는 verdict=='fail'만 보므로(§4.5 밖) 최종 판정은 위 89.9% 케이스와 동일하게 approve — '경계선이니 갈릴 것'이라는 직관과 달리 게이트·최종 판정에는 무영향(이 유형의 핵심 발견)",
+      "team_type": "친목",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-076",
+        "expenseId": 91275,
+        "organizationId": 9140,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "비품",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-077",
+      "scenario": "경계 — 동아리 회원 경조사 조화 — 승인 시 예산 사용률 89.9%(90% 미만). budget_auditor 의견은 pass지만 verdict=='fail'만 게이트에 영향을 주므로 결과는 아래 90.0% 케이스와 동일하게 approve — 사용률 경계는 게이트에 관측되지 않는다",
+      "team_type": "친목",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-077",
+        "expenseId": 91276,
+        "organizationId": 9139,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "기타",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-078",
+      "scenario": "경계 — 동아리 회원 경조사 조화 — 승인 시 예산 사용률 정확히 90.0%. budget_auditor 의견은 warn으로 바뀌지만 guardrail_gate는 verdict=='fail'만 보므로(§4.5 밖) 최종 판정은 위 89.9% 케이스와 동일하게 approve — '경계선이니 갈릴 것'이라는 직관과 달리 게이트·최종 판정에는 무영향(이 유형의 핵심 발견)",
+      "team_type": "친목",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-078",
+        "expenseId": 91277,
+        "organizationId": 9140,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "기타",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-079",
+      "scenario": "경계 — 동아리 엠티 참가비 — 승인 시 예산 사용률 89.9%(90% 미만). budget_auditor 의견은 pass지만 verdict=='fail'만 게이트에 영향을 주므로 결과는 아래 90.0% 케이스와 동일하게 approve — 사용률 경계는 게이트에 관측되지 않는다",
+      "team_type": "동호회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-079",
+        "expenseId": 91278,
+        "organizationId": 9141,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "행사_활동",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-080",
+      "scenario": "경계 — 동아리 엠티 참가비 — 승인 시 예산 사용률 정확히 90.0%. budget_auditor 의견은 warn으로 바뀌지만 guardrail_gate는 verdict=='fail'만 보므로(§4.5 밖) 최종 판정은 위 89.9% 케이스와 동일하게 approve — '경계선이니 갈릴 것'이라는 직관과 달리 게이트·최종 판정에는 무영향(이 유형의 핵심 발견)",
+      "team_type": "동호회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-080",
+        "expenseId": 91279,
+        "organizationId": 9142,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "행사_활동",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-081",
+      "scenario": "경계 — 학회 단체 티셔츠 제작 — 승인 시 예산 사용률 89.9%(90% 미만). budget_auditor 의견은 pass지만 verdict=='fail'만 게이트에 영향을 주므로 결과는 아래 90.0% 케이스와 동일하게 approve — 사용률 경계는 게이트에 관측되지 않는다",
+      "team_type": "동호회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-081",
+        "expenseId": 91280,
+        "organizationId": 9141,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "비품",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-082",
+      "scenario": "경계 — 학회 단체 티셔츠 제작 — 승인 시 예산 사용률 정확히 90.0%. budget_auditor 의견은 warn으로 바뀌지만 guardrail_gate는 verdict=='fail'만 보므로(§4.5 밖) 최종 판정은 위 89.9% 케이스와 동일하게 approve — '경계선이니 갈릴 것'이라는 직관과 달리 게이트·최종 판정에는 무영향(이 유형의 핵심 발견)",
+      "team_type": "동호회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-082",
+        "expenseId": 91281,
+        "organizationId": 9142,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "비품",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-083",
+      "scenario": "경계 — 동아리 회원 경조사 조화 — 승인 시 예산 사용률 89.9%(90% 미만). budget_auditor 의견은 pass지만 verdict=='fail'만 게이트에 영향을 주므로 결과는 아래 90.0% 케이스와 동일하게 approve — 사용률 경계는 게이트에 관측되지 않는다",
+      "team_type": "동호회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-083",
+        "expenseId": 91282,
+        "organizationId": 9141,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "기타",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-084",
+      "scenario": "경계 — 동아리 회원 경조사 조화 — 승인 시 예산 사용률 정확히 90.0%. budget_auditor 의견은 warn으로 바뀌지만 guardrail_gate는 verdict=='fail'만 보므로(§4.5 밖) 최종 판정은 위 89.9% 케이스와 동일하게 approve — '경계선이니 갈릴 것'이라는 직관과 달리 게이트·최종 판정에는 무영향(이 유형의 핵심 발견)",
+      "team_type": "동호회",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-084",
+        "expenseId": 91283,
+        "organizationId": 9142,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "기타",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-085",
+      "scenario": "경계 — 동아리 엠티 참가비 — 승인 시 예산 사용률 89.9%(90% 미만). budget_auditor 의견은 pass지만 verdict=='fail'만 게이트에 영향을 주므로 결과는 아래 90.0% 케이스와 동일하게 approve — 사용률 경계는 게이트에 관측되지 않는다",
+      "team_type": "회사",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-085",
+        "expenseId": 91284,
+        "organizationId": 9143,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "행사_활동",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-086",
+      "scenario": "경계 — 동아리 엠티 참가비 — 승인 시 예산 사용률 정확히 90.0%. budget_auditor 의견은 warn으로 바뀌지만 guardrail_gate는 verdict=='fail'만 보므로(§4.5 밖) 최종 판정은 위 89.9% 케이스와 동일하게 approve — '경계선이니 갈릴 것'이라는 직관과 달리 게이트·최종 판정에는 무영향(이 유형의 핵심 발견)",
+      "team_type": "회사",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-086",
+        "expenseId": 91285,
+        "organizationId": 9144,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "행사_활동",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-087",
+      "scenario": "경계 — 학회 단체 티셔츠 제작 — 승인 시 예산 사용률 89.9%(90% 미만). budget_auditor 의견은 pass지만 verdict=='fail'만 게이트에 영향을 주므로 결과는 아래 90.0% 케이스와 동일하게 approve — 사용률 경계는 게이트에 관측되지 않는다",
+      "team_type": "회사",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-087",
+        "expenseId": 91286,
+        "organizationId": 9143,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "비품",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-088",
+      "scenario": "경계 — 학회 단체 티셔츠 제작 — 승인 시 예산 사용률 정확히 90.0%. budget_auditor 의견은 warn으로 바뀌지만 guardrail_gate는 verdict=='fail'만 보므로(§4.5 밖) 최종 판정은 위 89.9% 케이스와 동일하게 approve — '경계선이니 갈릴 것'이라는 직관과 달리 게이트·최종 판정에는 무영향(이 유형의 핵심 발견)",
+      "team_type": "회사",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-088",
+        "expenseId": 91287,
+        "organizationId": 9144,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "비품",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-089",
+      "scenario": "경계 — 동아리 회원 경조사 조화 — 승인 시 예산 사용률 89.9%(90% 미만). budget_auditor 의견은 pass지만 verdict=='fail'만 게이트에 영향을 주므로 결과는 아래 90.0% 케이스와 동일하게 approve — 사용률 경계는 게이트에 관측되지 않는다",
+      "team_type": "회사",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-089",
+        "expenseId": 91288,
+        "organizationId": 9143,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "기타",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-090",
+      "scenario": "경계 — 동아리 회원 경조사 조화 — 승인 시 예산 사용률 정확히 90.0%. budget_auditor 의견은 warn으로 바뀌지만 guardrail_gate는 verdict=='fail'만 보므로(§4.5 밖) 최종 판정은 위 89.9% 케이스와 동일하게 approve — '경계선이니 갈릴 것'이라는 직관과 달리 게이트·최종 판정에는 무영향(이 유형의 핵심 발견)",
+      "team_type": "회사",
+      "type": "boundary",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-090",
+        "expenseId": 91289,
+        "organizationId": 9144,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=45000&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "기타",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-091",
+      "scenario": "경계 — 한도보다 1원 더 많음 — escalate 쪽에서도 여유 있게 안쪽인지 확인",
+      "team_type": "동아리/학생회",
+      "type": "boundary",
+      "difficulty": "hard",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-091",
+        "expenseId": 91290,
+        "organizationId": 9145,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=50001&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-092",
+      "scenario": "경계 — auto_approve=False인 조직 — 금액은 한도 훨씬 아래(10,000원)라도 판정 권한 자체가 없어 escalate. 이 유형의 '금액 경계'와는 다른 축(auto_approve_disabled)이 함께 있음을 보여주는 하드 케이스",
+      "team_type": "스터디",
+      "type": "boundary",
+      "difficulty": "hard",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-092",
+        "expenseId": 91291,
+        "organizationId": 9146,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-boundary-093",
+      "scenario": "경계 — 청구액이 한도(50,000원)와 정확히 같고 잔액도 정확히 50,000원 — 예산은 충분하지만 금액 경계가 이겨 escalate(§4.5 우선순위표 밖: 예산이 '부족'하지 않으면 반려 우선순위 자체가 발동하지 않는다)",
+      "team_type": "친목",
+      "type": "boundary",
+      "difficulty": "hard",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-093",
+        "expenseId": 91292,
+        "organizationId": 9147,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=50000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-094",
+      "scenario": "경계 — 승인 시 잔액이 정확히 0원(사용률 100%)이지만 금액이 한도 미만이라 approve",
+      "team_type": "동호회",
+      "type": "boundary",
+      "difficulty": "hard",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-094",
+        "expenseId": 91293,
+        "organizationId": 9148,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=49999&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "행사_활동",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-095",
+      "scenario": "경계 — force_escalation_amount 경계(200,000원)와 예산 부족(잔액 100,000원)이 동시에 걸리는 조합 — §4.5 우선순위상 반려가 이겨 이 boundary 케이스의 결과는 escalate가 아니라 reject가 된다(경계 유형 안에 우선순위 유형의 로직이 스며드는 예)",
+      "team_type": "회사",
+      "type": "boundary",
+      "difficulty": "hard",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-095",
+        "expenseId": 91294,
+        "organizationId": 9149,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=200000&date=2026-07-12"
+      },
+      "expected_verdict": "reject",
+      "expected_category": "IT_인프라",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "budget_insufficient",
+        "over_force_escalation_amount",
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-096",
+      "scenario": "경계 — 정기 회식 — auto_approve_limit 경계 재확인(50,000원)",
+      "team_type": "동아리/학생회",
+      "type": "boundary",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-096",
+        "expenseId": 91295,
+        "organizationId": 9145,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=50000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-097",
+      "scenario": "경계 — 출장 기차표 — auto_approve_limit 경계 재확인(49,999원)",
+      "team_type": "동아리/학생회",
+      "type": "boundary",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-097",
+        "expenseId": 91296,
+        "organizationId": 9145,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=49999&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교통",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-098",
+      "scenario": "경계 — 노션 팀 구독료 — auto_approve_limit 경계 재확인(50,000원)",
+      "team_type": "동아리/학생회",
+      "type": "boundary",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-098",
+        "expenseId": 91297,
+        "organizationId": 9145,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=50000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "IT_인프라",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-boundary-099",
+      "scenario": "경계 — 온라인 강의 수강료 — auto_approve_limit 경계 재확인(49,999원)",
+      "team_type": "동아리/학생회",
+      "type": "boundary",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-099",
+        "expenseId": 91298,
+        "organizationId": 9145,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=49999&date=2026-07-12"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교육",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-boundary-100",
+      "scenario": "경계 — 동아리 정기모임 회의비 — auto_approve_limit 경계 재확인(50,000원)",
+      "team_type": "동아리/학생회",
+      "type": "boundary",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-boundary-100",
+        "expenseId": 91299,
+        "organizationId": 9145,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=50000&date=2026-07-12"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "회의",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "over_auto_approve_limit"
+      ]
+    }
+  ]
+}

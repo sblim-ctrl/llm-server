@@ -1,0 +1,1907 @@
+{
+  "version": "v2",
+  "type": "notation_variant",
+  "description": "표기 변형 — 영문·외래어·오타로 같은 항목을 표기(분류 축 목/실 대조)",
+  "cases": [
+    {
+      "id": "v2-notation_variant-001",
+      "scenario": "표기 변형 — 'Team Dinner'(영문 표기 — '회식/식사' 등 한글 키워드가 전혀 없음) → 실제 정답 카테고리는 식비",
+      "team_type": "동아리/학생회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-001",
+        "expenseId": 91499,
+        "organizationId": 9184,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=12000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "식비",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-002",
+      "scenario": "표기 변형 — 'Team Dinner'(영문 표기 — '회식/식사' 등 한글 키워드가 전혀 없음) → 실제 정답 카테고리는 식비",
+      "team_type": "스터디",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-002",
+        "expenseId": 91500,
+        "organizationId": 9185,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=13500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "식비",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-003",
+      "scenario": "표기 변형 — 'Team Dinner'(영문 표기 — '회식/식사' 등 한글 키워드가 전혀 없음) → 실제 정답 카테고리는 식비",
+      "team_type": "친목",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-003",
+        "expenseId": 91501,
+        "organizationId": 9186,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=15000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "식비",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-004",
+      "scenario": "표기 변형 — 'Team Dinner'(영문 표기 — '회식/식사' 등 한글 키워드가 전혀 없음) → 실제 정답 카테고리는 식비",
+      "team_type": "동호회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-004",
+        "expenseId": 91502,
+        "organizationId": 9187,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=16500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "식비",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-005",
+      "scenario": "표기 변형 — 'Team Dinner'(영문 표기 — '회식/식사' 등 한글 키워드가 전혀 없음) → 실제 정답 카테고리는 식비",
+      "team_type": "회사",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-005",
+        "expenseId": 91503,
+        "organizationId": 9188,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=18000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "식비",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-006",
+      "scenario": "표기 변형 — '회싟비 정산'(오타 — '회식'이 '회싟'으로 깨져 키워드 미스매치) → 실제 정답 카테고리는 식비",
+      "team_type": "동아리/학생회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-006",
+        "expenseId": 91504,
+        "organizationId": 9184,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=12000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "식비",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-007",
+      "scenario": "표기 변형 — '회싟비 정산'(오타 — '회식'이 '회싟'으로 깨져 키워드 미스매치) → 실제 정답 카테고리는 식비",
+      "team_type": "스터디",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-007",
+        "expenseId": 91505,
+        "organizationId": 9185,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=13500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "식비",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-008",
+      "scenario": "표기 변형 — '회싟비 정산'(오타 — '회식'이 '회싟'으로 깨져 키워드 미스매치) → 실제 정답 카테고리는 식비",
+      "team_type": "친목",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-008",
+        "expenseId": 91506,
+        "organizationId": 9186,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=15000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "식비",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-009",
+      "scenario": "표기 변형 — '회싟비 정산'(오타 — '회식'이 '회싟'으로 깨져 키워드 미스매치) → 실제 정답 카테고리는 식비",
+      "team_type": "동호회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-009",
+        "expenseId": 91507,
+        "organizationId": 9187,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=16500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "식비",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-010",
+      "scenario": "표기 변형 — '회싟비 정산'(오타 — '회식'이 '회싟'으로 깨져 키워드 미스매치) → 실제 정답 카테고리는 식비",
+      "team_type": "회사",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-010",
+        "expenseId": 91508,
+        "organizationId": 9188,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=18000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "식비",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-011",
+      "scenario": "표기 변형 — '다이닝 결제'(외래어 '다이닝' — 카탈로그 키워드는 '식사'만 인정) → 실제 정답 카테고리는 식비",
+      "team_type": "동아리/학생회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-011",
+        "expenseId": 91509,
+        "organizationId": 9184,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=12000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "식비",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-012",
+      "scenario": "표기 변형 — '다이닝 결제'(외래어 '다이닝' — 카탈로그 키워드는 '식사'만 인정) → 실제 정답 카테고리는 식비",
+      "team_type": "스터디",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-012",
+        "expenseId": 91510,
+        "organizationId": 9185,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=13500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "식비",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-013",
+      "scenario": "표기 변형 — '다이닝 결제'(외래어 '다이닝' — 카탈로그 키워드는 '식사'만 인정) → 실제 정답 카테고리는 식비",
+      "team_type": "친목",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-013",
+        "expenseId": 91511,
+        "organizationId": 9186,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=15000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "식비",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-014",
+      "scenario": "표기 변형 — '다이닝 결제'(외래어 '다이닝' — 카탈로그 키워드는 '식사'만 인정) → 실제 정답 카테고리는 식비",
+      "team_type": "동호회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-014",
+        "expenseId": 91512,
+        "organizationId": 9187,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=16500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "식비",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-015",
+      "scenario": "표기 변형 — '다이닝 결제'(외래어 '다이닝' — 카탈로그 키워드는 '식사'만 인정) → 실제 정답 카테고리는 식비",
+      "team_type": "회사",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-015",
+        "expenseId": 91513,
+        "organizationId": 9188,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=18000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "식비",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-016",
+      "scenario": "표기 변형 — '우버 결제'(영문 브랜드명 — '택시' 키워드가 없음) → 실제 정답 카테고리는 교통",
+      "team_type": "동아리/학생회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-016",
+        "expenseId": 91514,
+        "organizationId": 9184,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=12000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교통",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-017",
+      "scenario": "표기 변형 — '우버 결제'(영문 브랜드명 — '택시' 키워드가 없음) → 실제 정답 카테고리는 교통",
+      "team_type": "스터디",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-017",
+        "expenseId": 91515,
+        "organizationId": 9185,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=13500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교통",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-018",
+      "scenario": "표기 변형 — '우버 결제'(영문 브랜드명 — '택시' 키워드가 없음) → 실제 정답 카테고리는 교통",
+      "team_type": "친목",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-018",
+        "expenseId": 91516,
+        "organizationId": 9186,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=15000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교통",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-019",
+      "scenario": "표기 변형 — '우버 결제'(영문 브랜드명 — '택시' 키워드가 없음) → 실제 정답 카테고리는 교통",
+      "team_type": "동호회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-019",
+        "expenseId": 91517,
+        "organizationId": 9187,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=16500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교통",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-020",
+      "scenario": "표기 변형 — '우버 결제'(영문 브랜드명 — '택시' 키워드가 없음) → 실제 정답 카테고리는 교통",
+      "team_type": "회사",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-020",
+        "expenseId": 91518,
+        "organizationId": 9188,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=18000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교통",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-021",
+      "scenario": "표기 변형 — '카풀 요금 정산'('카풀' — 카탈로그 키워드 밖 교통수단 표현) → 실제 정답 카테고리는 교통",
+      "team_type": "동아리/학생회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-021",
+        "expenseId": 91519,
+        "organizationId": 9184,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=12000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교통",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-022",
+      "scenario": "표기 변형 — '카풀 요금 정산'('카풀' — 카탈로그 키워드 밖 교통수단 표현) → 실제 정답 카테고리는 교통",
+      "team_type": "스터디",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-022",
+        "expenseId": 91520,
+        "organizationId": 9185,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=13500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교통",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-023",
+      "scenario": "표기 변형 — '카풀 요금 정산'('카풀' — 카탈로그 키워드 밖 교통수단 표현) → 실제 정답 카테고리는 교통",
+      "team_type": "친목",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-023",
+        "expenseId": 91521,
+        "organizationId": 9186,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=15000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교통",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-024",
+      "scenario": "표기 변형 — '카풀 요금 정산'('카풀' — 카탈로그 키워드 밖 교통수단 표현) → 실제 정답 카테고리는 교통",
+      "team_type": "동호회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-024",
+        "expenseId": 91522,
+        "organizationId": 9187,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=16500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교통",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-025",
+      "scenario": "표기 변형 — '카풀 요금 정산'('카풀' — 카탈로그 키워드 밖 교통수단 표현) → 실제 정답 카테고리는 교통",
+      "team_type": "회사",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-025",
+        "expenseId": 91523,
+        "organizationId": 9188,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=18000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교통",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-026",
+      "scenario": "표기 변형 — '라이드 호출 요금'(외래어 '라이드·호출' — '택시/이동' 키워드와 겹치지 않음) → 실제 정답 카테고리는 교통",
+      "team_type": "동아리/학생회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-026",
+        "expenseId": 91524,
+        "organizationId": 9184,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=12000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교통",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-027",
+      "scenario": "표기 변형 — '라이드 호출 요금'(외래어 '라이드·호출' — '택시/이동' 키워드와 겹치지 않음) → 실제 정답 카테고리는 교통",
+      "team_type": "스터디",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-027",
+        "expenseId": 91525,
+        "organizationId": 9185,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=13500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교통",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-028",
+      "scenario": "표기 변형 — '라이드 호출 요금'(외래어 '라이드·호출' — '택시/이동' 키워드와 겹치지 않음) → 실제 정답 카테고리는 교통",
+      "team_type": "친목",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-028",
+        "expenseId": 91526,
+        "organizationId": 9186,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=15000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교통",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-029",
+      "scenario": "표기 변형 — '라이드 호출 요금'(외래어 '라이드·호출' — '택시/이동' 키워드와 겹치지 않음) → 실제 정답 카테고리는 교통",
+      "team_type": "동호회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-029",
+        "expenseId": 91527,
+        "organizationId": 9187,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=16500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교통",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-030",
+      "scenario": "표기 변형 — '라이드 호출 요금'(외래어 '라이드·호출' — '택시/이동' 키워드와 겹치지 않음) → 실제 정답 카테고리는 교통",
+      "team_type": "회사",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-030",
+        "expenseId": 91528,
+        "organizationId": 9188,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=18000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교통",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-031",
+      "scenario": "표기 변형 — 'Notion 정기결제'(영문 브랜드명 — 카탈로그는 한글 '노션'만 인정) → 실제 정답 카테고리는 IT_인프라",
+      "team_type": "동아리/학생회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-031",
+        "expenseId": 91529,
+        "organizationId": 9184,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=12000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "IT_인프라",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-032",
+      "scenario": "표기 변형 — 'Notion 정기결제'(영문 브랜드명 — 카탈로그는 한글 '노션'만 인정) → 실제 정답 카테고리는 IT_인프라",
+      "team_type": "스터디",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-032",
+        "expenseId": 91530,
+        "organizationId": 9185,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=13500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "IT_인프라",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-033",
+      "scenario": "표기 변형 — 'Notion 정기결제'(영문 브랜드명 — 카탈로그는 한글 '노션'만 인정) → 실제 정답 카테고리는 IT_인프라",
+      "team_type": "친목",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-033",
+        "expenseId": 91531,
+        "organizationId": 9186,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=15000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "IT_인프라",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-034",
+      "scenario": "표기 변형 — 'Notion 정기결제'(영문 브랜드명 — 카탈로그는 한글 '노션'만 인정) → 실제 정답 카테고리는 IT_인프라",
+      "team_type": "동호회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-034",
+        "expenseId": 91532,
+        "organizationId": 9187,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=16500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "IT_인프라",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-035",
+      "scenario": "표기 변형 — 'Notion 정기결제'(영문 브랜드명 — 카탈로그는 한글 '노션'만 인정) → 실제 정답 카테고리는 IT_인프라",
+      "team_type": "회사",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-035",
+        "expenseId": 91533,
+        "organizationId": 9188,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=18000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "IT_인프라",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-036",
+      "scenario": "표기 변형 — '슬렉 유료 플랜'(오타 — '슬랙'이 '슬렉'으로 깨짐) → 실제 정답 카테고리는 IT_인프라",
+      "team_type": "동아리/학생회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-036",
+        "expenseId": 91534,
+        "organizationId": 9184,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=12000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "IT_인프라",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-037",
+      "scenario": "표기 변형 — '슬렉 유료 플랜'(오타 — '슬랙'이 '슬렉'으로 깨짐) → 실제 정답 카테고리는 IT_인프라",
+      "team_type": "스터디",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-037",
+        "expenseId": 91535,
+        "organizationId": 9185,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=13500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "IT_인프라",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-038",
+      "scenario": "표기 변형 — '슬렉 유료 플랜'(오타 — '슬랙'이 '슬렉'으로 깨짐) → 실제 정답 카테고리는 IT_인프라",
+      "team_type": "친목",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-038",
+        "expenseId": 91536,
+        "organizationId": 9186,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=15000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "IT_인프라",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-039",
+      "scenario": "표기 변형 — '슬렉 유료 플랜'(오타 — '슬랙'이 '슬렉'으로 깨짐) → 실제 정답 카테고리는 IT_인프라",
+      "team_type": "동호회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-039",
+        "expenseId": 91537,
+        "organizationId": 9187,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=16500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "IT_인프라",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-040",
+      "scenario": "표기 변형 — '슬렉 유료 플랜'(오타 — '슬랙'이 '슬렉'으로 깨짐) → 실제 정답 카테고리는 IT_인프라",
+      "team_type": "회사",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-040",
+        "expenseId": 91538,
+        "organizationId": 9188,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=18000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "IT_인프라",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-041",
+      "scenario": "표기 변형 — 'MOOC 수료증 비용'(영문 축약형 — '강의/수강' 등 키워드 없음) → 실제 정답 카테고리는 교육",
+      "team_type": "동아리/학생회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-041",
+        "expenseId": 91539,
+        "organizationId": 9184,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=12000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교육",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-042",
+      "scenario": "표기 변형 — 'MOOC 수료증 비용'(영문 축약형 — '강의/수강' 등 키워드 없음) → 실제 정답 카테고리는 교육",
+      "team_type": "스터디",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-042",
+        "expenseId": 91540,
+        "organizationId": 9185,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=13500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교육",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-043",
+      "scenario": "표기 변형 — 'MOOC 수료증 비용'(영문 축약형 — '강의/수강' 등 키워드 없음) → 실제 정답 카테고리는 교육",
+      "team_type": "친목",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-043",
+        "expenseId": 91541,
+        "organizationId": 9186,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=15000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교육",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-044",
+      "scenario": "표기 변형 — 'MOOC 수료증 비용'(영문 축약형 — '강의/수강' 등 키워드 없음) → 실제 정답 카테고리는 교육",
+      "team_type": "동호회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-044",
+        "expenseId": 91542,
+        "organizationId": 9187,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=16500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교육",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-045",
+      "scenario": "표기 변형 — 'MOOC 수료증 비용'(영문 축약형 — '강의/수강' 등 키워드 없음) → 실제 정답 카테고리는 교육",
+      "team_type": "회사",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-045",
+        "expenseId": 91543,
+        "organizationId": 9188,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=18000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교육",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-046",
+      "scenario": "표기 변형 — '새미나 참여 비용'(오타 — '세미나'가 '새미나'로 깨짐(등록비 낱말은 행사_활동 키워드와 겹쳐 피함)) → 실제 정답 카테고리는 교육",
+      "team_type": "동아리/학생회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-046",
+        "expenseId": 91544,
+        "organizationId": 9184,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=12000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교육",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-047",
+      "scenario": "표기 변형 — '새미나 참여 비용'(오타 — '세미나'가 '새미나'로 깨짐(등록비 낱말은 행사_활동 키워드와 겹쳐 피함)) → 실제 정답 카테고리는 교육",
+      "team_type": "스터디",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-047",
+        "expenseId": 91545,
+        "organizationId": 9185,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=13500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교육",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-048",
+      "scenario": "표기 변형 — '새미나 참여 비용'(오타 — '세미나'가 '새미나'로 깨짐(등록비 낱말은 행사_활동 키워드와 겹쳐 피함)) → 실제 정답 카테고리는 교육",
+      "team_type": "친목",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-048",
+        "expenseId": 91546,
+        "organizationId": 9186,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=15000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교육",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-049",
+      "scenario": "표기 변형 — '새미나 참여 비용'(오타 — '세미나'가 '새미나'로 깨짐(등록비 낱말은 행사_활동 키워드와 겹쳐 피함)) → 실제 정답 카테고리는 교육",
+      "team_type": "동호회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-049",
+        "expenseId": 91547,
+        "organizationId": 9187,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=16500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교육",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-050",
+      "scenario": "표기 변형 — '새미나 참여 비용'(오타 — '세미나'가 '새미나'로 깨짐(등록비 낱말은 행사_활동 키워드와 겹쳐 피함)) → 실제 정답 카테고리는 교육",
+      "team_type": "회사",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-050",
+        "expenseId": 91548,
+        "organizationId": 9188,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=18000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "교육",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-051",
+      "scenario": "표기 변형 — '번개 회동'(구어체 '회동' — 카탈로그 키워드(회의실·정기모임 등) 밖) → 실제 정답 카테고리는 회의",
+      "team_type": "동아리/학생회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-051",
+        "expenseId": 91549,
+        "organizationId": 9184,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=12000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "회의",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-052",
+      "scenario": "표기 변형 — '번개 회동'(구어체 '회동' — 카탈로그 키워드(회의실·정기모임 등) 밖) → 실제 정답 카테고리는 회의",
+      "team_type": "스터디",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-052",
+        "expenseId": 91550,
+        "organizationId": 9185,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=13500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "회의",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-053",
+      "scenario": "표기 변형 — '번개 회동'(구어체 '회동' — 카탈로그 키워드(회의실·정기모임 등) 밖) → 실제 정답 카테고리는 회의",
+      "team_type": "친목",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-053",
+        "expenseId": 91551,
+        "organizationId": 9186,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=15000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "회의",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-054",
+      "scenario": "표기 변형 — '번개 회동'(구어체 '회동' — 카탈로그 키워드(회의실·정기모임 등) 밖) → 실제 정답 카테고리는 회의",
+      "team_type": "동호회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-054",
+        "expenseId": 91552,
+        "organizationId": 9187,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=16500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "회의",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-055",
+      "scenario": "표기 변형 — '번개 회동'(구어체 '회동' — 카탈로그 키워드(회의실·정기모임 등) 밖) → 실제 정답 카테고리는 회의",
+      "team_type": "회사",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-055",
+        "expenseId": 91553,
+        "organizationId": 9188,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=18000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "회의",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-056",
+      "scenario": "표기 변형 — '모임 소집비'('모임'만으로는 키워드 '정기모임'(4글자 전체) 미달) → 실제 정답 카테고리는 회의",
+      "team_type": "동아리/학생회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-056",
+        "expenseId": 91554,
+        "organizationId": 9184,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=12000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "회의",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-057",
+      "scenario": "표기 변형 — '모임 소집비'('모임'만으로는 키워드 '정기모임'(4글자 전체) 미달) → 실제 정답 카테고리는 회의",
+      "team_type": "스터디",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-057",
+        "expenseId": 91555,
+        "organizationId": 9185,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=13500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "회의",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-058",
+      "scenario": "표기 변형 — '모임 소집비'('모임'만으로는 키워드 '정기모임'(4글자 전체) 미달) → 실제 정답 카테고리는 회의",
+      "team_type": "친목",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-058",
+        "expenseId": 91556,
+        "organizationId": 9186,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=15000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "회의",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-059",
+      "scenario": "표기 변형 — '모임 소집비'('모임'만으로는 키워드 '정기모임'(4글자 전체) 미달) → 실제 정답 카테고리는 회의",
+      "team_type": "동호회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-059",
+        "expenseId": 91557,
+        "organizationId": 9187,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=16500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "회의",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-060",
+      "scenario": "표기 변형 — '모임 소집비'('모임'만으로는 키워드 '정기모임'(4글자 전체) 미달) → 실제 정답 카테고리는 회의",
+      "team_type": "회사",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-060",
+        "expenseId": 91558,
+        "organizationId": 9188,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=18000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "회의",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-061",
+      "scenario": "표기 변형 — '이벤트홀 대여'('대여'는 2026-08-07 검증 후 의도적으로 제외된 낱말(카탈로그 주석). '행사장'을 쓰면 '행사' 키워드가 행사_활동에 걸려 오분류가 나므로 '이벤트홀'로 회피) → 실제 정답 카테고리는 장소_대관",
+      "team_type": "동아리/학생회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-061",
+        "expenseId": 91559,
+        "organizationId": 9184,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=12000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "장소_대관",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-062",
+      "scenario": "표기 변형 — '이벤트홀 대여'('대여'는 2026-08-07 검증 후 의도적으로 제외된 낱말(카탈로그 주석). '행사장'을 쓰면 '행사' 키워드가 행사_활동에 걸려 오분류가 나므로 '이벤트홀'로 회피) → 실제 정답 카테고리는 장소_대관",
+      "team_type": "스터디",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-062",
+        "expenseId": 91560,
+        "organizationId": 9185,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=13500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "장소_대관",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-063",
+      "scenario": "표기 변형 — '이벤트홀 대여'('대여'는 2026-08-07 검증 후 의도적으로 제외된 낱말(카탈로그 주석). '행사장'을 쓰면 '행사' 키워드가 행사_활동에 걸려 오분류가 나므로 '이벤트홀'로 회피) → 실제 정답 카테고리는 장소_대관",
+      "team_type": "친목",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-063",
+        "expenseId": 91561,
+        "organizationId": 9186,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=15000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "장소_대관",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-064",
+      "scenario": "표기 변형 — '이벤트홀 대여'('대여'는 2026-08-07 검증 후 의도적으로 제외된 낱말(카탈로그 주석). '행사장'을 쓰면 '행사' 키워드가 행사_활동에 걸려 오분류가 나므로 '이벤트홀'로 회피) → 실제 정답 카테고리는 장소_대관",
+      "team_type": "동호회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-064",
+        "expenseId": 91562,
+        "organizationId": 9187,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=16500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "장소_대관",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-065",
+      "scenario": "표기 변형 — '이벤트홀 대여'('대여'는 2026-08-07 검증 후 의도적으로 제외된 낱말(카탈로그 주석). '행사장'을 쓰면 '행사' 키워드가 행사_활동에 걸려 오분류가 나므로 '이벤트홀'로 회피) → 실제 정답 카테고리는 장소_대관",
+      "team_type": "회사",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-065",
+        "expenseId": 91563,
+        "organizationId": 9188,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=18000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "장소_대관",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-066",
+      "scenario": "표기 변형 — '베뉴 이용료'(외래어 '베뉴'(venue) — 한글 장소 키워드 없음) → 실제 정답 카테고리는 장소_대관",
+      "team_type": "동아리/학생회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-066",
+        "expenseId": 91564,
+        "organizationId": 9184,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=12000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "장소_대관",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-067",
+      "scenario": "표기 변형 — '베뉴 이용료'(외래어 '베뉴'(venue) — 한글 장소 키워드 없음) → 실제 정답 카테고리는 장소_대관",
+      "team_type": "스터디",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-067",
+        "expenseId": 91565,
+        "organizationId": 9185,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=13500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "장소_대관",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-068",
+      "scenario": "표기 변형 — '베뉴 이용료'(외래어 '베뉴'(venue) — 한글 장소 키워드 없음) → 실제 정답 카테고리는 장소_대관",
+      "team_type": "친목",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-068",
+        "expenseId": 91566,
+        "organizationId": 9186,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=15000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "장소_대관",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-069",
+      "scenario": "표기 변형 — '베뉴 이용료'(외래어 '베뉴'(venue) — 한글 장소 키워드 없음) → 실제 정답 카테고리는 장소_대관",
+      "team_type": "동호회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-069",
+        "expenseId": 91567,
+        "organizationId": 9187,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=16500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "장소_대관",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-070",
+      "scenario": "표기 변형 — '베뉴 이용료'(외래어 '베뉴'(venue) — 한글 장소 키워드 없음) → 실제 정답 카테고리는 장소_대관",
+      "team_type": "회사",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-070",
+        "expenseId": 91568,
+        "organizationId": 9188,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=18000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "장소_대관",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-071",
+      "scenario": "표기 변형 — 'MT 참가'(로마자 표기 'MT' — 카탈로그는 한글 '엠티'만 인정) → 실제 정답 카테고리는 행사_활동",
+      "team_type": "동아리/학생회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-071",
+        "expenseId": 91569,
+        "organizationId": 9184,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=12000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "행사_활동",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-072",
+      "scenario": "표기 변형 — 'MT 참가'(로마자 표기 'MT' — 카탈로그는 한글 '엠티'만 인정) → 실제 정답 카테고리는 행사_활동",
+      "team_type": "스터디",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-072",
+        "expenseId": 91570,
+        "organizationId": 9185,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=13500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "행사_활동",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-073",
+      "scenario": "표기 변형 — 'MT 참가'(로마자 표기 'MT' — 카탈로그는 한글 '엠티'만 인정) → 실제 정답 카테고리는 행사_활동",
+      "team_type": "친목",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-073",
+        "expenseId": 91571,
+        "organizationId": 9186,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=15000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "행사_활동",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-074",
+      "scenario": "표기 변형 — 'MT 참가'(로마자 표기 'MT' — 카탈로그는 한글 '엠티'만 인정) → 실제 정답 카테고리는 행사_활동",
+      "team_type": "동호회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-074",
+        "expenseId": 91572,
+        "organizationId": 9187,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=16500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "행사_활동",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-075",
+      "scenario": "표기 변형 — 'MT 참가'(로마자 표기 'MT' — 카탈로그는 한글 '엠티'만 인정) → 실제 정답 카테고리는 행사_활동",
+      "team_type": "회사",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-075",
+        "expenseId": 91573,
+        "organizationId": 9188,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=18000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "행사_활동",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-076",
+      "scenario": "표기 변형 — '빙고게임 진행비'('보드게임'과 다른 게임명이라 키워드 미스매치) → 실제 정답 카테고리는 행사_활동",
+      "team_type": "동아리/학생회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-076",
+        "expenseId": 91574,
+        "organizationId": 9184,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=12000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "행사_활동",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-077",
+      "scenario": "표기 변형 — '빙고게임 진행비'('보드게임'과 다른 게임명이라 키워드 미스매치) → 실제 정답 카테고리는 행사_활동",
+      "team_type": "스터디",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-077",
+        "expenseId": 91575,
+        "organizationId": 9185,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=13500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "행사_활동",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-078",
+      "scenario": "표기 변형 — '빙고게임 진행비'('보드게임'과 다른 게임명이라 키워드 미스매치) → 실제 정답 카테고리는 행사_활동",
+      "team_type": "친목",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-078",
+        "expenseId": 91576,
+        "organizationId": 9186,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=15000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "행사_활동",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-079",
+      "scenario": "표기 변형 — '빙고게임 진행비'('보드게임'과 다른 게임명이라 키워드 미스매치) → 실제 정답 카테고리는 행사_활동",
+      "team_type": "동호회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-079",
+        "expenseId": 91577,
+        "organizationId": 9187,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=16500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "행사_활동",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-080",
+      "scenario": "표기 변형 — '빙고게임 진행비'('보드게임'과 다른 게임명이라 키워드 미스매치) → 실제 정답 카테고리는 행사_활동",
+      "team_type": "회사",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-080",
+        "expenseId": 91578,
+        "organizationId": 9188,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=18000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "행사_활동",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-081",
+      "scenario": "표기 변형 — '스테이셔너리 구매'(외래어 '스테이셔너리' + '구매'(카탈로그는 '구입'만 인정)) → 실제 정답 카테고리는 비품",
+      "team_type": "동아리/학생회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-081",
+        "expenseId": 91579,
+        "organizationId": 9184,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=12000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "비품",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-082",
+      "scenario": "표기 변형 — '스테이셔너리 구매'(외래어 '스테이셔너리' + '구매'(카탈로그는 '구입'만 인정)) → 실제 정답 카테고리는 비품",
+      "team_type": "스터디",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-082",
+        "expenseId": 91580,
+        "organizationId": 9185,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=13500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "비품",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-083",
+      "scenario": "표기 변형 — '스테이셔너리 구매'(외래어 '스테이셔너리' + '구매'(카탈로그는 '구입'만 인정)) → 실제 정답 카테고리는 비품",
+      "team_type": "친목",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-083",
+        "expenseId": 91581,
+        "organizationId": 9186,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=15000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "비품",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-084",
+      "scenario": "표기 변형 — '스테이셔너리 구매'(외래어 '스테이셔너리' + '구매'(카탈로그는 '구입'만 인정)) → 실제 정답 카테고리는 비품",
+      "team_type": "동호회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-084",
+        "expenseId": 91582,
+        "organizationId": 9187,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=16500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "비품",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-085",
+      "scenario": "표기 변형 — '스테이셔너리 구매'(외래어 '스테이셔너리' + '구매'(카탈로그는 '구입'만 인정)) → 실제 정답 카테고리는 비품",
+      "team_type": "회사",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-085",
+        "expenseId": 91583,
+        "organizationId": 9188,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=18000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "비품",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-086",
+      "scenario": "표기 변형 — '웹캠 장만'('장만'은 '장비'와 다른 낱말이라 미스매치) → 실제 정답 카테고리는 비품",
+      "team_type": "동아리/학생회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-086",
+        "expenseId": 91584,
+        "organizationId": 9184,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=12000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "비품",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-087",
+      "scenario": "표기 변형 — '웹캠 장만'('장만'은 '장비'와 다른 낱말이라 미스매치) → 실제 정답 카테고리는 비품",
+      "team_type": "스터디",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-087",
+        "expenseId": 91585,
+        "organizationId": 9185,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=13500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "비품",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-088",
+      "scenario": "표기 변형 — '웹캠 장만'('장만'은 '장비'와 다른 낱말이라 미스매치) → 실제 정답 카테고리는 비품",
+      "team_type": "친목",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-088",
+        "expenseId": 91586,
+        "organizationId": 9186,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=15000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "비품",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-089",
+      "scenario": "표기 변형 — '웹캠 장만'('장만'은 '장비'와 다른 낱말이라 미스매치) → 실제 정답 카테고리는 비품",
+      "team_type": "동호회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-089",
+        "expenseId": 91587,
+        "organizationId": 9187,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=16500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "비품",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-090",
+      "scenario": "표기 변형 — '웹캠 장만'('장만'은 '장비'와 다른 낱말이라 미스매치) → 실제 정답 카테고리는 비품",
+      "team_type": "회사",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-090",
+        "expenseId": 91588,
+        "organizationId": 9188,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=18000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "비품",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-091",
+      "scenario": "표기 변형 — '동아리 회원 경조사 조화'(이미 검증된 카탈로그 밖 기준 사례 — 목/실 모두 기타로 일치해야 함) → 실제 정답 카테고리는 기타",
+      "team_type": "동아리/학생회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-091",
+        "expenseId": 91589,
+        "organizationId": 9184,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=12000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "기타",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-092",
+      "scenario": "표기 변형 — '동아리 회원 경조사 조화'(이미 검증된 카탈로그 밖 기준 사례 — 목/실 모두 기타로 일치해야 함) → 실제 정답 카테고리는 기타",
+      "team_type": "스터디",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-092",
+        "expenseId": 91590,
+        "organizationId": 9185,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=13500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "기타",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-093",
+      "scenario": "표기 변형 — '동아리 회원 경조사 조화'(이미 검증된 카탈로그 밖 기준 사례 — 목/실 모두 기타로 일치해야 함) → 실제 정답 카테고리는 기타",
+      "team_type": "친목",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-093",
+        "expenseId": 91591,
+        "organizationId": 9186,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=15000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "기타",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-094",
+      "scenario": "표기 변형 — '동아리 회원 경조사 조화'(이미 검증된 카탈로그 밖 기준 사례 — 목/실 모두 기타로 일치해야 함) → 실제 정답 카테고리는 기타",
+      "team_type": "동호회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-094",
+        "expenseId": 91592,
+        "organizationId": 9187,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=16500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "기타",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-095",
+      "scenario": "표기 변형 — '동아리 회원 경조사 조화'(이미 검증된 카탈로그 밖 기준 사례 — 목/실 모두 기타로 일치해야 함) → 실제 정답 카테고리는 기타",
+      "team_type": "회사",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-095",
+        "expenseId": 91593,
+        "organizationId": 9188,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=18000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "기타",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-096",
+      "scenario": "표기 변형 — '동호회 부의금'(선물/기념 계열 — legacy alias도 기타로 접는 항목, 목/실 모두 기타) → 실제 정답 카테고리는 기타",
+      "team_type": "동아리/학생회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-096",
+        "expenseId": 91594,
+        "organizationId": 9184,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=12000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "기타",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-097",
+      "scenario": "표기 변형 — '동호회 부의금'(선물/기념 계열 — legacy alias도 기타로 접는 항목, 목/실 모두 기타) → 실제 정답 카테고리는 기타",
+      "team_type": "스터디",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-097",
+        "expenseId": 91595,
+        "organizationId": 9185,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=13500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "기타",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-098",
+      "scenario": "표기 변형 — '동호회 부의금'(선물/기념 계열 — legacy alias도 기타로 접는 항목, 목/실 모두 기타) → 실제 정답 카테고리는 기타",
+      "team_type": "친목",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-098",
+        "expenseId": 91596,
+        "organizationId": 9186,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=15000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "기타",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-099",
+      "scenario": "표기 변형 — '동호회 부의금'(선물/기념 계열 — legacy alias도 기타로 접는 항목, 목/실 모두 기타) → 실제 정답 카테고리는 기타",
+      "team_type": "동호회",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-099",
+        "expenseId": 91597,
+        "organizationId": 9187,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=16500&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "기타",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    },
+    {
+      "id": "v2-notation_variant-100",
+      "scenario": "표기 변형 — '동호회 부의금'(선물/기념 계열 — legacy alias도 기타로 접는 항목, 목/실 모두 기타) → 실제 정답 카테고리는 기타",
+      "team_type": "회사",
+      "type": "notation_variant",
+      "difficulty": "medium",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-notation_variant-100",
+        "expenseId": 91598,
+        "organizationId": 9188,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=18000&date=2026-07-15"
+      },
+      "expected_verdict": "approve",
+      "expected_category": "기타",
+      "must_not_approve": false,
+      "expected_gate_includes": []
+    }
+  ]
+}

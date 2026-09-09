@@ -1,0 +1,2090 @@
+{
+  "version": "v2",
+  "type": "missing_info",
+  "description": "정보/판정 권한 부족 — 영수증 미첨부 또는 auto_approve_disabled",
+  "cases": [
+    {
+      "id": "v2-missing_info-001",
+      "scenario": "정보 부족 — 영수증 미첨부 (정기 회식)",
+      "team_type": "동아리/학생회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-001",
+        "expenseId": 91300,
+        "organizationId": 9150,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-002",
+      "scenario": "정보 부족 — 영수증 미첨부 (출장 기차표)",
+      "team_type": "동아리/학생회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-002",
+        "expenseId": 91301,
+        "organizationId": 9150,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교통",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-003",
+      "scenario": "정보 부족 — 영수증 미첨부 (노션 팀 구독료)",
+      "team_type": "동아리/학생회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-003",
+        "expenseId": 91302,
+        "organizationId": 9150,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "IT_인프라",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-004",
+      "scenario": "정보 부족 — 영수증 미첨부 (온라인 강의 수강료)",
+      "team_type": "동아리/학생회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-004",
+        "expenseId": 91303,
+        "organizationId": 9150,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-005",
+      "scenario": "정보 부족 — 영수증 미첨부 (동아리 정기모임 회의비)",
+      "team_type": "동아리/학생회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-005",
+        "expenseId": 91304,
+        "organizationId": 9150,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "회의",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-006",
+      "scenario": "정보 부족 — 영수증 미첨부 (스터디룸 대관료)",
+      "team_type": "동아리/학생회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-006",
+        "expenseId": 91305,
+        "organizationId": 9150,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-007",
+      "scenario": "정보 부족 — 영수증 미첨부 (동아리 엠티 참가비)",
+      "team_type": "동아리/학생회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-007",
+        "expenseId": 91306,
+        "organizationId": 9150,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "행사_활동",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-008",
+      "scenario": "정보 부족 — 영수증 미첨부 (학회 단체 티셔츠 제작)",
+      "team_type": "동아리/학생회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-008",
+        "expenseId": 91307,
+        "organizationId": 9150,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "비품",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-009",
+      "scenario": "정보 부족 — 영수증 미첨부 (동아리 회원 경조사 조화)",
+      "team_type": "동아리/학생회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-009",
+        "expenseId": 91308,
+        "organizationId": 9150,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "기타",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-010",
+      "scenario": "정보 부족 — 영수증 미첨부 (정기 회식)",
+      "team_type": "스터디",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-010",
+        "expenseId": 91309,
+        "organizationId": 9151,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-011",
+      "scenario": "정보 부족 — 영수증 미첨부 (출장 기차표)",
+      "team_type": "스터디",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-011",
+        "expenseId": 91310,
+        "organizationId": 9151,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교통",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-012",
+      "scenario": "정보 부족 — 영수증 미첨부 (노션 팀 구독료)",
+      "team_type": "스터디",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-012",
+        "expenseId": 91311,
+        "organizationId": 9151,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "IT_인프라",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-013",
+      "scenario": "정보 부족 — 영수증 미첨부 (온라인 강의 수강료)",
+      "team_type": "스터디",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-013",
+        "expenseId": 91312,
+        "organizationId": 9151,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-014",
+      "scenario": "정보 부족 — 영수증 미첨부 (동아리 정기모임 회의비)",
+      "team_type": "스터디",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-014",
+        "expenseId": 91313,
+        "organizationId": 9151,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "회의",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-015",
+      "scenario": "정보 부족 — 영수증 미첨부 (스터디룸 대관료)",
+      "team_type": "스터디",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-015",
+        "expenseId": 91314,
+        "organizationId": 9151,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-016",
+      "scenario": "정보 부족 — 영수증 미첨부 (동아리 엠티 참가비)",
+      "team_type": "스터디",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-016",
+        "expenseId": 91315,
+        "organizationId": 9151,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "행사_활동",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-017",
+      "scenario": "정보 부족 — 영수증 미첨부 (학회 단체 티셔츠 제작)",
+      "team_type": "스터디",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-017",
+        "expenseId": 91316,
+        "organizationId": 9151,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "비품",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-018",
+      "scenario": "정보 부족 — 영수증 미첨부 (동아리 회원 경조사 조화)",
+      "team_type": "스터디",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-018",
+        "expenseId": 91317,
+        "organizationId": 9151,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "기타",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-019",
+      "scenario": "정보 부족 — 영수증 미첨부 (정기 회식)",
+      "team_type": "친목",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-019",
+        "expenseId": 91318,
+        "organizationId": 9152,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-020",
+      "scenario": "정보 부족 — 영수증 미첨부 (출장 기차표)",
+      "team_type": "친목",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-020",
+        "expenseId": 91319,
+        "organizationId": 9152,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교통",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-021",
+      "scenario": "정보 부족 — 영수증 미첨부 (노션 팀 구독료)",
+      "team_type": "친목",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-021",
+        "expenseId": 91320,
+        "organizationId": 9152,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "IT_인프라",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-022",
+      "scenario": "정보 부족 — 영수증 미첨부 (온라인 강의 수강료)",
+      "team_type": "친목",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-022",
+        "expenseId": 91321,
+        "organizationId": 9152,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-023",
+      "scenario": "정보 부족 — 영수증 미첨부 (동아리 정기모임 회의비)",
+      "team_type": "친목",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-023",
+        "expenseId": 91322,
+        "organizationId": 9152,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "회의",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-024",
+      "scenario": "정보 부족 — 영수증 미첨부 (스터디룸 대관료)",
+      "team_type": "친목",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-024",
+        "expenseId": 91323,
+        "organizationId": 9152,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-025",
+      "scenario": "정보 부족 — 영수증 미첨부 (동아리 엠티 참가비)",
+      "team_type": "친목",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-025",
+        "expenseId": 91324,
+        "organizationId": 9152,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "행사_활동",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-026",
+      "scenario": "정보 부족 — 영수증 미첨부 (학회 단체 티셔츠 제작)",
+      "team_type": "친목",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-026",
+        "expenseId": 91325,
+        "organizationId": 9152,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "비품",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-027",
+      "scenario": "정보 부족 — 영수증 미첨부 (동아리 회원 경조사 조화)",
+      "team_type": "친목",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-027",
+        "expenseId": 91326,
+        "organizationId": 9152,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "기타",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-028",
+      "scenario": "정보 부족 — 영수증 미첨부 (정기 회식)",
+      "team_type": "동호회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-028",
+        "expenseId": 91327,
+        "organizationId": 9153,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-029",
+      "scenario": "정보 부족 — 영수증 미첨부 (출장 기차표)",
+      "team_type": "동호회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-029",
+        "expenseId": 91328,
+        "organizationId": 9153,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교통",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-030",
+      "scenario": "정보 부족 — 영수증 미첨부 (노션 팀 구독료)",
+      "team_type": "동호회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-030",
+        "expenseId": 91329,
+        "organizationId": 9153,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "IT_인프라",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-031",
+      "scenario": "정보 부족 — 영수증 미첨부 (온라인 강의 수강료)",
+      "team_type": "동호회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-031",
+        "expenseId": 91330,
+        "organizationId": 9153,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-032",
+      "scenario": "정보 부족 — 영수증 미첨부 (동아리 정기모임 회의비)",
+      "team_type": "동호회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-032",
+        "expenseId": 91331,
+        "organizationId": 9153,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "회의",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-033",
+      "scenario": "정보 부족 — 영수증 미첨부 (스터디룸 대관료)",
+      "team_type": "동호회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-033",
+        "expenseId": 91332,
+        "organizationId": 9153,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-034",
+      "scenario": "정보 부족 — 영수증 미첨부 (동아리 엠티 참가비)",
+      "team_type": "동호회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-034",
+        "expenseId": 91333,
+        "organizationId": 9153,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "행사_활동",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-035",
+      "scenario": "정보 부족 — 영수증 미첨부 (학회 단체 티셔츠 제작)",
+      "team_type": "동호회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-035",
+        "expenseId": 91334,
+        "organizationId": 9153,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "비품",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-036",
+      "scenario": "정보 부족 — 영수증 미첨부 (동아리 회원 경조사 조화)",
+      "team_type": "동호회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-036",
+        "expenseId": 91335,
+        "organizationId": 9153,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "기타",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-037",
+      "scenario": "정보 부족 — 영수증 미첨부 (정기 회식)",
+      "team_type": "회사",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-037",
+        "expenseId": 91336,
+        "organizationId": 9154,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-038",
+      "scenario": "정보 부족 — 영수증 미첨부 (출장 기차표)",
+      "team_type": "회사",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-038",
+        "expenseId": 91337,
+        "organizationId": 9154,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교통",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-039",
+      "scenario": "정보 부족 — 영수증 미첨부 (노션 팀 구독료)",
+      "team_type": "회사",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-039",
+        "expenseId": 91338,
+        "organizationId": 9154,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "IT_인프라",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-040",
+      "scenario": "정보 부족 — 영수증 미첨부 (온라인 강의 수강료)",
+      "team_type": "회사",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-040",
+        "expenseId": 91339,
+        "organizationId": 9154,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-041",
+      "scenario": "정보 부족 — 영수증 미첨부 (동아리 정기모임 회의비)",
+      "team_type": "회사",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-041",
+        "expenseId": 91340,
+        "organizationId": 9154,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "회의",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-042",
+      "scenario": "정보 부족 — 영수증 미첨부 (스터디룸 대관료)",
+      "team_type": "회사",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-042",
+        "expenseId": 91341,
+        "organizationId": 9154,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-043",
+      "scenario": "정보 부족 — 영수증 미첨부 (동아리 엠티 참가비)",
+      "team_type": "회사",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-043",
+        "expenseId": 91342,
+        "organizationId": 9154,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "행사_활동",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-044",
+      "scenario": "정보 부족 — 영수증 미첨부 (학회 단체 티셔츠 제작)",
+      "team_type": "회사",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-044",
+        "expenseId": 91343,
+        "organizationId": 9154,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "비품",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-045",
+      "scenario": "정보 부족 — 영수증 미첨부 (동아리 회원 경조사 조화)",
+      "team_type": "회사",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-045",
+        "expenseId": 91344,
+        "organizationId": 9154,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "기타",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-046",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(정기 회식)",
+      "team_type": "동아리/학생회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-046",
+        "expenseId": 91345,
+        "organizationId": 9155,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-047",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(출장 기차표)",
+      "team_type": "동아리/학생회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-047",
+        "expenseId": 91346,
+        "organizationId": 9155,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교통",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-048",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(노션 팀 구독료)",
+      "team_type": "동아리/학생회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-048",
+        "expenseId": 91347,
+        "organizationId": 9155,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "IT_인프라",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-049",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(온라인 강의 수강료)",
+      "team_type": "동아리/학생회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-049",
+        "expenseId": 91348,
+        "organizationId": 9155,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-050",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(동아리 정기모임 회의비)",
+      "team_type": "동아리/학생회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-050",
+        "expenseId": 91349,
+        "organizationId": 9155,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "회의",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-051",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(스터디룸 대관료)",
+      "team_type": "동아리/학생회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-051",
+        "expenseId": 91350,
+        "organizationId": 9155,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-052",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(동아리 엠티 참가비)",
+      "team_type": "동아리/학생회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-052",
+        "expenseId": 91351,
+        "organizationId": 9155,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "행사_활동",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-053",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(학회 단체 티셔츠 제작)",
+      "team_type": "동아리/학생회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-053",
+        "expenseId": 91352,
+        "organizationId": 9155,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "비품",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-054",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(동아리 회원 경조사 조화)",
+      "team_type": "동아리/학생회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-054",
+        "expenseId": 91353,
+        "organizationId": 9155,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "기타",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-055",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(정기 회식)",
+      "team_type": "스터디",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-055",
+        "expenseId": 91354,
+        "organizationId": 9156,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-056",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(출장 기차표)",
+      "team_type": "스터디",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-056",
+        "expenseId": 91355,
+        "organizationId": 9156,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교통",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-057",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(노션 팀 구독료)",
+      "team_type": "스터디",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-057",
+        "expenseId": 91356,
+        "organizationId": 9156,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "IT_인프라",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-058",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(온라인 강의 수강료)",
+      "team_type": "스터디",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-058",
+        "expenseId": 91357,
+        "organizationId": 9156,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-059",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(동아리 정기모임 회의비)",
+      "team_type": "스터디",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-059",
+        "expenseId": 91358,
+        "organizationId": 9156,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "회의",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-060",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(스터디룸 대관료)",
+      "team_type": "스터디",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-060",
+        "expenseId": 91359,
+        "organizationId": 9156,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-061",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(동아리 엠티 참가비)",
+      "team_type": "스터디",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-061",
+        "expenseId": 91360,
+        "organizationId": 9156,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "행사_활동",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-062",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(학회 단체 티셔츠 제작)",
+      "team_type": "스터디",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-062",
+        "expenseId": 91361,
+        "organizationId": 9156,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "비품",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-063",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(동아리 회원 경조사 조화)",
+      "team_type": "스터디",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-063",
+        "expenseId": 91362,
+        "organizationId": 9156,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "기타",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-064",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(정기 회식)",
+      "team_type": "친목",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-064",
+        "expenseId": 91363,
+        "organizationId": 9157,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-065",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(출장 기차표)",
+      "team_type": "친목",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-065",
+        "expenseId": 91364,
+        "organizationId": 9157,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교통",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-066",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(노션 팀 구독료)",
+      "team_type": "친목",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-066",
+        "expenseId": 91365,
+        "organizationId": 9157,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "IT_인프라",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-067",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(온라인 강의 수강료)",
+      "team_type": "친목",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-067",
+        "expenseId": 91366,
+        "organizationId": 9157,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-068",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(동아리 정기모임 회의비)",
+      "team_type": "친목",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-068",
+        "expenseId": 91367,
+        "organizationId": 9157,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "회의",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-069",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(스터디룸 대관료)",
+      "team_type": "친목",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-069",
+        "expenseId": 91368,
+        "organizationId": 9157,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-070",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(동아리 엠티 참가비)",
+      "team_type": "친목",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-070",
+        "expenseId": 91369,
+        "organizationId": 9157,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "행사_활동",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-071",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(학회 단체 티셔츠 제작)",
+      "team_type": "친목",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-071",
+        "expenseId": 91370,
+        "organizationId": 9157,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "비품",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-072",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(동아리 회원 경조사 조화)",
+      "team_type": "친목",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-072",
+        "expenseId": 91371,
+        "organizationId": 9157,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "기타",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-073",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(정기 회식)",
+      "team_type": "동호회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-073",
+        "expenseId": 91372,
+        "organizationId": 9158,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-074",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(출장 기차표)",
+      "team_type": "동호회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-074",
+        "expenseId": 91373,
+        "organizationId": 9158,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교통",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-075",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(노션 팀 구독료)",
+      "team_type": "동호회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-075",
+        "expenseId": 91374,
+        "organizationId": 9158,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "IT_인프라",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-076",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(온라인 강의 수강료)",
+      "team_type": "동호회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-076",
+        "expenseId": 91375,
+        "organizationId": 9158,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-077",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(동아리 정기모임 회의비)",
+      "team_type": "동호회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-077",
+        "expenseId": 91376,
+        "organizationId": 9158,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "회의",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-078",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(스터디룸 대관료)",
+      "team_type": "동호회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-078",
+        "expenseId": 91377,
+        "organizationId": 9158,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-079",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(동아리 엠티 참가비)",
+      "team_type": "동호회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-079",
+        "expenseId": 91378,
+        "organizationId": 9158,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "행사_활동",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-080",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(학회 단체 티셔츠 제작)",
+      "team_type": "동호회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-080",
+        "expenseId": 91379,
+        "organizationId": 9158,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "비품",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-081",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(동아리 회원 경조사 조화)",
+      "team_type": "동호회",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-081",
+        "expenseId": 91380,
+        "organizationId": 9158,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "기타",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-082",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(정기 회식)",
+      "team_type": "회사",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-082",
+        "expenseId": 91381,
+        "organizationId": 9159,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-083",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(출장 기차표)",
+      "team_type": "회사",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-083",
+        "expenseId": 91382,
+        "organizationId": 9159,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교통",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-084",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(노션 팀 구독료)",
+      "team_type": "회사",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-084",
+        "expenseId": 91383,
+        "organizationId": 9159,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "IT_인프라",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-085",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(온라인 강의 수강료)",
+      "team_type": "회사",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-085",
+        "expenseId": 91384,
+        "organizationId": 9159,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-086",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(동아리 정기모임 회의비)",
+      "team_type": "회사",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-086",
+        "expenseId": 91385,
+        "organizationId": 9159,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "회의",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-087",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(스터디룸 대관료)",
+      "team_type": "회사",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-087",
+        "expenseId": 91386,
+        "organizationId": 9159,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "장소_대관",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-088",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(동아리 엠티 참가비)",
+      "team_type": "회사",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-088",
+        "expenseId": 91387,
+        "organizationId": 9159,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "행사_활동",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-089",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(학회 단체 티셔츠 제작)",
+      "team_type": "회사",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-089",
+        "expenseId": 91388,
+        "organizationId": 9159,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "비품",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-090",
+      "scenario": "정보 부족(판정 권한 없음) — 조직 auto_approve=False, 금액·예산·영수증 전부 정상(동아리 회원 경조사 조화)",
+      "team_type": "회사",
+      "type": "missing_info",
+      "difficulty": "easy",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-090",
+        "expenseId": 91389,
+        "organizationId": 9159,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=10000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "기타",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-091",
+      "scenario": "정보 부족(하드) — 영수증 미첨부 + 판정 권한 없음이 동시에 걸림(두 트리거 모두 관측)",
+      "team_type": "동아리/학생회",
+      "type": "missing_info",
+      "difficulty": "hard",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-091",
+        "expenseId": 91390,
+        "organizationId": 9160,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "행사_활동",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled",
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-092",
+      "scenario": "정보 부족(하드) — 예산 부족(잔액 1,000원 < 청구 4,000원)과 auto_approve=False가 동시에 걸려도 reject가 아니라 escalate로 수렴(§4.5 우선순위의 화이트리스트 밖)",
+      "team_type": "스터디",
+      "type": "missing_info",
+      "difficulty": "hard",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-092",
+        "expenseId": 91391,
+        "organizationId": 9161,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=4000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-093",
+      "scenario": "정보 부족(하드) — 정기 회식, 설명란이 비어 있음(description=\"\"). 다만 실제 escalate 근거는 설명 공란이 아니라 영수증 미첨부(receipt_unreadable)다 — 이 코드베이스에서 '설명 없음' 자체는 게이트 트리거가 아니다",
+      "team_type": "친목",
+      "type": "missing_info",
+      "difficulty": "hard",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-093",
+        "expenseId": 91392,
+        "organizationId": 9162,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "식비",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-094",
+      "scenario": "정보 부족(하드) — 출장 기차표, 설명란이 비어 있음(description=\"\"). 다만 실제 escalate 근거는 설명 공란이 아니라 영수증 미첨부(receipt_unreadable)다 — 이 코드베이스에서 '설명 없음' 자체는 게이트 트리거가 아니다",
+      "team_type": "친목",
+      "type": "missing_info",
+      "difficulty": "hard",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-094",
+        "expenseId": 91393,
+        "organizationId": 9162,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교통",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-095",
+      "scenario": "정보 부족(하드) — 노션 팀 구독료, 설명란이 비어 있음(description=\"\"). 다만 실제 escalate 근거는 설명 공란이 아니라 영수증 미첨부(receipt_unreadable)다 — 이 코드베이스에서 '설명 없음' 자체는 게이트 트리거가 아니다",
+      "team_type": "친목",
+      "type": "missing_info",
+      "difficulty": "hard",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-095",
+        "expenseId": 91394,
+        "organizationId": 9162,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "IT_인프라",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-096",
+      "scenario": "정보 부족(하드) — 온라인 강의 수강료, 설명란이 비어 있음(description=\"\"). 다만 실제 escalate 근거는 설명 공란이 아니라 영수증 미첨부(receipt_unreadable)다 — 이 코드베이스에서 '설명 없음' 자체는 게이트 트리거가 아니다",
+      "team_type": "친목",
+      "type": "missing_info",
+      "difficulty": "hard",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-096",
+        "expenseId": 91395,
+        "organizationId": 9162,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": null
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교육",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "receipt_unreadable"
+      ]
+    },
+    {
+      "id": "v2-missing_info-097",
+      "scenario": "정보 부족(하드) — 판정 권한 없음 + 금액 49,999원(경계 재확인)",
+      "team_type": "동호회",
+      "type": "missing_info",
+      "difficulty": "hard",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-097",
+        "expenseId": 91396,
+        "organizationId": 9163,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=49999&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교통",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled"
+      ]
+    },
+    {
+      "id": "v2-missing_info-098",
+      "scenario": "정보 부족(하드) — 판정 권한 없음 + 금액 50,000원(경계 재확인)",
+      "team_type": "동호회",
+      "type": "missing_info",
+      "difficulty": "hard",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-098",
+        "expenseId": 91397,
+        "organizationId": 9163,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=50000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교통",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled",
+        "over_auto_approve_limit"
+      ]
+    },
+    {
+      "id": "v2-missing_info-099",
+      "scenario": "정보 부족(하드) — 판정 권한 없음 + 금액 200,000원(경계 재확인)",
+      "team_type": "동호회",
+      "type": "missing_info",
+      "difficulty": "hard",
+      "mode_required": "mock",
+      "input": {
+        "jobId": "job-v2-missing_info-099",
+        "expenseId": 91398,
+        "organizationId": 9163,
+        "reviewGoal": "회칙·예산·판례에 근거해 이 지출의 승인 여부를 심사하라",
+        "receiptPath": "mock://receipt?amount=200000&date=2026-07-13"
+      },
+      "expected_verdict": "escalate",
+      "expected_category": "교통",
+      "must_not_approve": true,
+      "expected_gate_includes": [
+        "auto_approve_disabled",
+        "over_force_escalation_amount",
+        "over_auto_approve_limit"
+      ]
+    }
+  ]
+}
