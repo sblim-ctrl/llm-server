@@ -99,7 +99,8 @@ def test_polling_opinion_order_matches_callback_contract():
         {"auditor": "budget", "verdict": "pass", "summary": "잔액 충분"},
     ]}
     out = order_result_opinions(stored)
-    assert [o["auditor"] for o in out["opinions"]] == ["rule", "budget", "precedent", "evidence"]
+    # 계약 순서는 #100에서 계약 문서·실화면 기준 [증빙, 예산, 판례, 회칙]으로 정정됐다.
+    assert [o["auditor"] for o in out["opinions"]] == ["evidence", "budget", "precedent", "rule"]
     assert stored["opinions"][0]["auditor"] == "evidence"  # 원본은 불변 (순수 함수)
 
 
